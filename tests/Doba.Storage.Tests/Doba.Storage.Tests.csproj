@@ -1,4 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <!-- Same switch NativeAOT applies: any System.Text.Json reflection fallback in Doba.Storage throws in these tests. -->
+    <JsonSerializerIsReflectionEnabledByDefault>false</JsonSerializerIsReflectionEnabledByDefault>
+  </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\Doba.Storage\Doba.Storage.csproj" />
   </ItemGroup>

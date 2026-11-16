@@ -13,3 +13,9 @@ One line per decision, newest last. Format: **topic** — decision (reason).
 - **Durations** — `DurationMinutes = 0` means "unspecified"; the timeline treats it as 30 min (prototype `dur || 30`); the dialog defaults to 60.
 - **Week numbers with Sunday start** — label = ISO week of the Monday inside the displayed 7-day week.
 - **Name** — "Doba" replaces the design's working title "Todo" everywhere (title bar, settings footer "Doba 0.1 · local only", data folder `%LOCALAPPDATA%\Doba`).
+- **Storage writes** — single background writer over an unbounded Channel; bursts commit in one transaction; failed bursts replay op-by-op; errors surface from the next `FlushAsync` / `WriteFailed` event.
+- **Storage reads** — `Load()` reads tasks through SQLitePCL's low-level API (halves 10k load time vs SqliteDataReader).
+- **JSON enums** — camelCase strings (`"asap"`, `"sunday"`); import validates and reports JSON paths in `FormatException`.
+- **P/Invoke style** — platform code uses `DllImport` with only blittable signatures (no strings, no SetLastError) instead of `LibraryImport`, avoiding `AllowUnsafeBlocks`; under NativeAOT these bind directly with no marshalling stubs.
+- **Hotkey / setting-change messages** — received by Doba's own hidden window rather than Avalonia's `Win32Properties.AddWndProcHookCallback`, whose shared callback chain lets the last subscriber overwrite earlier results (e.g. title-bar hit testing).
+- **Autostart** — HKCU Run value `Doba` = `"<exe>" --minimized`; the app starts hidden in the tray with that flag.
