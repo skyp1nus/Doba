@@ -1,0 +1,15 @@
+# Decisions
+
+One line per decision, newest last. Format: **topic** — decision (reason).
+
+- **Design source** — `docs/design/design-reference.dc.html` is the prototype's `Main.dc.html` taken from the published "Todo for Windows" design artifact (the repo did not contain it); the other boards only set `start-view`.
+- **.NET SDK install** — SDK 11.0.100 installed from Microsoft's Debian 12 package feed (packages.microsoft.com) because `builds.dotnet.microsoft.com` / `dot.net` downloads are blocked by the VM's network allowlist.
+- **Solution format** — classic `Doba.sln` (the brief names it) rather than the new `.slnx` default.
+- **Test runner** — Microsoft Testing Platform (`global.json` `test.runner`), required by the .NET 10+ SDK for xunit v3 projects.
+- **xunit version** — `xunit.v3.mtp-v2` 3.2.2, not 4.x: `Avalonia.Headless.XUnit` 12.1.6 is compiled against xunit.v3 3.2.2 and fails discovery with `MissingMethodException` under 4.0.3. All test projects use the same version.
+- **CA1716 off** — VB-keyword clash warnings (`Get`, `Date`, `To`) are noise in a C#-only codebase.
+- **Avalonia telemetry** — `AVALONIA_TELEMETRY_OPTOUT=1` in CI and docs; the app itself makes no network calls.
+- **Ids** — `long` ids assigned by the store, monotonically increasing; Id order replaces the prototype's array order as the final sort key.
+- **Durations** — `DurationMinutes = 0` means "unspecified"; the timeline treats it as 30 min (prototype `dur || 30`); the dialog defaults to 60.
+- **Week numbers with Sunday start** — label = ISO week of the Monday inside the displayed 7-day week.
+- **Name** — "Doba" replaces the design's working title "Todo" everywhere (title bar, settings footer "Doba 0.1 · local only", data folder `%LOCALAPPDATA%\Doba`).

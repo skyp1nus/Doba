@@ -1,0 +1,1859 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Todo — Calendar</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600&amp;family=Geist+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+button{font:inherit;color:inherit}
+.nv:hover{color:#F4F4F5 !important}
+.ob:hover{background-color:rgba(255,255,255,0.04) !important}
+.card:hover{background-color:#1C1C20 !important}
+.hv2:hover{filter:brightness(1.2)}
+.hd:hover{opacity:0.75}
+.cell:hover{background-color:rgba(255,255,255,0.025) !important}
+.wkl:hover,.crumb:hover{color:#EDEDEF !important}
+.cap:hover{background-color:rgba(255,255,255,0.06) !important}
+.capx:hover{background-color:#C42B1C !important}
+.qa::placeholder{color:#8C8C92}
+.qa:focus{outline:none}
+.fld:focus-within{border-color:#3A3A40 !important}
+.tt:hover{color:#FFFFFF !important}
+.compact li[data-id]{padding-top:5px !important;padding-bottom:5px !important}
+.compact .card{padding-top:6px !important;padding-bottom:6px !important;min-height:30px !important;gap:3px !important}
+.compact .tt{font-size:13px !important}
+.rail button > span:not([aria-hidden]){opacity:0}
+.rail .rl{opacity:0;pointer-events:none}
+nav button > span:not([aria-hidden]),nav .rl{transition:opacity 0.18s ease}
+.mi:hover{background-color:rgba(255,255,255,0.06) !important}
+.cd:hover .cdn{box-shadow:inset 0 0 0 1px #4A4A52}
+.whl::-webkit-scrollbar{display:none}
+.wi:focus-visible{outline:1px solid #4A4A52;outline-offset:-2px;border-radius:6px}
+.scr::-webkit-scrollbar{width:8px}
+.scr::-webkit-scrollbar-thumb{background:#2E2E33;border-radius:4px}
+.scr::-webkit-scrollbar-track{background:transparent}
+</style>
+</helmet>
+<div ref="{{setRoot}}" class="{{rootClass}}" style="position: relative; width: 1600px; height: 1000px; overflow: hidden; display: flex; flex-direction: column; background: #0B0B0C; color: #EDEDEF; font-family: Geist, 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif; font-size: 13px; line-height: 1.4; font-variant-numeric: tabular-nums; -webkit-font-smoothing: antialiased">
+
+<div aria-hidden="true" style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; overflow: hidden; pointer-events: none">
+<div style="position: absolute; left: -180px; top: 140px; width: 560px; height: 560px; border-radius: 50%; background: #3A3A3E; filter: blur(120px); opacity: 0.8"></div>
+<div style="position: absolute; left: 60px; top: 680px; width: 420px; height: 420px; border-radius: 50%; background: #2A2A2E; filter: blur(110px); opacity: 0.8"></div>
+<div style="position: absolute; right: -220px; top: -260px; width: 640px; height: 420px; border-radius: 50%; background: #303034; filter: blur(120px); opacity: 0.7"></div>
+</div>
+<div aria-hidden="true" style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; background: {{chromeBg}}; pointer-events: none; transition: background-color 0.3s ease"></div>
+
+<header style="position: relative; height: 40px; flex: 0 0 40px; display: flex; align-items: center; gap: 12px; padding-left: 8px">
+<div style="flex: 1 1 0; min-width: 0; display: flex; align-items: center; gap: 8px">
+<div aria-hidden="true" style="width: 18px; height: 18px; border-radius: 5px; background: #EDEDEF; display: flex; align-items: center; justify-content: center">
+<svg width="11" height="11" viewBox="0 0 24 24" style="fill: none; stroke: #111113; stroke-width: 3.2; stroke-linecap: round; stroke-linejoin: round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>
+</div>
+<span style="font-size: 12.5px; font-weight: 500; color: #C9C9CE">Todo</span>
+</div>
+<button type="button" style="flex: 0 1 380px; min-width: 160px; height: 28px; display: flex; align-items: center; gap: 8px; padding: 0 6px 0 10px; border: 1px solid rgba(255,255,255,0.08); border-radius: 7px; background: rgba(255,255,255,0.035); color: #A1A1A6; font-size: 12.5px; cursor: pointer">
+<svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+<span style="flex: 1 1 auto; text-align: left">Search tasks</span>
+<kbd style="font-family: 'Geist Mono', 'Cascadia Mono', Consolas, monospace; font-size: 10.5px; color: #A1A1A6; border: 1px solid rgba(255,255,255,0.12); border-radius: 4px; padding: 0 5px; line-height: 16px">Ctrl K</kbd>
+</button>
+<div style="flex: 1 1 0; min-width: 0; align-self: stretch; display: flex; justify-content: flex-end">
+<button type="button" class="cap" aria-label="Minimize" style="width: 46px; height: 40px; display: inline-flex; align-items: center; justify-content: center; padding: 0; border: 0; background: transparent; color: #C9C9CE; cursor: default; transition: background-color 0.15s ease">
+<svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 1"><path d="M0 5h10"></path></svg>
+</button>
+<button type="button" class="cap" aria-label="Maximize" style="width: 46px; height: 40px; display: inline-flex; align-items: center; justify-content: center; padding: 0; border: 0; background: transparent; color: #C9C9CE; cursor: default; transition: background-color 0.15s ease">
+<svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 1"><rect x="0.5" y="0.5" width="9" height="9" rx="1.5"></rect></svg>
+</button>
+<button type="button" class="capx" aria-label="Close" style="width: 46px; height: 40px; display: inline-flex; align-items: center; justify-content: center; padding: 0; border: 0; background: transparent; color: #C9C9CE; cursor: default; transition: background-color 0.15s ease">
+<svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 1"><path d="M0.5 0.5l9 9M9.5 0.5l-9 9"></path></svg>
+</button>
+</div>
+</header>
+
+<div style="position: relative; flex: 1 1 auto; min-height: 0; display: flex">
+
+<sc-if value="{{isApp}}" hint-placeholder-val="{{ true }}">
+<nav ref="{{setNavA}}" class="{{railClass}}" aria-label="Main" style="position: relative; width: {{navW}}; flex-shrink: 0; box-sizing: border-box; display: flex; flex-direction: column; gap: 1px; padding: 4px {{navPadX}} 10px; overflow: hidden; white-space: nowrap; opacity: {{navOpc}}; transition: width 0.34s cubic-bezier(0.22, 1, 0.36, 1), padding 0.34s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.22s ease">
+<span aria-hidden="true" style="position: absolute; left: 10px; right: 10px; top: {{navY}}; height: 32px; border-radius: 6px; background: rgba(255,255,255,0.08); opacity: {{navOp}}; transition: top 0.38s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s ease; pointer-events: none"></span>
+<button type="button" class="nv" aria-current="{{nv.inbox.cur}}" onClick="{{nv.inbox.go}}" style="width: 100%; height: 32px; display: flex; align-items: center; gap: 10px; padding: 0 10px; border: 0; border-radius: 6px; position: relative; background: transparent; color: {{nv.inbox.fg}}; font-size: 13px; font-weight: 500; text-align: left; cursor: pointer; transition: background-color 0.2s ease, color 0.2s ease">
+<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" style="flex: 0 0 16px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round"><path d="M3.5 13.5h5l1.5 2.5h4l1.5-2.5h5"></path><path d="M5.5 5.5h13l2 8V19a1.5 1.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 19v-5.5z"></path></svg>
+<span style="flex: 1 1 auto">Inbox</span>
+<span style="font-family: 'Geist Mono', 'Cascadia Mono', Consolas, monospace; font-size: 11px; color: #8C8C92">{{inboxCount}}</span>
+</button>
+<button type="button" class="nv" aria-current="{{nv.today.cur}}" onClick="{{nv.today.go}}" style="width: 100%; height: 32px; display: flex; align-items: center; gap: 10px; padding: 0 10px; border: 0; border-radius: 6px; position: relative; background: transparent; color: {{nv.today.fg}}; font-size: 13px; font-weight: 500; text-align: left; cursor: pointer; transition: background-color 0.2s ease, color 0.2s ease">
+<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" style="flex: 0 0 16px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"></rect><path d="M3.5 9.5h17M8 3v4M16 3v4M9 15l2 2 4-4"></path></svg>
+<span style="flex: 1 1 auto">Today</span>
+<span style="font-family: 'Geist Mono', 'Cascadia Mono', Consolas, monospace; font-size: 11px; color: #8C8C92">{{todayCount}}</span>
+</button>
+<button type="button" class="nv" aria-current="{{nv.cal.cur}}" onClick="{{nv.cal.go}}" style="width: 100%; height: 32px; display: flex; align-items: center; gap: 10px; padding: 0 10px; border: 0; border-radius: 6px; position: relative; background: transparent; color: {{nv.cal.fg}}; font-size: 13px; font-weight: 500; text-align: left; cursor: pointer; transition: background-color 0.2s ease, color 0.2s ease">
+<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" style="flex: 0 0 16px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"></rect><path d="M3.5 9.5h17M8 3v4M16 3v4M7.5 13.5h2M11 13.5h2M14.5 13.5h2M7.5 17h2M11 17h2"></path></svg>
+<span style="flex: 1 1 auto">Calendar</span>
+</button>
+
+<div class="rl" style="display: flex; align-items: center; padding: 14px 4px 4px 10px">
+<span style="flex: 1 1 auto; font-family: 'Geist Mono', 'Cascadia Mono', Consolas, monospace; font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: #8C8C92">Tags</span>
+<button type="button" class="ob" onClick="{{startList}}" aria-label="New tag" title="New tag" style="width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; padding: 0; border: 0; border-radius: 6px; background: transparent; color: #8C8C92; cursor: pointer; transition: background-color 0.18s ease"><svg width="13" height="13" viewBox="0 0 24 24" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round"><path d="M12 5v14M5 12h14"></path></svg></button>
+</div>
+<sc-for list="{{lists}}" as="l" hint-placeholder-count="3">
+<button type="button" class="nv" aria-pressed="{{l.pressed}}" onClick="{{l.pick}}" style="width: 100%; height: 30px; display: flex; align-items: center; gap: 10px; padding: 0 10px; border: 0; border-radius: 6px; background: {{l.bg}}; color: {{l.fg}}; font-size: 13px; text-align: left; cursor: pointer; transition: background-color 0.2s ease, color 0.2s ease">
+<span aria-hidden="true" style="width: 16px; height: 16px; flex: 0 0 16px; border-radius: 4px; background: {{l.badgeBg}}; color: {{l.badgeFg}}; font-family: {{l.badgeFf}}; font-size: {{l.badgeFs}}; font-weight: {{l.badgeFw}}; line-height: 1; display: inline-flex; align-items: center; justify-content: center; transition: background-color 0.2s ease, color 0.2s ease">{{l.initial}}</span>
+<span style="flex: 1 1 auto">{{l.label}}</span>
+<span style="font-family: 'Geist Mono', 'Cascadia Mono', Consolas, monospace; font-size: 11px; color: #8C8C92">{{l.count}}</span>
+</button>
+</sc-for>
+<sc-if value="{{addingList}}" hint-placeholder-val="{{ false }}">
+<div style="height: 30px; display: flex; align-items: center; gap: 10px; padding: 0 10px; border-radius: 6px; background: rgba(255,255,255,0.05); box-shadow: inset 0 0 0 1px #3A3A40">
+<span aria-hidden="true" style="width: 16px; flex: 0 0 16px; text-align: center; font-family: 'Geist Mono', 'Cascadia Mono', Consolas, monospace; color: #8C8C92">#</span>
+<label for="new-list" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap">New tag name</label>
+<input id="new-list" ref="{{setListInput}}" class="qa" type="text" autocomplete="off" placeholder="Tag name" value="{{listDraft}}" onChange="{{onListDraft}}" onKeyDown="{{onListKey}}" onBlur="{{onListBlur}}" style="flex: 1; min-width: 0; height: 100%; padding: 0; border: 0; background: transparent; color: #EDEDEF; font-family: inherit; font-size: 13px">
+</div>
+<div style="padding: 4px 10px 0; font-family: 'Geist Mono', 'Cascadia Mono', Consolas, monospace; font-size: 10.5px; color: #8C8C92">↵ create · Esc cancel</div>
+</sc-if>
+
+<div style="margin-top: auto; padding-top: 16px; display: flex; flex-direction: column; gap: 1px">
+<button type="button" class="nv" onClick="{{toggleSidebar}}" aria-label="{{sbLabel}}" aria-expanded="{{sbExpanded}}" title="{{sbLabel}}" style="width: 100%; height: 32px; display: flex; align-items: center; gap: 10px; padding: 0 10px; border: 0; border-radius: 6px; background: transparent; color: #B4B4BB; font-size: 13px; font-weight: 500; text-align: left; cursor: pointer; transition: color 0.2s ease">
+<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" style="flex: 0 0 16px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; transform: rotate({{sbRot}}); transition: transform 0.34s cubic-bezier(0.22, 1, 0.36, 1)"><rect x="3" y="4" width="18" height="16" rx="3"></rect><path d="M9 4v16M15.5 10l-2 2 2 2"></path></svg>
+<span style="flex: 1 1 auto">Collapse</span>
+</button>
+<button type="button" class="nv" aria-current="{{nv.settings.cur}}" onClick="{{nv.settings.go}}" style="width: 100%; height: 32px; display: flex; align-items: center; gap: 10px; padding: 0 10px; border: 0; border-radius: 6px; background: {{nv.settings.bg}}; color: {{nv.settings.fg}}; font-size: 13px; font-weight: 500; text-align: left; cursor: pointer; transition: background-color 0.2s ease, color 0.2s ease">
+<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" style="flex: 0 0 16px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"></path><circle cx="16" cy="7" r="2"></circle><circle cx="10" cy="17" r="2"></circle></svg>
+<span style="flex: 1 1 auto">Settings</span>
+</button>
+</div>
+</nav>
+</sc-if>
+<sc-if value="{{isSettings}}" hint-placeholder-val="{{ false }}">
+<nav ref="{{setNavS}}" aria-label="Settings" style="width: 232px; flex-shrink: 0; box-sizing: border-box; display: flex; flex-direction: column; gap: 1px; padding: 4px 10px 10px">
+<button type="button" class="nv" onClick="{{backFromSettings}}" style="width: 100%; height: 32px; display: flex; align-items: center; gap: 10px; padding: 0 10px; border: 0; border-radius: 6px; background: transparent; color: #B4B4BB; font-size: 13px; font-weight: 500; text-align: left; cursor: pointer; transition: color 0.2s ease">
+<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" style="flex: 0 0 16px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round"><path d="M19 12H5M11 6l-6 6 6 6"></path></svg>
+<span style="flex: 1 1 auto">Back to app</span>
+</button>
+<div style="padding: 18px 10px 6px; font-family: 'Geist Mono', 'Cascadia Mono', Consolas, monospace; font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: #8C8C92">Settings</div>
+<sc-for list="{{cfg.tabs}}" as="tb" hint-placeholder-count="6">
+<button type="button" class="nv" aria-current="{{tb.cur}}" onClick="{{tb.go}}" style="width: 100%; height: 32px; display: flex; align-items: center; gap: 10px; padding: 0 10px; border: 0; border-radius: 6px; background: {{tb.bg}}; color: {{tb.fg}}; font-size: 13px; font-weight: 500; text-align: left; cursor: pointer; transition: background-color 0.2s ease, color 0.2s ease">
+<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" style="flex: 0 0 16px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round"><path d="{{tb.d}}"></path></svg>
+<span style="flex: 1 1 auto">{{tb.label}}</span>
+</button>
+</sc-for>
+<div style="margin-top: auto; padding: 16px 10px 6px; font-family: 'Geist Mono', 'Cascadia Mono', Consolas, monospace; font-size: 10.5px; color: #8C8C92">Todo 0.1 · local only</div>
+</nav>
+</sc-if>
+
+<main style="flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; overflow: hidden; background: #0F0F10; border-top: 1px solid rgba(255,255,255,0.07); border-left: 1px solid rgba(255,255,255,0.07); border-top-left-radius: 10px">
+
+<div style="display: flex; align-items: flex-end; gap: 12px; padding: 20px 24px 18px 28px; border-bottom: 1px solid #1D1D20; flex-shrink: 0">
+<sc-if value="{{isApp}}" hint-placeholder-val="{{ true }}">
+<button type="button" class="ob" onClick="{{toggleSidebar}}" aria-label="{{sbLabel}}" aria-expanded="{{sbExpanded}}" title="{{sbLabel}}" style="flex-shrink: 0; width: 30px; height: 30px; margin-left: -6px; display: inline-flex; align-items: center; justify-content: center; padding: 0; border: 1px solid #26262A; border-radius: 7px; background: transparent; color: #A1A1A6; cursor: pointer; transition: background-color 0.18s ease">
+<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round"><rect x="3" y="4" width="18" height="16" rx="3"></rect><path d="M9 4v16"></path></svg>
+</button>
+</sc-if>
+<div style="flex: 1 1 auto; min-width: 0">
+<nav aria-label="Breadcrumb" style="display: flex; align-items: center; gap: 4px; height: 16px; font-family: 'Geist Mono', 'Cascadia Mono', Consolas, monospace; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: #8C8C92">
+<sc-for list="{{crumbs}}" as="c" hint-placeholder-count="2">
+<sc-if value="{{c.sep}}" hint-placeholder-val="{{ false }}"><span aria-hidden="true" style="color: #55555B">/</span></sc-if>
+<sc-if value="{{c.link}}" hint-placeholder-val="{{ true }}"><button type="button" class="crumb" onClick="{{c.go}}" style="padding: 0 2px; border: 0; background: transparent; cursor: pointer; color: #8C8C92; font-family: inherit; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; transition: color 0.2s ease">{{c.label}}</button></sc-if>
+<sc-if value="{{c.plain}}" hint-placeholder-val="{{ false }}"><span style="padding: 0 2px">{{c.label}}</span></sc-if>
+</sc-for>
+</nav>
+<h1 ref="{{setTitle}}" style="margin: 4px 0 0; font-size: 24px; font-weight: 500; letter-spacing: -0.02em; line-height: 1.15; white-space: nowrap">{{title}} <span style="font-size: 15px; font-weight: 400; letter-spacing: 0; color: #8C8C92">{{subtitle}}</span></h1>
+</div>
+<div style="display: flex; align-items: center; gap: 6px">
+<sc-if value="{{isCal}}" hint-placeholder-val="{{ true }}">
+<div style="display: flex; align-items: center; gap: 6px">
+<div role="group" aria-label="Zoom level" style="position: relative; display: inline-flex; gap: 2px">
+<span aria-hidden="true" style="position: absolute; left: 0; top: 0; width: 62px; height: 30px; border-radius: 7px; background: #1E1E22; transform: translateX({{segX}}px); opacity: {{segOp}}; transition: transform 0.42s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.25s ease"></span>
+<sc-for list="{{segs}}" as="g" hint-placeholder-count="4">
+<button type="button" onClick="{{g.pick}}" aria-pressed="{{g.pressed}}" style="position: relative; width: 62px; height: 30px; display: inline-flex; align-items: center; justify-content: center; padding: 0; border: 0; border-radius: 7px; background: transparent; color: {{g.color}}; font-size: 12.5px; font-weight: 500; cursor: pointer; transition: color 0.25s ease">{{g.label}}</button>
+</sc-for>
+</div>
+<span aria-hidden="true" style="width: 1px; height: 18px; margin: 0 6px; background: #26262A"></span>
+<button type="button" class="ob" onClick="{{goToday}}" style="height: 30px; display: inline-flex; align-items: center; padding: 0 12px; border: 1px solid #26262A; border-radius: 7px; background: transparent; color: #D9D9DE; font-size: 12.5px; font-weight: 500; cursor: pointer; transition: background-color 0.18s ease">Today</button>
+<sc-if value="{{isCal}}" hint-placeholder-val="{{ true }}">
+<div style="display: flex; align-items: center; gap: 6px">
+<button type="button" class="ob" onClick="{{goPrev}}" aria-label="Previous" style="width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center; padding: 0; border: 1px solid #26262A; border-radius: 7px; background: transparent; color: #A1A1A6; cursor: pointer; transition: background-color 0.18s ease">
+<svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round"><path d="M15 6l-6 6 6 6"></path></svg>
+</button>
+<button type="button" class="ob" onClick="{{goNext}}" aria-label="Next" style="width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center; padding: 0; border: 1px solid #26262A; border-radius: 7px; background: transparent; color: #A1A1A6; cursor: pointer; transition: background-color 0.18s ease">
+<svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round"><path d="M9 6l6 6-6 6"></path></svg>
+</button>
+</div>
+</sc-if>
+<span aria-hidden="true" style="width: 1px; height: 18px; margin: 0 6px; background: #26262A"></span>
+</div>
+</sc-if>
+<sc-if value="{{showNew}}" hint-placeholder-val="{{ true }}">
+<button type="button" onClick="{{newTask}}" style="height: 30px; display: inline-flex; align-items: center; gap: 8px; padding: 0 6px 0 12px; border: 0; border-radius: 7px; background: #E4E4E7; color: #0E0E0F; font-size: 12.5px; font-weight: 600; cursor: pointer">
+New task
+<kbd style="font-family: 'Geist Mono', 'Cascadia Mono', Consolas, monospace; font-size: 10.5px; font-weight: 500; color: #0E0E0F; background: rgba(0,0,0,0.12); border-radius: 4px; padding: 0 5px; line-height: 18px">N</kbd>
+</button>
+</sc-if>
+</div>
+</div>
+
+<div style="flex: 1 1 auto; min-height: 0; position: relative; overflow: hidden">
+<div ref="{{setBody}}" style="height: 100%; box-sizing: border-box; padding: 16px 24px 20px 28px">
+
+<sc-if value="{{isInbox}}" hint-placeholder-val="{{ false }}">
+<div class="scr" style="height: 100%; overflow-y: auto; display: flex; gap: 48px; align-items: flex-start; padding-right: 12px; box-sizing: border-box; scrollbar-width: thin; scrollbar-color: #2E2E33 transparent">
+<div style="flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 28px; padding: 6px 0 24px">
+<button type="button" class="ob" onClick="{{moreInbox}}" style="flex-shrink: 0; height: 38px; display: flex; align-items: center; gap: 10px; padding: 0 8px 0 12px; border: 1px dashed #2E2E33; border-radius: 8px; background: transparent; color: #8C8C92; font-size: 13.5px; text-align: left; cursor: pointer; transition: background-color 0.18s ease">
+<svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round"><path d="M12 5v14M5 12h14"></path></svg>
+<span style="flex: 1 1 auto">Add task</span>
+<kbd style="font-family: 'Geist Mono', 'Cascadia Mono', Consolas, monospace; font-size: 10.5px; color: #8C8C92; border: 1px solid #2E2E33; border-radius: 4px; padding: 0 5px; line-height: 18px">N</kbd>
+</button>
+<sc-for list="{{inb.left}}" as="g" hint-placeholder-count="2">
+<section>
+<div style="display: flex; align-items: center; justify-content: space-between; margin: 0 0 6px; font-family: 'Geist Mono', 'Cascadia Mono', Consolas, monospace; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase">
+<h2 style="margin: 0; font-size: 11px; font-weight: 500; color: {{g.lc}}">{{g.label}}</h2>
+<span style="color: #8C8C92">{{g.count}}</span>
+</div>
+<ul style="list-style: none; margin: 0; padding: 0; border-top: 1px solid #1D1D20">
+<sc-for list="{{g.items}}" as="r" hint-placeholder-count="3">
+<li data-id="{{r.id}}" style="display: flex; align-items: center; gap: 12px; padding: 11px 4px; border-bottom: 1px solid #1D1D20; opacity: {{r.op}}; transition: opacity 0.3s ease">
+<button type="button" onClick="{{r.toggle}}" aria-label="{{r.label}}" style="width: 16px; height: 16px; flex: 0 0 16px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; padding: 0; border-radius: 4px; border: 1.5px solid {{r.ring}}; background: {{r.fill}}; cursor: pointer; transition: background-color 0.25s ease, border-color 0.25s ease">
+<svg width="10" height="10" viewBox="0 0 24 24" aria-hidden="true" style="fill: none; stroke: #0E0E0F; stroke-width: 3.5; stroke-linecap: round; stroke-linejoin: round; opacity: {{r.cop}}; transition: opacity 0.2s ease"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>
+</button>
+<button type="button" class="ob" onClick="{{r.cyclePrio}}" aria-label="{{r.prioLabel}}" title="{{r.prioTitle}}" style="width: 18px; height: 18px; flex: 0 0 18px; margin-left: -4px; display: inline-flex; align-items: center; justify-content: center; padding: 0; border: 0; border-radius: 4px; background: transparent; cursor: pointer; transition: background-color 0.18s ease">
+<sc-if value="{{r.isAsapP}}" hint-placeholder-val="{{ false }}"><span aria-hidden="true" style="width: 13px; height: 13px; border-radius: 3px; background: #D9A066; color: #0E0E0F; font-family: Geist, sans-serif; font-size: 10px; font-weight: 700; line-height: 13px; text-align: center">!</span></sc-if>
+<sc-if value="{{r.isBarsP}}" hint-placeholder-val="{{ true }}"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 13 13"><rect x="1" y="8" width="3" height="4" rx="1" fill="{{r.b1}}"></rect><rect x="5" y="5" width="3" height="7" rx="1" fill="{{r.b2}}"></rect><rect x="9" y="2" width="3" height="10" rx="1" fill="{{r.b3}}"></rect></svg></sc-if>
+</button>
+<button type="button" class="tt" onClick="{{r.open}}" style="flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0; border: 0; background: transparent; text-align: left; cursor: pointer; font-family: inherit; font-size: 13.5px; color: {{r.tc}}; text-decoration: line-through; text-decoration-color: {{r.strikeC}}; transition: color 0.3s ease, text-decoration-color 0.3s ease">{{r.title}}</button>
+<span style="flex-shrink: 0; display: flex; align-items: center; gap: 12px; font-family: 'Geist Mono', 'Cascadia Mono', Consolas, monospace; font-size: 11px; color: #8C8C92">
+<sc-if value="{{r.hasTag}}" hint-placeholder-val="{{ false }}"><span>{{r.tagLabel}}</span></sc-if>
+<span>{{r.meta}}</span>
+</span>
+</li>
+</sc-for>
+</ul>
+</section>
+</sc-for>
+</div>
+<div style="flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 28px; padding: 6px 0 24px">
+<div style="height: 38px; display: flex; align-items: center; justify-content: space-between; font-family: 'Geist Mono', 'Cascadia Mono', Consolas, monospace; font-size: 12px; color: #A1A1A6">
+<span>Scheduled</span>
+<span style="font-size: 11px; color: #8C8C92">{{inb.schedCount}}</span>
+</div>
+<sc-for list="{{inb.right}}" as="g" hint-placeholder-count="4">
+<section>
+<div style="display: flex; align-items: center; justify-content: space-between; margin: 0 0 6px; font-family: 'Geist Mono', 'Cascadia Mono', Consolas, monospace; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase">
+<sc-if value="{{g.link}}" hint-placeholder-val="{{ false }}"><button type="button" class="wkl" onClick="{{g.go}}" style="padding: 0; border: 0; background: transparent; cursor: pointer; font-family: inherit; font-size: 11px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: {{g.lc}}; transition: color 0.2s ease">{{g.label}}</button></sc-if>
+<sc-if value="{{g.plain}}" hint-placeholder-val="{{ true }}"><h2 style="margin: 0; font-size: 11px; font-weight: 500; color: {{g.lc}}">{{g.label}}</h2></sc-if>
+<span style="color: #8C8C92">{{g.count}}</span>
+</div>
+<ul style="list-style: none; margin: 0; padding: 0; border-top: 1px solid #1D1D20">
+<sc-for list="{{g.items}}" as="r" hint-placeholder-count="3">
+<li data-id="{{r.id}}" style="display: flex; align-items: center; gap: 12px; padding: 11px 4px; border-bottom: 1px solid #1D1D20; opacity: {{r.op}}; transition: opacity 0.3s ease">
+<button type="button" onClick="{{r.toggle}}" aria-label="{{r.label}}" style="width: 16px; height: 16px; flex: 0 0 16px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; padding: 0; border-radius: 4px; border: 1.5px solid {{r.ring}}; background: {{r.fill}}; cursor: pointer; transition: background-color 0.25s ease, border-color 0.25s ease">
+<svg width="10" height="10" viewBox="0 0 24 24" aria-hidden="true" style="fill: none; stroke: #0E0E0F; stroke-width: 3.5; stroke-linecap: round; stroke-linejoin: round; opacity: {{r.cop}}; transition: opacity 0.2s ease"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>
+</button>
+<button type="button" class="ob" onClick="{{r.cyclePrio}}" aria-label="{{r.prioLabel}}" title="{{r.prioTitle}}" style="width: 18px; height: 18px; flex: 0 0 18px; margin-left: -4px; display: inline-flex; align-items: center; justify-content: center; padding: 0; border: 0; border-radius: 4px; background: transparent; cursor: pointer; transition: background-color 0.18s ease">
+<sc-if value="{{r.isAsapP}}" hint-placeholder-val="{{ false }}"><span aria-hidden="true" style="width: 13px; height: 13px; border-radius: 3px; background: #D9A066; color: #0E0E0F; font-family: Geist, sans-serif; font-size: 10px; font-weight: 700; line-height: 13px; text-align: center">!</span></sc-if>
+<sc-if value="{{r.isBarsP}}" hint-placeholder-val="{{ true }}"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 13 13"><rect x="1" y="8" width="3" height="4" rx="1" fill="{{r.b1}}"></rect><rect x="5" y="5" width="3" height="7" rx="1" fill="{{r.b2}}"></rect><rect x="9" y="2" width="3" height="10" rx="1" fill="{{r.b3}}"></rect></svg></sc-if>
+</button>
+<button type="button" class="tt" onClick="{{r.open}}" style="flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0; border: 0; background: transparent; text-align: left; cursor: pointer; font-family: inherit; font-size: 13.5px; color: {{r.tc}}; text-decoration: line-through; text-decoration-color: {{r.strikeC}}; transition: color 0.3s ease, text-decoration-color 0.3s ease">{{r.title}}</button>
+<span style="flex-shrink: 0; display: flex; align-items: center; gap: 12px; font-family: 'Geist Mono', 'Cascadia Mono', Consolas, monospace; font-size: 11px; color: #8C8C92">
+<sc-if value="{{r.hasTag}}" hint-placeholder-val="{{ false }}"><span>{{r.tagLabel}}</span></sc-if>
+<span style="color: #C9C9CE">{{r.meta}}</span>
+</span>
+</li>
+</sc-for>
+</ul>
+</section>
+</sc-for>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{isSettings}}" hint-placeholder-val="{{ false }}">
+<div class="scr" style="height: 100%; overflow-y: auto; padding-right: 12px; box-sizing: border-box; scrollbar-width: thin; scrollbar-color: #2E2E33 transparent">
+<div style="max-width: 780px; padding: 2px 0 32px">
+<sc-if value="{{cfg.isRows}}" hint-placeholder-val="{{ true }}">
+<div style="border-top: 1px solid #1D1D20">
+<sc-for list="{{cfg.rows}}" as="rw" hint-placeholder-count="4">
+<div style="display: flex; align-items: center; gap: 24px; min-height: 66px; padding: 14px 4px; box-sizing: border-box; border-bottom: 1px solid #1D1D20">
+<div style="flex: 1 1 auto; min-width: 0">
+<div style="font-size: 14px; font-weight: 500; color: #EDEDEF">{{rw.label}}</div>
+<div style="margin-top: 4px; font-size: 12.5px; line-height: 1.45; color: #8C8C92; font-family: {{rw.descFont}}">{{rw.desc}}</div>
+</div>
+<div style="flex-shrink: 0; display: flex; align-items: center; gap: 8px">
+<sc-if value="{{rw.isSwitch}}" hint-placeholder-val="{{ true }}">
+<button type="button" role="switch" aria-checked="{{rw.aria}}" aria-label="{{rw.label}}" onClick="{{rw.toggle}}" style="display: block; width: 36px; height: 20px; padding: 2px; box-sizing: border-box; border: 0; border-radius: 10px; background: {{rw.track}}; cursor: pointer; transition: background-color 0.2s ease">
+<span aria-hidden="true" style="display: block; width: 16px; height: 16px; margin-left: {{rw.kx}}; border-radius: 50%; background: {{rw.knob}}; transition: margin-left 0.25s cubic-bezier(0.22, 1, 0.36, 1), background-color 0.2s ease"></span>
+</button>
+</sc-if>
+<sc-if value="{{rw.isSeg}}" hint-placeholder-val="{{ false }}">
+<div role="group" aria-label="{{rw.label}}" style="display: inline-flex; gap: 2px; padding: 2px; border-radius: 8px; background: rgba(255,255,255,0.04)">
+<sc-for list="{{rw.segs}}" as="sg" hint-placeholder-count="2">
+<button type="button" onClick="{{sg.pick}}" aria-pressed="{{sg.pressed}}" style="height: 26px; padding: 0 11px; border: 0; border-radius: 6px; background: {{sg.bg}}; color: {{sg.fg}}; font-size: 12.5px; font-weight: 500; cursor: pointer; transition: background-color 0.2s ease, color 0.2s ease">{{sg.label}}</button>
+</sc-for>
+</div>
+</sc-if>
+<sc-if value="{{rw.isDensity}}" hint-placeholder-val="{{ false }}">
+<div role="group" aria-label="{{rw.label}}" style="display: inline-flex; gap: 10px">
+<sc-for list="{{rw.opts}}" as="dop" hint-placeholder-count="2">
+<button type="button" onClick="{{dop.pick}}" aria-pressed="{{dop.pressed}}" style="width: 150px; display: flex; flex-direction: column; gap: 8px; padding: 10px; border: 0; border-radius: 10px; background: #141416; box-shadow: inset 0 0 0 1.5px {{dop.ring}}; cursor: pointer; text-align: left; transition: box-shadow 0.2s ease">
+<span aria-hidden="true" style="display: flex; flex-direction: column; gap: {{dop.gap}}; width: 100%; height: 76px; justify-content: center"><span style="display: flex; align-items: center; gap: 6px; height: {{dop.rowH}}; padding: 0 6px; border-radius: 4px; background: #1C1C20; transition: height 0.25s ease"><span style="width: 8px; height: 8px; flex-shrink: 0; box-sizing: border-box; border-radius: 2px; border: 1.5px solid #66666E"></span><span style="height: 4px; width: 70%; border-radius: 2px; background: #3A3A40"></span></span><span style="display: flex; align-items: center; gap: 6px; height: {{dop.rowH}}; padding: 0 6px; border-radius: 4px; background: #1C1C20; transition: height 0.25s ease"><span style="width: 8px; height: 8px; flex-shrink: 0; box-sizing: border-box; border-radius: 2px; border: 1.5px solid #66666E"></span><span style="height: 4px; width: 52%; border-radius: 2px; background: #3A3A40"></span></span><span style="display: flex; align-items: center; gap: 6px; height: {{dop.rowH}}; padding: 0 6px; border-radius: 4px; background: #1C1C20; transition: height 0.25s ease"><span style="width: 8px; height: 8px; flex-shrink: 0; box-sizing: border-box; border-radius: 2px; border: 1.5px solid #66666E"></span><span style="height: 4px; width: 64%; border-radius: 2px; background: #3A3A40"></span></span><span style="display: flex; align-items: center; gap: 6px; height: {{dop.rowH}}; padding: 0 6px; border-radius: 4px; background: #1C1C20; transition: height 0.25s ease"><span style="width: 8px; height: 8px; flex-shrink: 0; box-sizing: border-box; border-radius: 2px; border: 1.5px solid #66666E"></span><span style="height: 4px; width: 46%; border-radius: 2px; background: #3A3A40"></span></span></span>
+<span style="font-size: 12.5px; font-weight: 500; color: {{dop.fg}}">{{dop.label}}</span>
+</button>
+</sc-for>
+</div>
+</sc-if>
+<sc-if value="{{rw.isSwatch}}" hint-placeholder-val="{{ false }}">
+<div role="group" aria-label="{{rw.label}}" style="display: inline-flex; gap: 10px; padding: 0 4px">
+<sc-for list="{{rw.swatches}}" as="sw" hint-placeholder-count="4">
+<button type="button" onClick="{{sw.pick}}" aria-pressed="{{sw.pressed}}" aria-label="{{sw.name}}" title="{{sw.name}}" style="width: 22px; height: 22px; padding: 0; border: 0; border-radius: 50%; background: {{sw.color}}; box-shadow: {{sw.ring}}; cursor: pointer; transition: box-shadow 0.2s ease"></button>
+</sc-for>
+</div>
+</sc-if>
+<sc-if value="{{rw.isRange}}" hint-placeholder-val="{{ false }}">
+<label for="cfg-opacity" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap">{{rw.label}}</label>
+<input id="cfg-opacity" type="range" min="0" max="100" step="1" value="{{rw.value}}" onChange="{{rw.onRange}}" style="width: 180px; accent-color: {{rw.acc}}; cursor: pointer">
+<span style="width: 38px; text-align: right; font-family: 'Geist Mono', 'Cascadia Mono', Consolas, monospace; font-size: 11px; color: #A1A1A6">{{rw.valueLabel}}</span>
+</sc-if>
+<sc-if value="{{rw.isKbd}}" hint-placeholder-val="{{ false }}">
+<sc-for list="{{rw.keys}}" as="k" hint-placeholder-count="3">
+<kbd style="font-family: 'Geist Mono', 'Cascadia Mono', Consolas, monospace; font-size: 11px; color: #D9D9DE; border: 1px solid #2E2E33; border-bottom-width: 2px; border-radius: 5px; padding: 1px 7px; background: #17171A">{{k.k}}</kbd>
+</sc-for>
+</sc-if>
+<sc-if value="{{rw.isBtns}}" hint-placeholder-val="{{ false }}">
+<sc-for list="{{rw.btns}}" as="b" hint-placeholder-count="2">
+<button type="button" class="ob" style="height: 30px; padding: 0 12px; border: 1px solid #26262A; border-radius: 7px; background: transparent; color: #D9D9DE; font-size: 12.5px; font-weight: 500; cursor: pointer; transition: background-color 0.18s ease">{{b.label}}</button>
+</sc-for>
+</sc-if>
+</div>
+</div>
+</sc-for>
+</div>
+</sc-if>
+<sc-if value="{{cfg.isKeys}}" hint-placeholder-val="{{ false }}">
+<ul style="list-style: none; margin: 0; padding: 0; border-top: 1px solid #1D1D20">
+<sc-for list="{{cfg.shortcuts}}" as="sc" hint-placeholder-count="6">
+<li style="display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 52px; padding: 0 4px; box-sizing: border-box; border-bottom: 1px solid #1D1D20; font-size: 13.5px; color: #D9D9DE">
+<span>{{sc.label}}</span>
+<span style="display: inline-flex; gap: 4px">
+<sc-for list="{{sc.keys}}" as="k" hint-placeholder-count="2">
+<kbd style="font-family: 'Geist Mono', 'Cascadia Mono', Consolas, monospace; font-size: 11px; color: #D9D9DE; border: 1px solid #2E2E33; border-bottom-width: 2px; border-radius: 5px; padding: 1px 7px; background: #17171A">{{k.k}}</kbd>
+</sc-for>
+</span>
+</li>
+</sc-for>
+</ul>
+</sc-if>
+<sc-if value="{{cfg.isData}}" hint-placeholder-val="{{ false }}">
+<p style="margin: 18px 4px 0; font-size: 12.5px; line-height: 1.55; color: #8C8C92">Everything is stored locally on this PC. There is no account and no sync between devices yet.</p>
+</sc-if>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{isTodayV}}" hint-placeholder-val="{{ false }}">
+<div style="display: flex; height: 100%">
+<div class="scr" style="flex: 1 1 auto; min-width: 0; padding-right: 32px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #2E2E33 transparent">
+<div style="max-width: 760px; display: flex; flex-direction: column; gap: 28px; padding: 6px 0 24px">
+<div>
+<div style="font-family: 'Geist Mono', 'Cascadia Mono', Consolas, monospace; font-size: 12px; color: #A1A1A6">{{td.summary}}</div>
+<div aria-hidden="true" style="height: 2px; margin-top: 12px; border-radius: 2px; background: #232326; overflow: hidden"><div style="height: 100%; width: {{td.pct}}; background: {{accent}}; transition: width 0.5s cubic-bezier(0.22, 1, 0.36, 1)"></div></div>
+</div>
+<button type="button" class="ob" onClick="{{moreToday}}" style="flex-shrink: 0; height: 38px; display: flex; align-items: center; gap: 10px; padding: 0 8px 0 12px; border: 1px dashed #2E2E33; border-radius: 8px; background: transparent; color: #8C8C92; font-size: 13.5px; text-align: left; cursor: pointer; transition: background-color 0.18s ease">
+<svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round"><path d="M12 5v14M5 12h14"></path></svg>
+<span style="flex: 1 1 auto">Add task</span>
+<kbd style="font-family: 'Geist Mono', 'Cascadia Mono', Consolas, monospace; font-size: 10.5px; color: #8C8C92; border: 1px solid #2E2E33; border-radius: 4px; padding: 0 5px; line-height: 18px">N</kbd>
+</button>
+<sc-for list="{{td.groups}}" as="g" hint-placeholder-count="3">
+<section>
+<div style="display: flex; align-items: center; justify-content: space-between; margin: 0 0 6px; font-family: 'Geist Mono', 'Cascadia Mono', Consolas, monospace; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase">
+<h2 style="margin: 0; font-size: 11px; font-weight: 500; color: {{g.lc}}">{{g.label}}</h2>
+<span style="color: #8C8C92">{{g.count}}</span>
+</div>
+<ul style="list-style: none; margin: 0; padding: 0; border-top: 1px solid #1D1D20">
+<sc-for list="{{g.items}}" as="r" hint-placeholder-count="3">
+<li data-id="{{r.id}}" style="display: flex; align-items: center; gap: 12px; padding: 11px 4px; border-bottom: 1px solid #1D1D20; opacity: {{r.op}}; transition: opacity 0.3s ease">
+<button type="button" onClick="{{r.toggle}}" aria-label="{{r.label}}" style="width: 16px; height: 16px; flex: 0 0 16px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; padding: 0; border-radius: 4px; border: 1.5px solid {{r.ring}}; background: {{r.fill}}; cursor: pointer; transition: background-color 0.25s ease, border-color 0.25s ease">
+<svg width="10" height="10" viewBox="0 0 24 24" aria-hidden="true" style="fill: none; stroke: #0E0E0F; stroke-width: 3.5; stroke-linecap: round; stroke-linejoin: round; opacity: {{r.cop}}; transition: opacity 0.2s ease"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>
+</button>
+<button type="button" class="ob" onClick="{{r.cyclePrio}}" aria-label="{{r.prioLabel}}" title="{{r.prioTitle}}" style="width: 18px; height: 18px; flex: 0 0 18px; margin-left: -4px; display: inline-flex; align-items: center; justify-content: center; padding: 0; border: 0; border-radius: 4px; background: transparent; cursor: pointer; transition: background-color 0.18s ease">
+<sc-if value="{{r.isAsapP}}" hint-placeholder-val="{{ false }}"><span aria-hidden="true" style="width: 13px; height: 13px; border-radius: 3px; background: #D9A066; color: #0E0E0F; font-family: Geist, sans-serif; font-size: 10px; font-weight: 700; line-height: 13px; text-align: center">!</span></sc-if>
+<sc-if value="{{r.isBarsP}}" hint-placeholder-val="{{ true }}"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 13 13"><rect x="1" y="8" width="3" height="4" rx="1" fill="{{r.b1}}"></rect><rect x="5" y="5" width="3" height="7" rx="1" fill="{{r.b2}}"></rect><rect x="9" y="2" width="3" height="10" rx="1" fill="{{r.b3}}"></rect></svg></sc-if>
+</button>
+<button type="button" class="tt" onClick="{{r.open}}" style="flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0; border: 0; background: transparent; text-align: left; cursor: pointer; font-family: inherit; font-size: 13.5px; color: {{r.tc}}; text-decoration: line-through; text-decoration-color: {{r.strikeC}}; transition: color 0.3s ease, text-decoration-color 0.3s ease">{{r.title}}</button>
+<span style="flex-shrink: 0; display: flex; align-items: center; gap: 12px; font-family: 'Geist Mono', 'Cascadia Mono', Consolas, monospace; font-size: 11px; color: #8C8C92">
+<sc-if value="{{r.hasTag}}" hint-placeholder-val="{{ false }}"><span>{{r.tagLabel}}</span></sc-if>
+<span style="color: #C9C9CE">{{r.meta}}</span>
+</span>
+<sc-if value="{{r.canMove}}" hint-placeholder-val="{{ false }}">
+<button type="button" class="ob" onClick="{{r.move}}" aria-label="{{r.moveLabel}}" style="flex-shrink: 0; height: 24px; padding: 0 8px; border: 1px solid #26262A; border-radius: 6px; background: transparent; color: #D9D9DE; font-family: 'Geist Mono', 'Cascadia Mono', Consolas, monospace; font-size: 10.5px; cursor: pointer; transition: background-color 0.18s ease">→ Today</button>
+</sc-if>
+</li>
+</sc-for>
+</ul>
+</section>
+</sc-for>
+</div>
+</div>
+<aside aria-label="Schedule" style="width: 380px; flex-shrink: 0; display: flex; flex-direction: column; padding-left: 24px; border-left: 1px solid #1D1D20">
+<div style="display: flex; align-items: center; justify-content: space-between; margin: 4px 0 14px; font-family: 'Geist Mono', 'Cascadia Mono', Consolas, monospace; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: #8C8C92">
+<h2 style="margin: 0; font-size: 11px; font-weight: 500">Schedule</h2>
+<span>07–23</span>
+</div>
+<div style="position: relative; height: {{td.gridH}}">
+<sc-for list="{{td.hours}}" as="h" hint-placeholder-count="17">
+<div aria-hidden="true" style="position: absolute; left: 0; right: 0; top: {{h.top}}; height: 0; display: flex; align-items: center; gap: 12px">
+<span style="width: 40px; flex-shrink: 0; font-family: 'Geist Mono', 'Cascadia Mono', Consolas, monospace; font-size: 11px; color: #8C8C92">{{h.label}}</span>
+<span style="flex: 1; height: 1px; background: #1D1D20"></span>
+</div>
+</sc-for>
+<sc-for list="{{td.blocks}}" as="b" hint-placeholder-count="4">
+<button type="button" class="hv2" onClick="{{b.toggle}}" aria-label="{{b.label}}" style="position: absolute; left: 54px; right: 0; top: {{b.top}}; height: {{b.h}}; box-sizing: border-box; display: flex; flex-direction: {{b.dir}}; align-items: {{b.align}}; justify-content: flex-start; gap: {{b.gap}}; padding: {{b.pad}}; border: 0; border-radius: 7px; background: {{b.bbg}}; box-shadow: inset 0 0 0 1px {{b.bbd}}; cursor: pointer; text-align: left; overflow: hidden; opacity: {{b.op}}; transition: opacity 0.3s ease, filter 0.2s ease">
+<span style="min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; font-weight: 500; color: {{b.tc}}; text-decoration: line-through; text-decoration-color: {{b.strikeC}}">{{b.title}}</span>
+<span style="flex-shrink: 0; font-family: 'Geist Mono', 'Cascadia Mono', Consolas, monospace; font-size: 10.5px; color: #A1A1A6; white-space: nowrap">{{b.range}}</span>
+</button>
+</sc-for>
+<div aria-hidden="true" style="position: absolute; left: 0; right: 0; top: {{td.nowTop}}; height: 0; display: flex; align-items: center; z-index: 2">
+<span style="width: 46px; flex-shrink: 0; font-family: 'Geist Mono', 'Cascadia Mono', Consolas, monospace; font-size: 11px; line-height: 16px; color: {{accent}}; background: #0F0F10">{{td.nowLabel}}</span>
+<span style="width: 7px; height: 7px; margin-left: 4px; flex-shrink: 0; border-radius: 50%; background: {{accent}}"></span>
+<span style="flex: 1; height: 1px; background: {{accent}}"></span>
+</div>
+</div>
+</aside>
+</div>
+</sc-if>
+
+<sc-if value="{{isYear}}" hint-placeholder-val="{{ false }}">
+<div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); grid-template-rows: repeat(3, minmax(0, 1fr)); height: 100%">
+<sc-for list="{{yr.months}}" as="mo2" hint-placeholder-count="12">
+<div style="{{mo2.cell}}; display: flex; flex-direction: column; gap: 6px; min-width: 0; min-height: 0; box-sizing: border-box">
+<button type="button" class="hd" onClick="{{mo2.open}}" aria-label="Open {{mo2.name}}" style="display: flex; flex-direction: column; width: 100%; margin-bottom: 8px; padding: 0; border: 0; background: transparent; color: inherit; cursor: pointer; text-align: left; transition: opacity 0.2s ease">
+<span style="display: flex; align-items: center; justify-content: space-between; width: 100%; font-family: 'Geist Mono', 'Cascadia Mono', Consolas, monospace; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: #8C8C92">
+<span>{{mo2.stat}}</span>
+<sc-if value="{{mo2.isCur}}" hint-placeholder-val="{{ false }}"><span style="display: inline-flex; align-items: center; gap: 6px; color: {{accent}}"><span aria-hidden="true" style="width: 6px; height: 6px; border-radius: 50%; background: {{accent}}"></span>Now</span></sc-if>
+</span>
+<span style="margin-top: 6px; font-size: 24px; font-weight: 300; letter-spacing: -0.03em; line-height: 1.1; color: {{mo2.nameColor}}">{{mo2.name}}</span>
+<span aria-hidden="true" style="display: block; width: 100%; height: 2px; margin-top: 12px; border-radius: 2px; background: #232326; overflow: hidden"><span style="display: block; height: 100%; width: {{mo2.pct}}; background: {{accent}}; transition: width 0.5s cubic-bezier(0.22, 1, 0.36, 1)"></span></span>
+</button>
+<sc-for list="{{mo2.rows}}" as="r" hint-placeholder-count="3">
+<sc-if value="{{r.isItem}}" hint-placeholder-val="{{ true }}">
+<button type="button" class="hv2" data-id="{{r.id}}" onClick="{{r.toggle}}" aria-label="{{r.label}}" style="flex-shrink: 0; display: flex; align-items: center; gap: 8px; height: 28px; padding: 0 9px; border: 0; border-radius: 6px; background: {{r.bg}}; box-shadow: inset 0 0 0 1px {{r.bd}}; cursor: pointer; text-align: left; min-width: 0; opacity: {{r.op}}; transition: opacity 0.3s ease, filter 0.2s ease">
+<span aria-hidden="true" style="width: 12px; height: 12px; flex: 0 0 12px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; border-radius: 3px; border: 1.5px solid {{r.ring}}; background: {{r.fill}}; transition: background-color 0.25s ease, border-color 0.25s ease">
+<svg width="8" height="8" viewBox="0 0 24 24" style="fill: none; stroke: #0E0E0F; stroke-width: 4.5; stroke-linecap: round; stroke-linejoin: round; opacity: {{r.cop}}; transition: opacity 0.2s ease"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>
+</span>
+<span style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; font-weight: 500; color: {{r.tc}}; text-decoration: line-through; text-decoration-color: {{r.strikeC}}; transition: color 0.3s ease, text-decoration-color 0.3s ease">{{r.title}}</span>
+<span style="margin-left: auto; flex-shrink: 0; font-family: 'Geist Mono', 'Cascadia Mono', Consolas, monospace; font-size: 10.5px; color: #8C8C92">{{r.meta}}</span>
+</button>
+</sc-if>
+<sc-if value="{{r.isMore}}" hint-placeholder-val="{{ false }}">
+<button type="button" class="wkl" onClick="{{r.go}}" style="align-self: flex-start; padding: 2px 9px; border: 0; background: transparent; cursor: pointer; font-family: 'Geist Mono', 'Cascadia Mono', Consolas, monospace; font-size: 10.5px; color: #8C8C92; transition: color 0.2s ease">{{r.label}}</button>
+</sc-if>
+</sc-for>
+</div>
+</sc-for>
+</div>
+</sc-if>
+
+<sc-if value="{{isMonth}}" hint-placeholder-val="{{ false }}">
+<div style="display: flex; flex-direction: column; height: 100%">
+<div style="display: flex; height: 26px; flex-shrink: 0">
+<div style="width: 40px; flex-shrink: 0"></div>
+<div style="flex: 1; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr))">
+<sc-for list="{{mo.wds}}" as="wdn" hint-placeholder-count="7">
+<span style="padding: 0 10px; font-family: 'Geist Mono', 'Cascadia Mono', Consolas, monospace; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: #8C8C92">{{wdn.label}}</span>
+</sc-for>
+</div>
+</div>
+<sc-for list="{{mo.weeks}}" as="w" hint-placeholder-count="5">
+<div style="display: flex; height: {{w.h}}; flex-shrink: 0">
+<button type="button" class="wkl" onClick="{{w.open}}" aria-label="Open week {{w.num}}" style="width: 40px; flex-shrink: 0; display: flex; align-items: flex-start; padding: 9px 0 0; border: 0; border-top: 1px solid #1D1D20; background: transparent; cursor: pointer; font-family: 'Geist Mono', 'Cascadia Mono', Consolas, monospace; font-size: 11px; color: {{w.color}}; transition: color 0.2s ease">{{w.label}}</button>
+<div style="flex: 1; min-width: 0; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); grid-template-rows: {{w.rows}}">
+<sc-for list="{{w.days}}" as="c" hint-placeholder-count="7">
+<button type="button" class="cell" onClick="{{c.open}}" aria-label="Open {{c.aria}}" style="{{c.bgPos}}; margin: 0; padding: 0; border: 0; border-top: 1px solid #1D1D20; border-left: 1px solid #1D1D20; background: {{c.cellBg}}; cursor: pointer; transition: background-color 0.2s ease"></button>
+</sc-for>
+<sc-for list="{{w.days}}" as="c" hint-placeholder-count="7">
+<span style="{{c.numPos}}; pointer-events: none; display: flex; align-items: center; gap: 6px; padding: 8px 10px 0">
+<span style="font-size: 13px; font-weight: {{c.numW}}; color: {{c.numColor}}">{{c.num}}</span>
+<sc-if value="{{c.isToday}}" hint-placeholder-val="{{ false }}"><span style="width: 6px; height: 6px; border-radius: 50%; background: {{accent}}"></span></sc-if>
+</span>
+</sc-for>
+<sc-for list="{{w.spans}}" as="sp" hint-placeholder-count="1">
+<span style="{{sp.pos}}; pointer-events: none; align-self: center; height: 20px; margin: 0 {{sp.mr}} 0 {{sp.ml}}; display: flex; align-items: center; gap: 6px; padding: 0 8px; border-radius: {{sp.radius}}; background: {{sp.bg}}; box-shadow: inset 0 0 0 1px {{sp.bd}}; min-width: 0; opacity: {{sp.op}}">
+<span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11.5px; font-weight: 500; color: {{sp.tc}}; text-decoration: line-through; text-decoration-color: {{sp.strikeC}}">{{sp.title}}</span>
+</span>
+</sc-for>
+<sc-for list="{{w.days}}" as="c" hint-placeholder-count="7">
+<span style="{{c.listPos}}; pointer-events: none; display: flex; flex-direction: column; gap: 3px; padding: 4px 6px 0; min-width: 0">
+<sc-for list="{{c.items}}" as="it" hint-placeholder-count="2">
+<span style="display: flex; align-items: center; gap: 6px; height: 22px; padding: 0 6px; border-radius: 5px; background: #17171A; min-width: 0; opacity: {{it.op}}">
+<span aria-hidden="true" style="width: 10px; height: 10px; flex: 0 0 10px; box-sizing: border-box; border-radius: 3px; border: 1.5px solid {{it.ring}}; background: {{it.fill}}"></span>
+<span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11.5px; color: {{it.tc}}; text-decoration: line-through; text-decoration-color: {{it.strikeC}}">{{it.title}}</span>
+</span>
+</sc-for>
+<sc-if value="{{c.hasMore}}" hint-placeholder-val="{{ false }}">
+<span style="padding-left: 6px; font-family: 'Geist Mono', 'Cascadia Mono', Consolas, monospace; font-size: 10.5px; color: #8C8C92">{{c.more}}</span>
+</sc-if>
+</span>
+</sc-for>
+</div>
+</div>
+</sc-for>
+</div>
+</sc-if>
+
+<sc-if value="{{isWeek}}" hint-placeholder-val="{{ true }}">
+<div style="display: flex; flex-direction: column; height: 100%">
+<sc-for list="{{wk.rowsList}}" as="wr" hint-placeholder-count="2">
+<div style="flex: 1 1 0; min-height: 0; box-sizing: border-box; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); grid-template-rows: {{wr.tpl}}; padding: {{wr.pad}}; border-top: {{wr.bt}}">
+<sc-for list="{{wr.cells}}" as="d" hint-placeholder-count="4">
+<div aria-hidden="true" style="{{d.bgPos}}; border-left: {{d.sep}}; background: {{d.cellBg}}"></div>
+</sc-for>
+<sc-for list="{{wr.cells}}" as="d" hint-placeholder-count="4">
+<button type="button" class="hd" onClick="{{d.open}}" aria-label="{{d.aria}}" style="{{d.pos}}; display: flex; flex-direction: column; padding: 2px 14px 0; border: 0; background: transparent; color: inherit; cursor: pointer; text-align: left; min-width: 0; transition: opacity 0.2s ease">
+<span style="display: flex; align-items: center; justify-content: space-between; width: 100%; font-family: 'Geist Mono', 'Cascadia Mono', Consolas, monospace; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: #8C8C92">
+<span>{{d.wd}}</span>
+<sc-if value="{{d.isToday}}" hint-placeholder-val="{{ false }}"><span style="display: inline-flex; align-items: center; gap: 6px; color: {{accent}}"><span aria-hidden="true" style="width: 6px; height: 6px; border-radius: 50%; background: {{accent}}"></span>Today</span></sc-if>
+<sc-if value="{{d.isNext}}" hint-placeholder-val="{{ false }}"><span style="display: inline-flex; align-items: center; gap: 6px">Next week<svg width="11" height="11" viewBox="0 0 24 24" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></span></sc-if>
+</span>
+<span style="display: flex; align-items: baseline; gap: 8px; margin-top: 6px">
+<span style="font-size: 40px; font-weight: 300; line-height: 1; letter-spacing: -0.04em; color: {{d.numColor}}">{{d.num}}</span>
+<span style="font-size: 13px; color: #A1A1A6">{{d.mon}}</span>
+</span>
+<span aria-hidden="true" style="display: block; width: 100%; height: 2px; margin-top: 14px; border-radius: 2px; background: #232326; overflow: hidden"><span style="display: block; height: 100%; width: {{d.pct}}; background: {{accent}}; transition: width 0.5s cubic-bezier(0.22, 1, 0.36, 1)"></span></span>
+</button>
+</sc-for>
+<sc-for list="{{wr.spans}}" as="sp" hint-placeholder-count="2">
+<button type="button" class="hv2" data-id="{{sp.id}}" onClick="{{sp.toggle}}" aria-label="{{sp.label}}" style="{{sp.pos}}; align-self: center; height: 28px; margin: 0 {{sp.mr}} 0 {{sp.ml}}; display: flex; align-items: center; gap: 8px; padding: 0 10px; border: 0; border-radius: {{sp.radius}}; background: {{sp.bg}}; box-shadow: inset 0 0 0 1px {{sp.bd}}; cursor: pointer; text-align: left; min-width: 0; opacity: {{sp.op}}; transition: opacity 0.3s ease, filter 0.2s ease">
+<span aria-hidden="true" style="width: 14px; height: 14px; flex: 0 0 14px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; border-radius: 4px; border: 1.5px solid {{sp.ring}}; background: {{sp.fill}}; transition: background-color 0.25s ease, border-color 0.25s ease">
+<svg width="9" height="9" viewBox="0 0 24 24" style="fill: none; stroke: #0E0E0F; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; opacity: {{sp.cop}}; transition: opacity 0.2s ease"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>
+</span>
+<span style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; font-weight: 500; color: {{sp.tc}}; text-decoration: line-through; text-decoration-color: {{sp.strikeC}}; transition: color 0.3s ease, text-decoration-color 0.3s ease">{{sp.title}}</span>
+<span style="margin-left: auto; flex-shrink: 0; font-family: 'Geist Mono', 'Cascadia Mono', Consolas, monospace; font-size: 10.5px; color: #A1A1A6">{{sp.meta}}</span>
+</button>
+</sc-for>
+<sc-for list="{{wr.cells}}" as="d" hint-placeholder-count="4">
+<div style="{{d.listPos}}; display: flex; flex-direction: column; gap: 6px; padding: 10px 8px 0; min-width: 0; min-height: 0; overflow: hidden">
+<sc-if value="{{d.empty}}" hint-placeholder-val="{{ false }}">
+<div style="padding: 6px 6px; font-size: 12.5px; color: #8C8C92">Nothing here</div>
+</sc-if>
+<sc-for list="{{d.tasks}}" as="r" hint-placeholder-count="3">
+<div class="card" data-id="{{r.id}}" style="flex-shrink: 0; min-height: 36px; box-sizing: border-box; display: flex; align-items: flex-start; gap: 9px; padding: 9px 11px; border-radius: 8px; background: #17171A; min-width: 0; opacity: {{r.op}}; transition: opacity 0.3s ease, background-color 0.18s ease">
+<button type="button" onClick="{{r.toggle}}" aria-label="{{r.label}}" style="width: 16px; height: 16px; flex: 0 0 16px; margin-top: 1px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; padding: 0; border-radius: 4px; border: 1.5px solid {{r.ring}}; background: {{r.fill}}; cursor: pointer; transition: background-color 0.25s ease, border-color 0.25s ease">
+<svg width="10" height="10" viewBox="0 0 24 24" aria-hidden="true" style="fill: none; stroke: #0E0E0F; stroke-width: 3.5; stroke-linecap: round; stroke-linejoin: round; opacity: {{r.cop}}; transition: opacity 0.2s ease"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>
+</button>
+<button type="button" class="tt" onClick="{{r.open}}" title="{{r.title}}" style="flex: 1 1 auto; min-width: 0; padding: 0; border: 0; background: transparent; text-align: left; cursor: pointer; font-family: inherit; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 13px; font-weight: 500; line-height: 18px; color: {{r.tc}}; text-decoration: line-through; text-decoration-color: {{r.strikeC}}; transition: color 0.3s ease, text-decoration-color 0.3s ease">{{r.title}}</button>
+<span style="flex-shrink: 0; display: flex; align-items: center; gap: 8px; line-height: 18px; font-family: 'Geist Mono', 'Cascadia Mono', Consolas, monospace; font-size: 10.5px; color: #8C8C92">
+<sc-if value="{{r.hasPrio}}" hint-placeholder-val="{{ false }}"><button type="button" class="ob" onClick="{{r.cyclePrio}}" aria-label="{{r.prioLabel}}" title="{{r.prioTitle}}" style="width: 18px; height: 18px; flex: 0 0 18px; display: inline-flex; align-items: center; justify-content: center; padding: 0; border: 0; border-radius: 4px; background: transparent; cursor: pointer; transition: background-color 0.18s ease">
+<sc-if value="{{r.isAsapP}}" hint-placeholder-val="{{ false }}"><span aria-hidden="true" style="width: 13px; height: 13px; border-radius: 3px; background: #D9A066; color: #0E0E0F; font-family: Geist, sans-serif; font-size: 10px; font-weight: 700; line-height: 13px; text-align: center">!</span></sc-if>
+<sc-if value="{{r.isBarsP}}" hint-placeholder-val="{{ true }}"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 13 13"><rect x="1" y="8" width="3" height="4" rx="1" fill="{{r.b1}}"></rect><rect x="5" y="5" width="3" height="7" rx="1" fill="{{r.b2}}"></rect><rect x="9" y="2" width="3" height="10" rx="1" fill="{{r.b3}}"></rect></svg></sc-if>
+</button></sc-if>
+<sc-if value="{{r.hasTag}}" hint-placeholder-val="{{ false }}"><span>{{r.tagLabel}}</span></sc-if>
+<sc-if value="{{r.hasTime}}" hint-placeholder-val="{{ false }}"><span style="color: #C9C9CE">{{r.time}}</span></sc-if>
+</span>
+</div>
+</sc-for>
+<sc-if value="{{d.hasMore}}" hint-placeholder-val="{{ false }}">
+<button type="button" class="wkl" onClick="{{d.open}}" style="align-self: flex-start; padding: 2px 6px; border: 0; background: transparent; cursor: pointer; font-family: 'Geist Mono', 'Cascadia Mono', Consolas, monospace; font-size: 10.5px; color: #8C8C92; transition: color 0.2s ease">{{d.more}}</button>
+</sc-if>
+</div>
+</sc-for>
+</div>
+</sc-for>
+</div>
+</sc-if>
+
+<sc-if value="{{isDay}}" hint-placeholder-val="{{ false }}">
+<div style="display: flex; gap: 0; height: 100%">
+<div class="scr" style="flex: 1 1 auto; min-width: 0; padding-right: 32px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #2E2E33 transparent">
+<div style="max-width: 680px; display: flex; flex-direction: column; gap: 8px; padding-top: 4px">
+<div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; font-family: 'Geist Mono', 'Cascadia Mono', Consolas, monospace; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: #8C8C92">
+<h2 style="margin: 0; font-size: 11px; font-weight: 500">Tasks</h2>
+<span style="letter-spacing: 0; text-transform: none; font-size: 12px; color: #A1A1A6">{{dy.progress}}</span>
+</div>
+<sc-for list="{{dy.spans}}" as="sp" hint-placeholder-count="1">
+<button type="button" class="hv2" data-id="{{sp.id}}" onClick="{{sp.toggle}}" aria-label="{{sp.label}}" style="flex-shrink: 0; display: flex; align-items: center; gap: 10px; height: 38px; padding: 0 12px; border: 0; border-radius: 8px; background: {{sp.bg}}; box-shadow: inset 0 0 0 1px {{sp.bd}}; cursor: pointer; text-align: left; min-width: 0; opacity: {{sp.op}}; transition: opacity 0.3s ease, filter 0.2s ease">
+<span aria-hidden="true" style="width: 16px; height: 16px; flex: 0 0 16px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; border-radius: 4px; border: 1.5px solid {{sp.ring}}; background: {{sp.fill}}; transition: background-color 0.25s ease, border-color 0.25s ease">
+<svg width="10" height="10" viewBox="0 0 24 24" style="fill: none; stroke: #0E0E0F; stroke-width: 3.5; stroke-linecap: round; stroke-linejoin: round; opacity: {{sp.cop}}; transition: opacity 0.2s ease"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>
+</span>
+<span style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13.5px; font-weight: 500; color: {{sp.tc}}; text-decoration: line-through; text-decoration-color: {{sp.strikeC}}; transition: color 0.3s ease, text-decoration-color 0.3s ease">{{sp.title}}</span>
+<span style="margin-left: auto; flex-shrink: 0; font-family: 'Geist Mono', 'Cascadia Mono', Consolas, monospace; font-size: 11px; color: #A1A1A6">{{sp.meta}}</span>
+</button>
+</sc-for>
+<sc-for list="{{dy.items}}" as="r" hint-placeholder-count="4">
+<div class="card" data-id="{{r.id}}" style="flex-shrink: 0; display: flex; flex-direction: column; gap: 6px; padding: 11px 12px; border-radius: 8px; background: #17171A; opacity: {{r.op}}; transition: opacity 0.3s ease, background-color 0.18s ease">
+<div style="display: flex; align-items: flex-start; gap: 10px; min-width: 0">
+<button type="button" onClick="{{r.toggle}}" aria-label="{{r.label}}" style="width: 16px; height: 16px; flex: 0 0 16px; margin-top: 1px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; padding: 0; border-radius: 4px; border: 1.5px solid {{r.ring}}; background: {{r.fill}}; cursor: pointer; transition: background-color 0.25s ease, border-color 0.25s ease">
+<svg width="10" height="10" viewBox="0 0 24 24" aria-hidden="true" style="fill: none; stroke: #0E0E0F; stroke-width: 3.5; stroke-linecap: round; stroke-linejoin: round; opacity: {{r.cop}}; transition: opacity 0.2s ease"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>
+</button>
+<button type="button" class="tt" onClick="{{r.open}}" style="min-width: 0; padding: 0; border: 0; background: transparent; text-align: left; cursor: pointer; font-family: inherit; font-size: 13.5px; font-weight: 500; line-height: 1.35; color: {{r.tc}}; text-decoration: line-through; text-decoration-color: {{r.strikeC}}; transition: color 0.3s ease, text-decoration-color 0.3s ease">{{r.title}}</button>
+</div>
+<sc-if value="{{r.hasMeta}}" hint-placeholder-val="{{ false }}">
+<div style="display: flex; align-items: center; gap: 12px; padding-left: 26px; font-family: 'Geist Mono', 'Cascadia Mono', Consolas, monospace; font-size: 11px; color: #8C8C92">
+<sc-if value="{{r.hasPrio}}" hint-placeholder-val="{{ false }}"><button type="button" class="ob" onClick="{{r.cyclePrio}}" aria-label="{{r.prioLabel}}" style="height: 18px; display: inline-flex; align-items: center; gap: 6px; margin-left: -4px; padding: 0 4px; border: 0; border-radius: 4px; background: transparent; color: #A1A1A6; font-family: inherit; font-size: 11px; cursor: pointer; transition: background-color 0.18s ease">
+<sc-if value="{{r.isAsapP}}" hint-placeholder-val="{{ false }}"><span aria-hidden="true" style="width: 13px; height: 13px; border-radius: 3px; background: #D9A066; color: #0E0E0F; font-family: Geist, sans-serif; font-size: 10px; font-weight: 700; line-height: 13px; text-align: center">!</span></sc-if>
+<sc-if value="{{r.isBarsP}}" hint-placeholder-val="{{ true }}"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 13 13"><rect x="1" y="8" width="3" height="4" rx="1" fill="{{r.b1}}"></rect><rect x="5" y="5" width="3" height="7" rx="1" fill="{{r.b2}}"></rect><rect x="9" y="2" width="3" height="10" rx="1" fill="{{r.b3}}"></rect></svg></sc-if>
+{{r.prioName}}
+</button></sc-if>
+<sc-if value="{{r.hasTag}}" hint-placeholder-val="{{ false }}"><span>{{r.tagLabel}}</span></sc-if>
+<sc-if value="{{r.hasTime}}" hint-placeholder-val="{{ false }}"><span style="color: #C9C9CE">{{r.time}}</span></sc-if>
+</div>
+</sc-if>
+</div>
+</sc-for>
+<sc-if value="{{dy.empty}}" hint-placeholder-val="{{ false }}">
+<div style="padding: 10px 4px; font-size: 12.5px; color: #8C8C92">Nothing here</div>
+</sc-if>
+<button type="button" class="ob" onClick="{{moreDay}}" style="flex-shrink: 0; height: 38px; display: flex; align-items: center; gap: 10px; padding: 0 8px 0 12px; border: 1px dashed #2E2E33; border-radius: 8px; background: transparent; color: #8C8C92; font-size: 13.5px; text-align: left; cursor: pointer; transition: background-color 0.18s ease">
+<svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round"><path d="M12 5v14M5 12h14"></path></svg>
+<span style="flex: 1 1 auto">Add task</span>
+<kbd style="font-family: 'Geist Mono', 'Cascadia Mono', Consolas, monospace; font-size: 10.5px; color: #8C8C92; border: 1px solid #2E2E33; border-radius: 4px; padding: 0 5px; line-height: 18px">N</kbd>
+</button>
+</div>
+</div>
+
+<aside aria-label="Schedule" style="width: 380px; flex-shrink: 0; display: flex; flex-direction: column; padding-left: 24px; border-left: 1px solid #1D1D20">
+<div style="display: flex; align-items: center; justify-content: space-between; margin: 4px 0 14px; font-family: 'Geist Mono', 'Cascadia Mono', Consolas, monospace; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: #8C8C92">
+<h2 style="margin: 0; font-size: 11px; font-weight: 500">Schedule</h2>
+<span>07–23</span>
+</div>
+<div style="position: relative; height: {{dy.gridH}}">
+<sc-for list="{{dy.hours}}" as="h" hint-placeholder-count="17">
+<div aria-hidden="true" style="position: absolute; left: 0; right: 0; top: {{h.top}}; height: 0; display: flex; align-items: center; gap: 12px">
+<span style="width: 40px; flex-shrink: 0; font-family: 'Geist Mono', 'Cascadia Mono', Consolas, monospace; font-size: 11px; color: #8C8C92">{{h.label}}</span>
+<span style="flex: 1; height: 1px; background: #1D1D20"></span>
+</div>
+</sc-for>
+<sc-for list="{{dy.blocks}}" as="b" hint-placeholder-count="4">
+<button type="button" class="hv2" onClick="{{b.toggle}}" aria-label="{{b.label}}" style="position: absolute; left: 54px; right: 0; top: {{b.top}}; height: {{b.h}}; box-sizing: border-box; display: flex; flex-direction: {{b.dir}}; align-items: {{b.align}}; justify-content: flex-start; gap: {{b.gap}}; padding: {{b.pad}}; border: 0; border-radius: 7px; background: {{b.bbg}}; box-shadow: inset 0 0 0 1px {{b.bbd}}; cursor: pointer; text-align: left; overflow: hidden; opacity: {{b.op}}; transition: opacity 0.3s ease, filter 0.2s ease">
+<span style="min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; font-weight: 500; color: {{b.tc}}; text-decoration: line-through; text-decoration-color: {{b.strikeC}}">{{b.title}}</span>
+<span style="flex-shrink: 0; font-family: 'Geist Mono', 'Cascadia Mono', Consolas, monospace; font-size: 10.5px; color: #A1A1A6; white-space: nowrap">{{b.range}}</span>
+</button>
+</sc-for>
+<sc-if value="{{dy.hasNow}}" hint-placeholder-val="{{ false }}">
+<div aria-hidden="true" style="position: absolute; left: 0; right: 0; top: {{dy.nowTop}}; height: 0; display: flex; align-items: center; z-index: 2">
+<span style="width: 46px; flex-shrink: 0; font-family: 'Geist Mono', 'Cascadia Mono', Consolas, monospace; font-size: 11px; line-height: 16px; color: {{accent}}; background: #0F0F10">{{dy.nowLabel}}</span>
+<span style="width: 7px; height: 7px; margin-left: 4px; flex-shrink: 0; border-radius: 50%; background: {{accent}}"></span>
+<span style="flex: 1; height: 1px; background: {{accent}}"></span>
+</div>
+</sc-if>
+</div>
+</aside>
+</div>
+</sc-if>
+
+</div>
+</div>
+</main>
+</div>
+
+<sc-if value="{{hasModal}}" hint-placeholder-val="{{ false }}">
+<div style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; z-index: 20; display: flex; align-items: flex-start; justify-content: center; padding-top: 150px">
+<div ref="{{setShade}}" aria-hidden="true" style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; background: rgba(5,5,6,0.6); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px)"></div>
+<div ref="{{setDlg}}" role="dialog" aria-modal="true" aria-labelledby="nt-h" style="position: relative; width: 640px; border-radius: 12px; background: #141416; box-shadow: 0 0 0 1px #26262A, 0 30px 80px rgba(0,0,0,0.6)">
+
+<div style="display: flex; align-items: center; gap: 8px; height: 46px; padding: 0 10px 0 20px; font-family: 'Geist Mono', 'Cascadia Mono', Consolas, monospace; font-size: 11px">
+<h2 id="nt-h" style="margin: 0; font-size: 11px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: #8C8C92">{{nt.heading}}</h2>
+<span aria-hidden="true" style="color: #55555B">/</span>
+<span style="color: #A1A1A6">{{nt.where}}</span>
+<button type="button" class="ob" onClick="{{closeModal}}" aria-label="Close" style="margin-left: auto; width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; padding: 0; border: 0; border-radius: 6px; background: transparent; color: #8C8C92; cursor: pointer; transition: background-color 0.18s ease">
+<svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+</button>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 6px; padding: 0 20px 4px">
+<label for="nt-title" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap">Task name</label>
+<input id="nt-title" ref="{{setNtTitle}}" class="qa" type="text" autocomplete="off" placeholder="Task name" value="{{nt.title}}" onChange="{{ntTitle}}" onKeyDown="{{ntKey}}" onFocus="{{ntFocus}}" style="width: 100%; height: 40px; padding: 0; border: 0; background: transparent; color: #EDEDEF; font-family: inherit; font-size: 20px; font-weight: 500; letter-spacing: -0.01em">
+<label for="nt-notes" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap">Notes</label>
+<textarea id="nt-notes" class="qa" rows="3" placeholder="Add notes…" value="{{nt.notes}}" onChange="{{ntNotes}}" onKeyDown="{{ntEsc}}" onFocus="{{ntFocus}}" style="width: 100%; padding: 0; border: 0; resize: none; background: transparent; color: #C9C9CE; font-family: inherit; font-size: 13.5px; line-height: 1.55"></textarea>
+</div>
+
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 10px 20px 18px">
+
+<div style="position: relative">
+<button type="button" class="ob" onClick="{{nt.pDate.toggle}}" aria-haspopup="dialog" aria-expanded="{{nt.pDate.expanded}}" style="height: 30px; display: inline-flex; align-items: center; gap: 7px; padding: 0 11px; border: 1px {{nt.pDate.bs}} {{nt.pDate.bd}}; border-radius: 8px; background: {{nt.pDate.bg}}; color: {{nt.pDate.fg}}; font-size: 12.5px; font-weight: 500; cursor: pointer; transition: background-color 0.18s ease, color 0.18s ease, border-color 0.18s ease">
+<svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"></rect><path d="M3.5 9.5h17M8 3v4M16 3v4"></path></svg>
+{{nt.pDate.value}}
+</button>
+<sc-if value="{{nt.pDate.show}}" hint-placeholder-val="{{ false }}">
+<div data-pop="date" role="dialog" aria-label="Choose a date" style="position: absolute; left: 0; top: 36px; z-index: 5; width: 316px; padding: 10px; box-sizing: border-box; border-radius: 12px; background: #1A1A1D; box-shadow: 0 0 0 1px #2A2A2F, 0 18px 44px rgba(0,0,0,0.55)">
+<div style="display: flex; align-items: center; gap: 4px; height: 32px; padding: 0 0 0 6px">
+<span style="flex: 1 1 auto; font-size: 14px; font-weight: 500; letter-spacing: -0.01em">{{nt.calLabel}}</span>
+<button type="button" class="mi" onClick="{{nt.calToday}}" style="height: 26px; padding: 0 8px; border: 0; border-radius: 6px; background: transparent; color: #A1A1A6; font-size: 12px; cursor: pointer">Today</button>
+<button type="button" class="mi" onClick="{{nt.calPrev}}" aria-label="Previous month" style="width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; padding: 0; border: 0; border-radius: 6px; background: transparent; color: #A1A1A6; cursor: pointer"><svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="M15 6l-6 6 6 6"></path></svg></button>
+<button type="button" class="mi" onClick="{{nt.calNext}}" aria-label="Next month" style="width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; padding: 0; border: 0; border-radius: 6px; background: transparent; color: #A1A1A6; cursor: pointer"><svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="M9 6l6 6-6 6"></path></svg></button>
+</div>
+<div style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); margin-top: 6px">
+<sc-for list="{{nt.wdLetters}}" as="wl" hint-placeholder-count="7">
+<span aria-hidden="true" style="height: 24px; display: flex; align-items: center; justify-content: center; font-family: 'Geist Mono', 'Cascadia Mono', Consolas, monospace; font-size: 10.5px; color: {{wl.c}}">{{wl.l}}</span>
+</sc-for>
+<sc-for list="{{nt.calDays}}" as="cd" hint-placeholder-count="35">
+<button type="button" class="cd" onClick="{{cd.pick}}" aria-label="{{cd.aria}}" aria-pressed="{{cd.pressed}}" style="position: relative; height: 36px; margin: 1px 0; display: flex; align-items: center; justify-content: center; padding: 0; border: 0; border-radius: {{cd.stripR}}; background: {{cd.strip}}; cursor: pointer">
+<span class="cdn" style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 8px; background: {{cd.dot}}; color: {{cd.fg}}; font-size: 13px; font-weight: {{cd.fw}}; transition: background-color 0.15s ease, box-shadow 0.15s ease">{{cd.num}}</span>
+<span aria-hidden="true" style="position: absolute; bottom: 3px; left: 50%; width: 4px; height: 4px; margin-left: -2px; border-radius: 50%; background: {{cd.todayDot}}"></span>
+</button>
+</sc-for>
+</div>
+<div aria-hidden="true" style="height: 1px; margin: 8px -10px; background: #26262A"></div>
+<div style="display: flex; flex-wrap: wrap; gap: 4px">
+<sc-for list="{{nt.dateOpts}}" as="o" hint-placeholder-count="4">
+<button type="button" class="ob" onClick="{{o.pick}}" aria-pressed="{{o.pressed}}" style="height: 28px; display: inline-flex; align-items: center; gap: 6px; padding: 0 10px; border: 1px solid {{o.cbd}}; border-radius: 7px; background: {{o.cbg}}; color: {{o.cfg}}; font-size: 12px; font-weight: 500; cursor: pointer; transition: background-color 0.15s ease, color 0.15s ease">{{o.label}}<span style="font-family: 'Geist Mono', 'Cascadia Mono', Consolas, monospace; font-size: 10.5px; color: #8C8C92">{{o.hint}}</span></button>
+</sc-for>
+</div>
+<sc-if value="{{nt.hasDate}}" hint-placeholder-val="{{ true }}">
+<div aria-hidden="true" style="height: 1px; margin: 8px -10px; background: #26262A"></div>
+<div style="display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 0 0 6px">
+<span style="font-size: 12.5px; color: #A1A1A6">Lasts</span>
+<span style="flex: 1 1 auto; font-family: 'Geist Mono', 'Cascadia Mono', Consolas, monospace; font-size: 11px; color: #8C8C92">{{nt.until}}</span>
+<span style="display: inline-flex; align-items: center; height: 28px; border-radius: 7px; background: rgba(255,255,255,0.04)">
+<button type="button" class="mi" onClick="{{nt.daysDec}}" aria-label="Fewer days" style="width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; padding: 0; border: 0; border-radius: 7px; background: transparent; color: #A1A1A6; cursor: pointer"><svg width="12" height="12" viewBox="0 0 24 24" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round"><path d="M6 12h12"></path></svg></button>
+<span style="min-width: 58px; text-align: center; font-family: 'Geist Mono', 'Cascadia Mono', Consolas, monospace; font-size: 11.5px; color: #EDEDEF">{{nt.daysLabel}}</span>
+<button type="button" class="mi" onClick="{{nt.daysInc}}" aria-label="More days" style="width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; padding: 0; border: 0; border-radius: 7px; background: transparent; color: #A1A1A6; cursor: pointer"><svg width="12" height="12" viewBox="0 0 24 24" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round"><path d="M6 12h12M12 6v12"></path></svg></button>
+</span>
+</div>
+</sc-if>
+</div>
+</sc-if>
+</div>
+
+<sc-if value="{{nt.showTime}}" hint-placeholder-val="{{ true }}">
+<div style="position: relative">
+<button type="button" class="ob" onClick="{{nt.pTime.toggle}}" aria-haspopup="listbox" aria-expanded="{{nt.pTime.expanded}}" style="height: 30px; display: inline-flex; align-items: center; gap: 7px; padding: 0 11px; border: 1px {{nt.pTime.bs}} {{nt.pTime.bd}}; border-radius: 8px; background: {{nt.pTime.bg}}; color: {{nt.pTime.fg}}; font-size: 12.5px; font-weight: 500; cursor: pointer; transition: background-color 0.18s ease, color 0.18s ease, border-color 0.18s ease">
+<svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 7.5V12l3 2"></path></svg>
+{{nt.pTime.value}}
+</button>
+<sc-if value="{{nt.pTime.show}}" hint-placeholder-val="{{ false }}">
+<div data-pop="time" role="dialog" aria-label="Choose a time" style="position: absolute; left: 0; top: 36px; z-index: 5; width: 248px; padding: 10px; box-sizing: border-box; border-radius: 12px; background: #1A1A1D; box-shadow: 0 0 0 1px #2A2A2F, 0 18px 44px rgba(0,0,0,0.55)">
+<div role="group" aria-label="Time mode" style="display: flex; gap: 2px; padding: 2px; border-radius: 8px; background: rgba(255,255,255,0.04)">
+<sc-for list="{{nt.modeOpts}}" as="mo" hint-placeholder-count="2">
+<button type="button" onClick="{{mo.pick}}" aria-pressed="{{mo.pressed}}" style="flex: 1 1 0; height: 28px; padding: 0; border: 0; border-radius: 6px; background: {{mo.bg}}; color: {{mo.fg}}; font-size: 12.5px; font-weight: 500; cursor: pointer; transition: background-color 0.2s ease, color 0.2s ease">{{mo.label}}</button>
+</sc-for>
+</div>
+<sc-if value="{{nt.timed}}" hint-placeholder-val="{{ true }}">
+<div style="position: relative; height: 170px; margin: 10px 0 4px; display: flex; align-items: center; justify-content: center; gap: 2px">
+<div aria-hidden="true" style="position: absolute; left: 4px; right: 4px; top: 68px; height: 34px; border-radius: 8px; background: rgba(255,255,255,0.07)"></div>
+<div ref="{{setHourWheel}}" class="whl" role="listbox" aria-label="Hour" onScroll="{{onHourScroll}}" style="position: relative; width: 70px; height: 170px; box-sizing: border-box; padding: 68px 0; overflow-y: auto; scroll-snap-type: y mandatory; scrollbar-width: none; -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 32%, #000 68%, transparent 100%); mask-image: linear-gradient(to bottom, transparent 0%, #000 32%, #000 68%, transparent 100%)">
+<sc-for list="{{nt.hours}}" as="hh" hint-placeholder-count="24">
+<button type="button" class="wi" role="option" aria-selected="{{hh.sel}}" onClick="{{hh.go}}" style="display: block; width: 100%; height: 34px; padding: 0; border: 0; background: transparent; scroll-snap-align: center; color: {{hh.fg}}; font-size: {{hh.fs}}; font-weight: {{hh.fw}}; font-variant-numeric: tabular-nums; cursor: pointer; transition: color 0.2s ease, font-size 0.2s ease">{{hh.label}}</button>
+</sc-for>
+</div>
+<span aria-hidden="true" style="position: relative; padding-bottom: 2px; font-size: 18px; font-weight: 600; color: #EDEDEF">:</span>
+<div ref="{{setMinWheel}}" class="whl" role="listbox" aria-label="Minutes" onScroll="{{onMinScroll}}" style="position: relative; width: 70px; height: 170px; box-sizing: border-box; padding: 68px 0; overflow-y: auto; scroll-snap-type: y mandatory; scrollbar-width: none; -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 32%, #000 68%, transparent 100%); mask-image: linear-gradient(to bottom, transparent 0%, #000 32%, #000 68%, transparent 100%)">
+<sc-for list="{{nt.minutes}}" as="mm" hint-placeholder-count="12">
+<button type="button" class="wi" role="option" aria-selected="{{mm.sel}}" onClick="{{mm.go}}" style="display: block; width: 100%; height: 34px; padding: 0; border: 0; background: transparent; scroll-snap-align: center; color: {{mm.fg}}; font-size: {{mm.fs}}; font-weight: {{mm.fw}}; font-variant-numeric: tabular-nums; cursor: pointer; transition: color 0.2s ease, font-size 0.2s ease">{{mm.label}}</button>
+</sc-for>
+</div>
+</div>
+<div aria-hidden="true" style="height: 1px; margin: 6px -10px 8px; background: #26262A"></div>
+<div style="display: flex; align-items: center; justify-content: space-between; padding: 0 0 0 4px">
+<span style="font-size: 12.5px; color: #A1A1A6">Duration</span>
+<span style="display: inline-flex; gap: 2px; padding: 2px; border-radius: 8px; background: rgba(255,255,255,0.04)">
+<sc-for list="{{nt.durOpts}}" as="du" hint-placeholder-count="4">
+<button type="button" onClick="{{du.pick}}" aria-pressed="{{du.pressed}}" style="height: 24px; padding: 0 8px; border: 0; border-radius: 6px; background: {{du.bg}}; color: {{du.fg}}; font-family: 'Geist Mono', 'Cascadia Mono', Consolas, monospace; font-size: 11px; cursor: pointer; transition: background-color 0.15s ease, color 0.15s ease">{{du.label}}</button>
+</sc-for>
+</span>
+</div>
+<div style="margin-top: 8px; padding: 0 4px; font-family: 'Geist Mono', 'Cascadia Mono', Consolas, monospace; font-size: 11px; color: #8C8C92">{{nt.rangeLabel}}</div>
+</sc-if>
+<sc-if value="{{nt.untimed}}" hint-placeholder-val="{{ false }}">
+<div style="padding: 18px 8px 10px; font-size: 12.5px; line-height: 1.5; color: #8C8C92; text-align: center">No set time — the task sits in “Anytime” for that day.</div>
+</sc-if>
+<div style="display: flex; justify-content: flex-end; margin-top: 8px">
+<button type="button" class="ob" onClick="{{nt.popDone}}" style="height: 28px; padding: 0 12px; border: 1px solid #2A2A2F; border-radius: 7px; background: transparent; color: #D9D9DE; font-size: 12px; font-weight: 500; cursor: pointer">Done</button>
+</div>
+</div>
+</sc-if>
+</div>
+</sc-if>
+
+<div style="position: relative">
+<button type="button" class="ob" onClick="{{nt.pPrio.toggle}}" aria-haspopup="listbox" aria-expanded="{{nt.pPrio.expanded}}" style="height: 30px; display: inline-flex; align-items: center; gap: 7px; padding: 0 11px; border: 1px {{nt.pPrio.bs}} {{nt.pPrio.bd}}; border-radius: 8px; background: {{nt.pPrio.bg}}; color: {{nt.pPrio.fg}}; font-size: 12.5px; font-weight: 500; cursor: pointer; transition: background-color 0.18s ease, color 0.18s ease, border-color 0.18s ease">
+<sc-if value="{{nt.pPrio.isAsapP}}" hint-placeholder-val="{{ false }}"><span aria-hidden="true" style="width: 13px; height: 13px; border-radius: 3px; background: #D9A066; color: #0E0E0F; font-family: Geist, sans-serif; font-size: 10px; font-weight: 700; line-height: 13px; text-align: center">!</span></sc-if>
+<sc-if value="{{nt.pPrio.isBarsP}}" hint-placeholder-val="{{ true }}"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 13 13"><rect x="1" y="8" width="3" height="4" rx="1" fill="{{nt.pPrio.b1}}"></rect><rect x="5" y="5" width="3" height="7" rx="1" fill="{{nt.pPrio.b2}}"></rect><rect x="9" y="2" width="3" height="10" rx="1" fill="{{nt.pPrio.b3}}"></rect></svg></sc-if>
+{{nt.pPrio.value}}
+</button>
+<sc-if value="{{nt.pPrio.show}}" hint-placeholder-val="{{ false }}">
+<div data-pop="prio" role="dialog" aria-label="Choose a priority" style="position: absolute; left: 0; top: 36px; z-index: 5; width: 200px; padding: 6px; box-sizing: border-box; border-radius: 10px; background: #1A1A1D; box-shadow: 0 0 0 1px #2A2A2F, 0 16px 40px rgba(0,0,0,0.5)">
+<sc-for list="{{nt.prioOpts2}}" as="o" hint-placeholder-count="5">
+<button type="button" class="mi" onClick="{{o.pick}}" aria-pressed="{{o.pressed}}" style="width: 100%; height: 32px; display: flex; align-items: center; gap: 10px; padding: 0 8px; border: 0; border-radius: 6px; background: {{o.bg}}; color: #EDEDEF; font-size: 13px; text-align: left; cursor: pointer; transition: background-color 0.15s ease">
+<span aria-hidden="true" style="width: 14px; display: inline-flex; justify-content: center">
+<sc-if value="{{o.isAsapP}}" hint-placeholder-val="{{ false }}"><span style="width: 13px; height: 13px; border-radius: 3px; background: #D9A066; color: #0E0E0F; font-family: Geist, sans-serif; font-size: 10px; font-weight: 700; line-height: 13px; text-align: center">!</span></sc-if>
+<sc-if value="{{o.isBarsP}}" hint-placeholder-val="{{ true }}"><svg width="13" height="13" viewBox="0 0 13 13"><rect x="1" y="8" width="3" height="4" rx="1" fill="{{o.b1}}"></rect><rect x="5" y="5" width="3" height="7" rx="1" fill="{{o.b2}}"></rect><rect x="9" y="2" width="3" height="10" rx="1" fill="{{o.b3}}"></rect></svg></sc-if>
+</span>
+<span style="flex: 1 1 auto">{{o.label}}</span>
+<span aria-hidden="true" style="width: 14px; display: inline-flex; justify-content: center; opacity: {{o.chk}}"><svg width="13" height="13" viewBox="0 0 24 24" style="fill: none; stroke: {{o.acc}}; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span>
+</button>
+</sc-for>
+</div>
+</sc-if>
+</div>
+
+<div style="position: relative">
+<button type="button" class="ob" onClick="{{nt.pList.toggle}}" aria-haspopup="listbox" aria-expanded="{{nt.pList.expanded}}" style="height: 30px; display: inline-flex; align-items: center; gap: 7px; padding: 0 11px; border: 1px {{nt.pList.bs}} {{nt.pList.bd}}; border-radius: 8px; background: {{nt.pList.bg}}; color: {{nt.pList.fg}}; font-size: 12.5px; font-weight: 500; cursor: pointer; transition: background-color 0.18s ease, color 0.18s ease, border-color 0.18s ease">
+<span aria-hidden="true" style="font-family: 'Geist Mono', 'Cascadia Mono', Consolas, monospace; color: #8C8C92">#</span>
+{{nt.pList.value}}
+</button>
+<sc-if value="{{nt.pList.show}}" hint-placeholder-val="{{ false }}">
+<div data-pop="list" role="dialog" aria-label="Choose a tag" style="position: absolute; left: 0; top: 36px; z-index: 5; width: 200px; padding: 6px; box-sizing: border-box; border-radius: 10px; background: #1A1A1D; box-shadow: 0 0 0 1px #2A2A2F, 0 16px 40px rgba(0,0,0,0.5)">
+<sc-for list="{{nt.listOpts}}" as="o" hint-placeholder-count="4">
+<button type="button" class="mi" onClick="{{o.pick}}" aria-pressed="{{o.pressed}}" style="width: 100%; height: 32px; display: flex; align-items: center; gap: 10px; padding: 0 8px; border: 0; border-radius: 6px; background: {{o.bg}}; color: #EDEDEF; font-size: 13px; text-align: left; cursor: pointer; transition: background-color 0.15s ease">
+<span aria-hidden="true" style="width: 14px; text-align: center; font-family: 'Geist Mono', 'Cascadia Mono', Consolas, monospace; color: #8C8C92">{{o.sym}}</span>
+<span style="flex: 1 1 auto">{{o.label}}</span>
+<span aria-hidden="true" style="width: 14px; display: inline-flex; justify-content: center; opacity: {{o.chk}}"><svg width="13" height="13" viewBox="0 0 24 24" style="fill: none; stroke: {{o.acc}}; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span>
+</button>
+</sc-for>
+</div>
+</sc-if>
+</div>
+
+</div>
+
+<div style="display: flex; align-items: center; gap: 8px; padding: 12px 14px 12px 20px; border-top: 1px solid #1D1D20; border-radius: 0 0 12px 12px; background: #111113">
+<sc-if value="{{nt.isEdit}}" hint-placeholder-val="{{ false }}"><button type="button" class="ob" onClick="{{deleteTaskH}}" style="height: 30px; padding: 0 12px; border: 1px solid #3A2A28; border-radius: 7px; background: transparent; color: #E8907F; font-size: 12.5px; font-weight: 500; cursor: pointer; transition: background-color 0.18s ease">Delete</button></sc-if>
+<span style="font-family: 'Geist Mono', 'Cascadia Mono', Consolas, monospace; font-size: 11px; color: #8C8C92">{{nt.hint}}</span>
+<button type="button" class="ob" onClick="{{closeModal}}" style="margin-left: auto; height: 30px; padding: 0 12px; border: 1px solid #26262A; border-radius: 7px; background: transparent; color: #D9D9DE; font-size: 12.5px; font-weight: 500; cursor: pointer; transition: background-color 0.18s ease">Cancel</button>
+<button type="button" onClick="{{createTaskH}}" aria-disabled="{{nt.disabled}}" style="height: 30px; display: inline-flex; align-items: center; gap: 8px; padding: 0 6px 0 12px; border: 0; border-radius: 7px; background: #E4E4E7; color: #0E0E0F; font-size: 12.5px; font-weight: 600; cursor: pointer; opacity: {{nt.createOp}}; transition: opacity 0.2s ease">
+{{nt.cta}}
+<kbd style="font-family: 'Geist Mono', 'Cascadia Mono', Consolas, monospace; font-size: 10.5px; font-weight: 500; color: #0E0E0F; background: rgba(0,0,0,0.12); border-radius: 4px; padding: 0 5px; line-height: 18px">↵</kbd>
+</button>
+</div>
+
+</div>
+</div>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"startView":{"editor":"enum","options":["inbox","today","year","month","week","day","settings"],"default":"week"},"sidebarOpacity":{"editor":"range","min":0,"max":100,"step":1,"unit":"%","default":72},"accent":{"editor":"color","options":["#9FB4C7","#A3B8A0","#C8B596","#C4C4CA"],"default":"#9FB4C7"},"startModal":{"editor":"boolean","default":false},"$preview":{"width":1600,"height":1000}}'>
+class Component extends DCLogic {
+  constructor(...args) {
+    super(...args);
+    const p = this.props || {};
+    this.TODAY = '2026-11-15';
+    this.NOW = 22 * 60 + 26;
+    this.LV = ['year', 'month', 'week', 'day'];
+    this.MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    this.MS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    this.WD = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    this.WDL = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    const start = (this.LV.indexOf(p.startView) >= 0 || ['inbox', 'today', 'settings'].indexOf(p.startView) >= 0) ? p.startView : 'week';
+    const showModal = p.startModal === true || p.startModal === 'true';
+    this.state = {
+      view: start, anchor: this.TODAY, tasks: this.seed(), dayDraft: '', newPrio: null, filter: null, accentO: null, opacityO: null, cfgTab: 'look', lists: ['work', 'personal', 'learning'], addingList: false, listDraft: '',
+      cfg: { density: 'comfortable', theme: 'dark', weekStart: 'mon', launch: 'today', defPrio: null, carry: true, sound: false, startup: true, tray: true, backup: true },
+      modal: showModal ? {
+        title: 'Prepare slides for the Friday demo',
+        notes: 'Outline: problem → live demo → next steps. Ask for feedback on the onboarding flow.',
+        date: '2026-11-16', days: 1, timed: true, time: '14:00', dur: 60, prio: 'high', tag: 'work', open: 'date', calMonth: null
+      } : null
+    };
+    this._anim = null;
+    this._newId = null;
+    this._focus = false;
+    this.setRoot = (el) => { this.rootEl = el; };
+    this.setBody = (el) => { this.bodyEl = el; };
+    this.setTitle = (el) => { this.titleEl = el; };
+    this.setAdd = (el) => { this.addEl = el; };
+    this.onDayDraft = (e) => this.setState({ dayDraft: e.target.value });
+    this.onDayKey = (e) => { if (e.key === 'Enter') this.addTask(this.state.dayDraft, this.state.anchor, 'dayDraft'); };
+    this.onInboxKey = (e) => { if (e.key === 'Enter') this.addTask(this.state.dayDraft, null, 'dayDraft'); };
+    this.PRIO_ORDER = [null, 'low', 'med', 'high', 'asap'];
+    this.PRIO_NAME = { low: 'Low', med: 'Medium', high: 'High', asap: 'ASAP' };
+    this.goPrev = () => this.shift(-1);
+    this.goNext = () => this.shift(1);
+    this.onTodayKey = (e) => { if (e.key === 'Enter') this.addTask(this.state.dayDraft, this.TODAY, 'dayDraft'); };
+    this.goToday = () => {
+      const off = ['inbox', 'today', 'settings'].indexOf(this.state.view) >= 0;
+      this.navigate(off ? 'week' : this.state.view, this.TODAY, off ? 'in' : (this.state.anchor > this.TODAY ? 'prev' : 'next'));
+    };
+    this.goTodayDay = () => this.navSection('today', this.TODAY);
+    this.goCalendar = () => {
+      const v = this.state.view;
+      if (v === 'inbox' || v === 'today') this.navSection('week', this.state.anchor);
+      else if (v === 'settings') this.navigate('week', this.state.anchor, 'in');
+      else if (v === 'day') this.navigate('week', this.state.anchor, 'out');
+    };
+    this.goSettings = () => {
+      if (this.state.view === 'settings') return;
+      this._back = { view: this.state.view, anchor: this.state.anchor };
+      this.navigate('settings', this.state.anchor, 'in', '50% 30%');
+    };
+    this.backFromSettings = () => {
+      const b = this._back || { view: 'week', anchor: this.TODAY };
+      this.navigate(b.view, b.anchor, 'out', '50% 30%');
+    };
+    this.setNavA = (el) => { this.navA = el; };
+    this.toggleDensity = () => this.setCfg('density', this.state.cfg.density === 'compact' ? 'comfortable' : 'compact');
+    this.toggleSidebar = () => this.setState({ sbHidden: !this.state.sbHidden });
+    this.setListInput = (el) => { this.listInput = el; };
+    this.startList = () => { this._focusList = true; this.setState({ addingList: true, listDraft: '' }); };
+    this.onListDraft = (e) => this.setState({ listDraft: e.target.value });
+    this.onListKey = (e) => {
+      if (e.key === 'Enter') this.createList();
+      else if (e.key === 'Escape') this.setState({ addingList: false, listDraft: '' });
+    };
+    this.onListBlur = () => { if (this.state.addingList) this.createList(); };
+    this.setNavS = (el) => { this.navS = el; };
+    this.openInbox = () => this.navSection('inbox', this.state.anchor);
+    this.newTask = () => this.openModal();
+    this.moreInbox = () => this.openModal({ date: null });
+    this.moreToday = () => this.openModal({ date: this.TODAY });
+    this.moreDay = () => this.openModal({ date: this.state.anchor });
+    this.ntFocus = () => { if (this.state.modal && this.state.modal.open) this.ntSet({ open: null }); };
+    this.setDlg = (el) => { this.dlgEl = el; };
+    this.setShade = (el) => { this.shadeEl = el; };
+    this.setNtTitle = (el) => { this.ntTitleEl = el; };
+    this.ntTitle = (e) => this.ntSet({ title: e.target.value });
+    this.ntNotes = (e) => this.ntSet({ notes: e.target.value });
+    const ntEscape = () => {
+      if (this.state.modal && this.state.modal.open) this.ntSet({ open: null });
+      else this.closeModal();
+    };
+    this.ntKey = (e) => {
+      if (e.key === 'Enter') { if (e.preventDefault) e.preventDefault(); this.createTask(); }
+      else if (e.key === 'Escape') ntEscape();
+    };
+    this.ntEsc = (e) => { if (e.key === 'Escape') ntEscape(); };
+    this.ntDayPrev = () => { const m = this.state.modal; if (m && m.date) this.ntSet({ date: this.addDays(m.date, -1) }); };
+    this.ntDayNext = () => { const m = this.state.modal; if (m && m.date) this.ntSet({ date: this.addDays(m.date, 1) }); };
+    this.ntDaysDec = () => { const m = this.state.modal; if (m) this.ntSet({ days: Math.max(1, m.days - 1) }); };
+    this.ntDaysInc = () => { const m = this.state.modal; if (m) this.ntSet({ days: Math.min(14, m.days + 1) }); };
+    this.ntTimePrev = () => { const m = this.state.modal; if (m) this.ntSet({ time: this.hhmm(Math.max(0, this.mins(m.time) - 15)) }); };
+    this.ntTimeNext = () => { const m = this.state.modal; if (m) this.ntSet({ time: this.hhmm(Math.min(23 * 60 + 45, this.mins(m.time) + 15)) }); };
+    this.closeModal = () => this.animateClose(() => this.setState({ modal: null }));
+    this.createTaskH = () => this.createTask();
+    this.deleteTaskH = () => this.deleteTask();
+    this._wt = {};
+    this.setHourWheel = (el) => { if (el && el !== this.hourWheel) this._wheelInit = true; this.hourWheel = el; };
+    this.setMinWheel = (el) => { if (el && el !== this.minWheel) this._wheelInit = true; this.minWheel = el; };
+    this.onHourScroll = (e) => this.wheelScroll('h', e.currentTarget);
+    this.onMinScroll = (e) => this.wheelScroll('m', e.currentTarget);
+  }
+
+  pad(n) { return (n < 10 ? '0' : '') + n; }
+  parse(s) { return new Date(Date.UTC(+s.slice(0, 4), +s.slice(5, 7) - 1, +s.slice(8, 10))); }
+  iso(d) { return d.getUTCFullYear() + '-' + this.pad(d.getUTCMonth() + 1) + '-' + this.pad(d.getUTCDate()); }
+  addDays(s, n) { const d = this.parse(s); d.setUTCDate(d.getUTCDate() + n); return this.iso(d); }
+  diff(a, b) { return Math.round((this.parse(b) - this.parse(a)) / 86400000); }
+  dow(s) { return (this.parse(s).getUTCDay() + 6) % 7; }
+  weekStart(s) { return this.addDays(s, -this.dow(s)); }
+  weekNo(s) {
+    const d = this.parse(s);
+    d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7) + 3);
+    const j = new Date(Date.UTC(d.getUTCFullYear(), 0, 4));
+    j.setUTCDate(j.getUTCDate() - ((j.getUTCDay() + 6) % 7) + 3);
+    return 1 + Math.round((d - j) / 604800000);
+  }
+  mins(t) { return +t.slice(0, 2) * 60 + +t.slice(3, 5); }
+  hhmm(m) { return this.pad(Math.floor(m / 60) % 24) + ':' + this.pad(m % 60); }
+  byTime(x, y) {
+    const R = { asap: 4, high: 3, med: 2, low: 1 };
+    return ((x.time ? 0 : 1) - (y.time ? 0 : 1)) || (x.time || '').localeCompare(y.time || '') || ((R[y.prio] || 0) - (R[x.prio] || 0));
+  }
+  byDate(p, q) { return p.date < q.date ? -1 : (p.date > q.date ? 1 : 0); }
+  radius(cl, cr, r) {
+    const L = (cl ? 0 : r) + 'px', R = (cr ? 0 : r) + 'px';
+    return L + ' ' + R + ' ' + R + ' ' + L;
+  }
+
+  seed() {
+    const R = [
+      ['2026-01-12', 'Q1 planning', 'work', 1, null, 0, '2026-01-14'],
+      ['2026-03-03', 'Home office setup', 'personal', 1, null, 0, '2026-03-05'],
+      ['2026-05-12', 'Lisbon trip', 'personal', 1, null, 0, '2026-05-16'],
+      ['2026-06-15', 'Product launch', 'work', 1, null, 0, '2026-06-19'],
+      ['2026-08-03', 'Vacation', 'personal', 1, null, 0, '2026-08-14'],
+      ['2026-09-22', 'Conference', 'learning', 1, null, 0, '2026-09-24'],
+      ['2026-10-27', 'Review pull requests', 'work', 1],
+      ['2026-10-29', 'Gym — legs', null, 1],
+      ['2026-11-01', 'Weekly review', null, 1, '21:00', 30],
+      ['2026-11-02', 'Team sync', null, 1, '10:00', 30],
+      ['2026-11-02', 'Pay bills', null, 1],
+      ['2026-11-03', 'Gym — legs', null, 1],
+      ['2026-11-04', 'Client onboarding', 'work', 1, null, 0, '2026-11-06'],
+      ['2026-11-04', 'Design review', 'work', 1],
+      ['2026-11-05', 'Read 30 pages', 'learning', 1],
+      ['2026-11-05', 'Groceries', null, 1],
+      ['2026-11-06', 'Monthly hours report', 'work', 1],
+      ['2026-11-07', 'Farmers market', null, 1],
+      ['2026-11-08', 'Weekly review', null, 1, '21:00', 30],
+      ['2026-11-09', 'API migration to the new gateway', 'work', 1, null, 0, '2026-11-11'],
+      ['2026-11-09', 'Review open pull requests for the API', 'work', 1],
+      ['2026-11-09', 'Team sync — sprint planning', null, 1, '10:00', 30],
+      ['2026-11-09', 'Gym — upper body', null, 1, '18:30', 60],
+      ['2026-11-09', 'Pay rent and utilities', null, 1],
+      ['2026-11-10', 'Write the database migration plan', 'work', 1],
+      ['2026-11-10', 'Dentist check-up', 'personal', 1, '16:30', 45],
+      ['2026-11-10', 'Groceries for the week', null, 1],
+      ['2026-11-11', 'Portfolio site redesign', 'personal', 0, null, 0, '2026-11-14'],
+      ['2026-11-11', 'Deploy the new build to staging', 'work', 1],
+      ['2026-11-11', 'Coffee with Alex', null, 1],
+      ['2026-11-11', 'Read 30 pages of “Deep Work”', 'learning', 1],
+      ['2026-11-12', 'Fix login redirect loop on Safari', 'work', 1],
+      ['2026-11-12', 'Online course — module 3: async patterns', 'learning', 1],
+      ['2026-11-12', 'Laundry', null, 0],
+      ['2026-11-13', 'Send the monthly hours report', 'work', 1],
+      ['2026-11-13', 'Call mom', null, 1],
+      ['2026-11-13', 'Movie night', 'personal', 1],
+      ['2026-11-14', 'Farmers market', null, 1],
+      ['2026-11-14', 'Take the bike in for a brake repair', null, 0],
+      ['2026-11-15', 'Morning run along the river', 'personal', 1, '08:00', 45],
+      ['2026-11-15', 'Meal prep for Monday–Wednesday', null, 1, '12:00', 60],
+      ['2026-11-15', 'Coffee and reading — Deep Work, ch. 4', 'learning', 1, '14:00', 90],
+      ['2026-11-15', 'Weekly review', null, 1, '21:00', 30],
+      ['2026-11-15', 'Plan next week and set top 3 priorities', 'work', 0, '22:00', 45],
+      ['2026-11-15', 'Water the plants and repot the ficus', null, 0],
+      ['2026-11-16', 'Team sync — sprint review', null, 0, '10:00', 30],
+      ['2026-11-16', 'Review open pull requests', 'work', 0],
+      ['2026-11-17', 'Send the November invoice to the client', 'work', 0],
+      ['2026-11-17', 'Gym — legs', null, 0, '18:30', 60],
+      ['2026-11-18', 'Write a blog post about the migration', 'learning', 0, null, 0, '2026-11-19'],
+      ['2026-11-18', 'Design review for the onboarding flow', 'work', 0, '15:00', 60],
+      ['2026-11-18', 'Piano lesson', null, 0],
+      ['2026-11-19', 'Release v2.4 and write the changelog', 'work', 0],
+      ['2026-11-19', 'Haircut', null, 0, '17:00', 30],
+      ['2026-11-20', 'Weekend trip to Kraków', 'personal', 0, null, 0, '2026-11-22'],
+      ['2026-11-20', 'Return the parcel at the post office', null, 0],
+      ['2026-11-21', 'Old town walk and Wawel castle', null, 0],
+      ['2026-11-22', 'Weekly review', null, 0, '21:00', 30],
+      ['2026-11-23', 'Team sync', null, 0, '10:00', 30],
+      ['2026-11-24', 'Gym — upper body', null, 0],
+      ['2026-11-25', 'Year-end report', 'work', 0, null, 0, '2026-11-27'],
+      ['2026-11-26', 'Dentist follow-up', 'personal', 0],
+      ['2026-11-27', 'Pay bills', null, 0],
+      ['2026-11-28', 'Dinner with friends', 'personal', 0],
+      ['2026-11-29', 'Weekly review', null, 0],
+      ['2026-11-30', 'Monthly hours report', 'work', 0],
+      ['2026-12-01', 'Review pull requests', 'work', 0],
+      ['2026-12-03', 'Gym — legs', null, 0],
+      ['2026-12-05', 'Christmas market', null, 0],
+      ['2026-12-21', 'Holidays', 'personal', 0, null, 0, '2026-12-27'],
+      [null, 'Renew passport', 'personal', 0, null, 0, null, 1],
+      [null, 'Call the bank', null, 0, null, 0, null, 1],
+      [null, 'Fix the kitchen tap', null, 0],
+      [null, 'Read “Deep Work”', 'learning', 0],
+      [null, 'Backup photos', null, 0],
+      [null, 'Research standing desks', null, 0]
+    ];
+    const PRIO = {
+      'Renew passport': 'asap', 'Call the bank': 'asap', 'Fix the kitchen tap': 'med', 'Read “Deep Work”': 'low', 'Backup photos': 'low',
+      'Fix login redirect loop on Safari': 'high', 'Send the November invoice to the client': 'high', 'Release v2.4 and write the changelog': 'high',
+      'Plan next week and set top 3 priorities': 'med', 'Review open pull requests': 'med', 'Design review for the onboarding flow': 'med',
+      'Water the plants and repot the ficus': 'low', 'Laundry': 'low', 'Take the bike in for a brake repair': 'med',
+      'Deploy the new build to staging': 'high', 'Write the database migration plan': 'high', 'Send the monthly hours report': 'high',
+      'Return the parcel at the post office': 'low', 'Year-end report': 'high', 'Monthly hours report': 'high', 'Dentist follow-up': 'med'
+    };
+    const out = [];
+    let k = 0;
+    R.forEach((r) => {
+      out.push({ id: 't' + (k++), date: r[0], title: r[1], tag: r[2] || null, done: !!r[3], time: r[4] || null, dur: r[5] || 0, end: r[6] || null, prio: PRIO[r[1]] || (r[7] ? 'asap' : null) });
+    });
+    let a = 46;
+    const rnd = () => { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+    const pool = [['Review pull requests', 'work'], ['Team sync', null], ['Gym', null], ['Groceries', null], ['Read 30 pages', 'learning'], ['Call mom', null], ['Deploy to staging', 'work'], ['Pay bills', null], ['Long walk', null], ['Piano practice', 'learning'], ['Design review', 'work'], ['Laundry', null], ['Update CV', null]];
+    let d = '2026-01-01';
+    while (d <= '2026-12-31') {
+      if (d < '2026-10-26' || d > '2026-12-06') {
+        const r = rnd();
+        const n = r < 0.42 ? 0 : (r < 0.82 ? 1 : 2);
+        for (let i = 0; i < n; i++) {
+          const p = pool[Math.floor(rnd() * pool.length)];
+          out.push({ id: 't' + (k++), date: d, title: p[0], tag: p[1], done: d < this.TODAY, time: null, dur: 0, end: null, prio: null });
+        }
+      }
+      d = this.addDays(d, 1);
+    }
+    return out;
+  }
+
+  toggle(id) {
+    this.setState({ tasks: this.state.tasks.map((t) => (t.id === id ? Object.assign({}, t, { done: !t.done }) : t)) });
+  }
+  addTask(text, date, key) {
+    const t = String(text || '').trim();
+    if (!t) return;
+    const id = 'n' + Date.now();
+    this._newId = id;
+    const upd = { tasks: this.state.tasks.concat([{ id: id, date: date, title: t, tag: null, done: false, time: null, dur: 0, end: null, prio: date ? null : this.state.newPrio }]) };
+    upd[key] = '';
+    this.setState(upd);
+  }
+  setFilter(tag) { this.setState({ filter: this.state.filter === tag ? null : tag }); }
+  wheelTo(e, idx) {
+    const box = e && e.currentTarget ? e.currentTarget.parentNode : null;
+    if (box && box.scrollTo) box.scrollTo({ top: idx * 34, behavior: 'smooth' });
+  }
+  wheelScroll(kind, el) {
+    if (!el) return;
+    clearTimeout(this._wt[kind]);
+    this._wt[kind] = setTimeout(() => {
+      const m = this.state.modal;
+      if (!m) return;
+      const idx = Math.round(el.scrollTop / 34);
+      const cur = this.mins(m.time || '10:00');
+      let h = Math.floor(cur / 60), mi = Math.min(55, Math.round((cur % 60) / 5) * 5);
+      if (kind === 'h') h = Math.max(0, Math.min(23, idx)); else mi = Math.max(0, Math.min(11, idx)) * 5;
+      const t = this.pad(h) + ':' + this.pad(mi);
+      if (t !== m.time || !m.timed) this.ntSet({ time: t, timed: true });
+    }, 120);
+  }
+  initWheels() {
+    const m = this.state.modal;
+    if (!m) return;
+    const cur = this.mins(m.time || '10:00');
+    if (this.hourWheel) this.hourWheel.scrollTop = Math.floor(cur / 60) * 34;
+    if (this.minWheel) this.minWheel.scrollTop = Math.min(11, Math.round((cur % 60) / 5)) * 34;
+  }
+  setTab(t) {
+    const O = ['look', 'cal', 'tasks', 'win', 'data', 'keys'];
+    const cur = O.indexOf(this.state.cfgTab || 'look'), nx = O.indexOf(t);
+    if (cur === nx) return;
+    this._anim = { kind: nx > cur ? 'next' : 'prev', origin: '50% 40%' };
+    this.setState({ cfgTab: t });
+  }
+  createList() {
+    const name = String(this.state.listDraft || '').trim().toLowerCase().replace(/^#+/, '').replace(/\s+/g, '-');
+    if (!name || this.state.lists.indexOf(name) >= 0) { this.setState({ addingList: false, listDraft: '' }); return; }
+    this.setState({ lists: this.state.lists.concat([name]), addingList: false, listDraft: '' });
+  }
+  setCfg(k, v) { this.setState({ cfg: Object.assign({}, this.state.cfg, { [k]: v }) }); }
+  ntSet(p) { if (this.state.modal) this.setState({ modal: Object.assign({}, this.state.modal, p) }); }
+  openModal(extra) {
+    const v = this.state.view;
+    const date = v === 'inbox' ? null : (v === 'day' ? this.state.anchor : this.TODAY);
+    const m = Object.assign({ title: '', notes: '', date: date, days: 1, timed: false, time: '10:00', dur: 60, prio: (this.state.cfg && this.state.cfg.defPrio) || null, tag: null, open: null, calMonth: null }, extra || {});
+    m.title = m.title || '';
+    this._dlgAnim = true;
+    const upd = { modal: m };
+    if (extra && extra.title != null) upd.dayDraft = '';
+    this.setState(upd);
+  }
+  openEdit(id) {
+    const t = this.state.tasks.filter((x) => x.id === id)[0];
+    if (!t) return;
+    this._dlgAnim = true;
+    this.setState({ modal: {
+      editId: t.id, title: t.title, notes: t.notes || '', date: t.date, days: t.end ? this.diff(t.date, t.end) + 1 : 1,
+      timed: !!t.time, time: t.time || '10:00', dur: t.dur || 60, prio: t.prio || null, tag: t.tag || null, open: null, calMonth: null
+    } });
+  }
+  deleteTask() {
+    const m = this.state.modal;
+    if (!m || !m.editId) return;
+    this.animateClose(() => this.setState({ tasks: this.state.tasks.filter((x) => x.id !== m.editId), modal: null }));
+  }
+  animateClose(cb) {
+    const d = this.dlgEl, sh = this.shadeEl;
+    if (d && d.animate) {
+      const an = d.animate([{ opacity: 1, transform: 'translateY(0px) scale(1)' }, { opacity: 0, transform: 'translateY(6px) scale(0.98)' }], { duration: 150, easing: 'ease-in', fill: 'forwards' });
+      if (sh && sh.animate) sh.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 150, easing: 'ease-in', fill: 'forwards' });
+      an.onfinish = cb;
+    } else cb();
+  }
+  createTask() {
+    const m = this.state.modal;
+    if (!m) return;
+    const title = String(m.title || '').trim();
+    if (!title) { if (this.ntTitleEl && this.ntTitleEl.focus) this.ntTitleEl.focus(); return; }
+    const id = m.editId || ('n' + Date.now());
+    const task = {
+      id: id, date: m.date, end: m.date && m.days > 1 ? this.addDays(m.date, m.days - 1) : null, title: title,
+      tag: m.tag, prio: m.prio, done: false, time: m.date && m.days === 1 && m.timed ? m.time : null, dur: m.dur, notes: m.notes
+    };
+    if (m.editId) {
+      const old = this.state.tasks.filter((x) => x.id === m.editId)[0] || {};
+      task.done = !!old.done;
+      this.animateClose(() => this.setState({ tasks: this.state.tasks.map((x) => (x.id === m.editId ? task : x)), modal: null }));
+      return;
+    }
+    this._newId = id;
+    this.animateClose(() => this.setState({ tasks: this.state.tasks.concat([task]), modal: null }));
+  }
+  cyclePrio(id) {
+    const O = this.PRIO_ORDER;
+    this.setState({ tasks: this.state.tasks.map((t) => (t.id === id ? Object.assign({}, t, { prio: O[(O.indexOf(t.prio || null) + 1) % O.length] }) : t)) });
+  }
+  prioVis(p) {
+    const rank = { low: 1, med: 2, high: 3 }[p] || 0, on = '#D9D9DE', off = '#3A3A40';
+    return { isAsapP: p === 'asap', isBarsP: p !== 'asap', b1: rank >= 1 ? on : off, b2: rank >= 2 ? on : off, b3: rank >= 3 ? on : off };
+  }
+  secIdx(v) { return v === 'inbox' ? 0 : (v === 'today' ? 1 : (v === 'settings' ? 3 : 2)); }
+  navSection(view, anchor) {
+    const from = this.secIdx(this.state.view), to = this.secIdx(view);
+    if (from === to && this.state.view === view) return;
+    const dir = to >= from ? 1 : -1;
+    const go = () => { this._anim = { kind: dir > 0 ? 'up' : 'down' }; this.setState({ view: view, anchor: anchor }); };
+    if (this.bodyEl && this.bodyEl.animate) {
+      if (this._outAnim) this._outAnim.cancel();
+      const out = this.bodyEl.animate([{ opacity: 1, transform: 'translateY(0px)' }, { opacity: 0, transform: 'translateY(' + (dir * -10) + 'px)' }], { duration: 130, easing: 'ease-in', fill: 'forwards' });
+      this._outAnim = out;
+      out.onfinish = go;
+    } else go();
+  }
+  navigate(view, anchor, kind, origin) {
+    this._anim = { kind: kind, origin: origin || '50% 40%' };
+    this.setState({ view: view, anchor: anchor });
+  }
+  zoom(view, anchor, e) {
+    const from = this.LV.indexOf(this.state.view), to = this.LV.indexOf(view);
+    let origin = null;
+    if (e && e.currentTarget && this.bodyEl) {
+      const r = e.currentTarget.getBoundingClientRect(), b = this.bodyEl.getBoundingClientRect();
+      if (b.width && b.height) origin = ((r.left + r.width / 2 - b.left) / b.width * 100).toFixed(1) + '% ' + ((r.top + r.height / 2 - b.top) / b.height * 100).toFixed(1) + '%';
+    }
+    this.navigate(view, anchor, to > from ? 'in' : (to < from ? 'out' : 'next'), origin);
+  }
+  shift(dir) {
+    const v = this.state.view, a = this.state.anchor;
+    if (v === 'inbox' || v === 'today' || v === 'settings') return;
+    let y = +a.slice(0, 4), m = +a.slice(5, 7) - 1, n;
+    if (v === 'year') n = (y + dir) + '-' + this.pad(m + 1) + '-01';
+    else if (v === 'month') {
+      m += dir;
+      if (m < 0) { m = 11; y--; }
+      if (m > 11) { m = 0; y++; }
+      n = y + '-' + this.pad(m + 1) + '-01';
+    } else if (v === 'week') n = this.addDays(a, 7 * dir);
+    else n = this.addDays(a, dir);
+    if ((v === 'year' || v === 'month') && n.slice(0, 7) === this.TODAY.slice(0, 7)) n = this.TODAY;
+    this.navigate(v, n, dir > 0 ? 'next' : 'prev');
+  }
+
+  componentDidMount() {
+    this._seenView = this.state.view;
+    if (this.bodyEl && this.bodyEl.animate) {
+      this.bodyEl.animate([{ opacity: 0, transform: 'translateY(12px)' }, { opacity: 1, transform: 'translateY(0px)' }], { duration: 520, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' });
+    }
+    if (this.state.modal) this.animateOpen(false);
+    if (this._wheelInit) { this._wheelInit = false; this.initWheels(); }
+  }
+  animateOpen(focus) {
+    const ease = 'cubic-bezier(0.22, 1, 0.36, 1)';
+    if (this.shadeEl && this.shadeEl.animate) this.shadeEl.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 220, easing: 'ease-out' });
+    if (this.dlgEl && this.dlgEl.animate) this.dlgEl.animate([{ opacity: 0, transform: 'translateY(10px) scale(0.97)' }, { opacity: 1, transform: 'translateY(0px) scale(1)' }], { duration: 320, easing: ease });
+    if (focus && this.ntTitleEl && this.ntTitleEl.focus) this.ntTitleEl.focus();
+  }
+  componentDidUpdate(prevProps) {
+    const sv = this.props.startView;
+    if (prevProps && sv && prevProps.startView !== sv) {
+      if (this.LV.indexOf(sv) >= 0) { this.zoom(sv, this.state.anchor, null); return; }
+      if (sv === 'inbox' || sv === 'today' || sv === 'settings') { this.navigate(sv, sv === 'today' ? this.TODAY : this.state.anchor, 'in'); return; }
+    }
+    const ease = 'cubic-bezier(0.22, 1, 0.36, 1)';
+    const vNow = this.state.view;
+    if (this._seenView !== undefined && this._seenView !== vNow && (vNow === 'settings' || this._seenView === 'settings')) {
+      const nel = vNow === 'settings' ? this.navS : this.navA;
+      if (nel && nel.animate) nel.animate([{ opacity: 0, transform: vNow === 'settings' ? 'translateX(16px)' : 'translateX(-16px)' }, { opacity: 1, transform: 'translateX(0px)' }], { duration: 340, easing: ease });
+    }
+    this._seenView = vNow;
+    if (this._focusList && this.listInput && this.listInput.focus) { this._focusList = false; this.listInput.focus(); }
+    const an = this._anim;
+    this._anim = null;
+    if (an && this.bodyEl && this.bodyEl.animate) {
+      const o = an.origin;
+      let k;
+      if (an.kind === 'in') k = [{ opacity: 0, transform: 'scale(0.86)', filter: 'blur(6px)', transformOrigin: o }, { opacity: 1, transform: 'scale(1)', filter: 'blur(0px)', transformOrigin: o }];
+      else if (an.kind === 'out') k = [{ opacity: 0, transform: 'scale(1.1)', filter: 'blur(6px)', transformOrigin: o }, { opacity: 1, transform: 'scale(1)', filter: 'blur(0px)', transformOrigin: o }];
+      else if (an.kind === 'up') k = [{ opacity: 0, transform: 'translateY(18px)' }, { opacity: 1, transform: 'translateY(0px)' }];
+      else if (an.kind === 'down') k = [{ opacity: 0, transform: 'translateY(-18px)' }, { opacity: 1, transform: 'translateY(0px)' }];
+      else if (an.kind === 'prev') k = [{ opacity: 0, transform: 'translateX(-32px)' }, { opacity: 1, transform: 'translateX(0px)' }];
+      else k = [{ opacity: 0, transform: 'translateX(32px)' }, { opacity: 1, transform: 'translateX(0px)' }];
+      if (this._outAnim) { this._outAnim.cancel(); this._outAnim = null; }
+      this.bodyEl.animate(k, { duration: (an.kind === 'in' || an.kind === 'out') ? 460 : (an.kind === 'up' || an.kind === 'down' ? 380 : 340), easing: ease });
+      if (this.titleEl && this.titleEl.animate) this.titleEl.animate([{ opacity: 0, transform: 'translateY(6px)' }, { opacity: 1, transform: 'translateY(0px)' }], { duration: 360, easing: ease });
+    }
+    const nid = this._newId;
+    this._newId = null;
+    if (nid && this.rootEl) {
+      const el = this.rootEl.querySelector('[data-id="' + nid + '"]');
+      if (el && el.animate) el.animate([{ opacity: 0, transform: 'translateY(-8px)' }, { opacity: 1, transform: 'translateY(0px)' }], { duration: 360, easing: ease });
+    }
+    if (this._dlgAnim && this.state.modal) {
+      this._dlgAnim = false;
+      this.animateOpen(true);
+    }
+    if (this._wheelInit) { this._wheelInit = false; this.initWheels(); }
+    if (this._popAnim && this.dlgEl) {
+      this._popAnim = false;
+      const pop = this.dlgEl.querySelector('[data-pop]');
+      if (pop && pop.animate) pop.animate([{ opacity: 0, transform: 'translateY(-4px) scale(0.98)' }, { opacity: 1, transform: 'translateY(0px) scale(1)' }], { duration: 180, easing: ease });
+      const sel = pop && pop.querySelector('[data-sel="true"]');
+      if (sel && sel.parentNode) sel.parentNode.scrollTop = Math.max(0, sel.offsetTop - 80);
+    }
+  }
+
+  vis(t) {
+    const acc = this.acc || '#9FB4C7';
+    return Object.assign({
+      ring: t.done ? acc : '#66666E', fill: t.done ? acc : 'transparent', cop: t.done ? '1' : '0',
+      tc: t.done ? '#8C8C92' : '#EDEDEF', strikeC: t.done ? '#8C8C92' : 'transparent',
+      bg: t.end ? (t.done ? '#161618' : acc + '1A') : '#17171A',
+      bd: t.end ? (t.done ? '#232326' : acc + '40') : 'transparent',
+      hasTag: !!t.tag, tagLabel: t.tag ? '#' + t.tag : ''
+    }, this.prioVis(t.prio), {
+      hasPrio: !!t.prio, prioName: t.prio ? this.PRIO_NAME[t.prio] : '',
+      prioTitle: t.prio ? this.PRIO_NAME[t.prio] + ' priority' : 'No priority',
+      prioLabel: 'Priority: ' + (t.prio ? this.PRIO_NAME[t.prio] : 'none') + ' — change for ' + t.title,
+      cyclePrio: () => this.cyclePrio(t.id)
+    });
+  }
+  rowItem(t, dimOf) {
+    return Object.assign({
+      key: t.id, id: t.id, title: t.title, hasTime: !!t.time, time: t.time || '',
+      hasMeta: !!(t.tag || t.time || t.prio), op: dimOf(t),
+      label: (t.done ? 'Mark not done: ' : 'Mark done: ') + t.title, toggle: () => this.toggle(t.id),
+      open: () => this.openEdit(t.id)
+    }, this.vis(t));
+  }
+
+  weekData(ws, dimOf, accent) {
+    const T = this.TODAY, tasks = this.state.tasks, rowH = 403;
+    const mkRow = (r) => {
+      const idx = r === 0 ? [0, 1, 2, 3] : [4, 5, 6];
+      const rs = this.addDays(ws, idx[0]), re = this.addDays(ws, idx[idx.length - 1]);
+      const laneEnds = [];
+      const spans = tasks.filter((t) => t.end && t.date && !(t.end < rs || t.date > re)).sort(this.byDate).map((t) => {
+        const st = t.date < rs ? rs : t.date, en = t.end > re ? re : t.end;
+        let lane = 0;
+        while (laneEnds[lane] && laneEnds[lane] >= st) lane++;
+        laneEnds[lane] = en;
+        const cl = t.date < rs, cr = t.end > re, total = this.diff(t.date, t.end) + 1;
+        return Object.assign(this.rowItem(t, dimOf), {
+          meta: (cl ? '← ' : '') + total + ' days' + (cr ? ' →' : ''),
+          pos: 'grid-column: ' + (this.diff(rs, st) + 1) + ' / span ' + (this.diff(st, en) + 1) + '; grid-row: ' + (lane + 2),
+          ml: cl ? '0' : '8px', mr: cr ? '0' : '8px', radius: this.radius(cl, cr, 8)
+        });
+      });
+      const lanes = laneEnds.length;
+      const avail = rowH - 86 - lanes * 36 - 10;
+      const fit = (list) => {
+        let used = 0, n = 0;
+        for (let k = 0; k < list.length; k++) {
+          const h = (list[k].title.length > 26 ? 54 : 36) + 6;
+          const reserve = k < list.length - 1 ? 26 : 0;
+          if (used + h + reserve > avail + 6) break;
+          used += h;
+          n++;
+        }
+        return n;
+      };
+      const listRow = lanes + 2;
+      const cells = idx.map((i, c) => {
+        const d = this.addDays(ws, i), isT = d === T, mi = +d.slice(5, 7) - 1, dn = +d.slice(8, 10);
+        const list = tasks.filter((t) => t.date === d && !t.end).sort((x, y) => this.byTime(x, y));
+        const doneN = list.filter((t) => t.done).length;
+        const showN = fit(list);
+        return {
+          key: d, wd: this.WD[i], num: String(dn), mon: this.MS[mi], isToday: isT, isNext: false, cellBg: 'transparent',
+          aria: 'Open ' + this.WDL[i] + ' ' + dn + ' ' + this.MONTHS[mi],
+          numColor: isT ? accent : '#EDEDEF', pct: (list.length ? Math.round(doneN / list.length * 100) : 0) + '%',
+          bgPos: 'grid-column: ' + (c + 1) + '; grid-row: 1 / -1', sep: c === 0 ? '0' : '1px solid #1D1D20',
+          pos: 'grid-column: ' + (c + 1) + '; grid-row: 1', listPos: 'grid-column: ' + (c + 1) + '; grid-row: ' + listRow,
+          tasks: list.slice(0, showN).map((t) => this.rowItem(t, dimOf)), empty: list.length === 0,
+          hasMore: list.length > showN, more: '+' + (list.length - showN) + ' more',
+          open: (e) => this.zoom('day', d, e)
+        };
+      });
+      if (r === 1) {
+        const d = this.addDays(ws, 7), mi = +d.slice(5, 7) - 1, dn = +d.slice(8, 10);
+        const list = tasks.filter((t) => t.date === d && !t.end).sort((x, y) => this.byTime(x, y));
+        const showN = fit(list);
+        cells.push({
+          key: 'next-' + d, wd: 'Mon', num: String(dn), mon: this.MS[mi], isToday: false, isNext: true,
+          cellBg: 'repeating-linear-gradient(135deg, rgba(255,255,255,0.022) 0px, rgba(255,255,255,0.022) 6px, transparent 6px, transparent 12px)',
+          aria: 'Open next Monday ' + dn + ' ' + this.MONTHS[mi], numColor: '#6E6E75', pct: '0%',
+          bgPos: 'grid-column: 4; grid-row: 1 / -1', sep: '1px solid #1D1D20',
+          pos: 'grid-column: 4; grid-row: 1', listPos: 'grid-column: 4; grid-row: ' + listRow,
+          tasks: list.slice(0, showN).map((t) => Object.assign(this.rowItem(t, dimOf), { op: dimOf(t) === '1' ? '0.55' : '0.2' })),
+          empty: list.length === 0,
+          hasMore: list.length > showN, more: '+' + (list.length - showN) + ' more',
+          open: (e) => this.zoom('day', d, e)
+        });
+      }
+      return {
+        key: 'r' + r, tpl: '86px' + ' 36px'.repeat(lanes) + ' 1fr',
+        pad: r === 0 ? '0 0 12px' : '14px 0 0', bt: r === 0 ? '0' : '1px solid #1D1D20',
+        cells: cells, spans: spans
+      };
+    };
+    return { rowsList: [mkRow(0), mkRow(1)] };
+  }
+
+  monthData(a, dimOf, accent) {
+    const T = this.TODAY, tasks = this.state.tasks;
+    const y = +a.slice(0, 4), m = +a.slice(5, 7) - 1;
+    const first = y + '-' + this.pad(m + 1) + '-01', ym = first.slice(0, 7);
+    const dim = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+    const nW = Math.ceil((this.dow(first) + dim) / 7);
+    const gs = this.weekStart(first);
+    const H = Math.floor((832 - 26) / nW);
+    const weeks = [];
+    for (let w = 0; w < nW; w++) {
+      const ws = this.addDays(gs, w * 7), we = this.addDays(ws, 6);
+      const laneEnds = [], spans = [];
+      tasks.filter((t) => t.end && t.date && !(t.end < ws || t.date > we)).sort(this.byDate).forEach((t) => {
+        const st = t.date < ws ? ws : t.date, en = t.end > we ? we : t.end;
+        let lane = 0;
+        while (laneEnds[lane] && laneEnds[lane] >= st) lane++;
+        if (lane > 1) return;
+        laneEnds[lane] = en;
+        const cl = t.date < ws, cr = t.end > we;
+        spans.push(Object.assign(this.rowItem(t, dimOf), {
+          pos: 'grid-column: ' + (this.diff(ws, st) + 1) + ' / span ' + (this.diff(st, en) + 1) + '; grid-row: ' + (lane + 2),
+          ml: cl ? '0' : '6px', mr: cr ? '0' : '6px', radius: this.radius(cl, cr, 5)
+        }));
+      });
+      const lanes = laneEnds.length;
+      const cap = Math.max(1, Math.floor((H - 34 - lanes * 24 - 8) / 25));
+      const days = [];
+      for (let i = 0; i < 7; i++) {
+        const d = this.addDays(ws, i), inM = d.slice(0, 7) === ym, isT = d === T, dn = +d.slice(8, 10);
+        const list = tasks.filter((t) => t.date === d && !t.end).sort((p, q) => this.byTime(p, q));
+        const showN = list.length > cap ? cap - 1 : list.length;
+        days.push({
+          key: d, num: String(dn), isToday: isT, numW: isT ? '600' : '500',
+          numColor: isT ? accent : (inM ? '#EDEDEF' : '#8C8C92'),
+          bgPos: 'grid-column: ' + (i + 1) + '; grid-row: 1 / -1', numPos: 'grid-column: ' + (i + 1) + '; grid-row: 1',
+          listPos: 'grid-column: ' + (i + 1) + '; grid-row: ' + (lanes + 2),
+          cellBg: inM ? 'transparent' : 'rgba(255,255,255,0.015)',
+          items: list.slice(0, showN).map((t) => this.rowItem(t, dimOf)),
+          hasMore: list.length > showN, more: '+' + (list.length - showN) + ' more',
+          aria: this.WDL[i] + ' ' + dn + ' ' + this.MONTHS[+d.slice(5, 7) - 1],
+          open: (e) => this.zoom('day', d, e)
+        });
+      }
+      const cur = ws <= T && T <= we, wn = this.weekNo(ws);
+      weeks.push({
+        key: ws, label: 'W' + wn, num: wn, color: cur ? accent : '#8C8C92', h: H + 'px',
+        rows: '34px' + ' 24px'.repeat(lanes) + ' 1fr', days: days, spans: spans,
+        open: (e) => this.zoom('week', cur ? T : ws, e)
+      });
+    }
+    return { wds: this.WD.map((x) => ({ key: x, label: x })), weeks: weeks };
+  }
+
+  yearData(a, accent, dimOf) {
+    const T = this.TODAY, tasks = this.state.tasks, y = +a.slice(0, 4);
+    const dm = (d) => (+d.slice(8, 10)) + ' ' + this.MS[+d.slice(5, 7) - 1];
+    const months = [];
+    for (let m = 0; m < 12; m++) {
+      const ym = y + '-' + this.pad(m + 1), first = ym + '-01';
+      const dim = new Date(Date.UTC(y, m + 1, 0)).getUTCDate(), last = ym + '-' + this.pad(dim);
+      const isCur = ym === T.slice(0, 7), isPast = last < T;
+      const go = (e) => this.zoom('month', isCur ? T : first, e);
+      const ev = tasks.filter((t) => t.end && t.date && !(t.end < first || t.date > last)).sort(this.byDate);
+      const single = tasks.filter((t) => t.date && !t.end && t.date >= first && t.date <= last);
+      const doneN = single.filter((t) => t.done).length;
+      const shown = ev.length > 4 ? ev.slice(0, 3) : ev;
+      const extra = ev.length - shown.length;
+      const rows = shown.map((t) => Object.assign(this.rowItem(t, dimOf), {
+        isItem: true, isMore: false,
+        meta: t.date.slice(0, 7) === t.end.slice(0, 7) ? (+t.date.slice(8, 10)) + '–' + (+t.end.slice(8, 10)) : dm(t.date) + ' – ' + dm(t.end)
+      }));
+      if (!isPast && !extra) {
+        single.filter((t) => !t.done && t.date >= T).sort(this.byDate).slice(0, 4 - rows.length)
+          .forEach((t) => rows.push(Object.assign(this.rowItem(t, dimOf), { isItem: true, isMore: false, meta: dm(t.date) })));
+      }
+      if (extra) rows.push({ key: ym + '-more', isItem: false, isMore: true, label: '+' + extra + ' more', go: go });
+      const col = m % 4, row = Math.floor(m / 4);
+      months.push({
+        key: ym, name: this.MONTHS[m], isCur: isCur,
+        nameColor: isCur ? accent : (isPast ? '#A1A1A6' : '#EDEDEF'),
+        stat: single.length ? single.length + ' tasks · ' + doneN + ' done' : 'No tasks',
+        pct: (single.length ? Math.round(doneN / single.length * 100) : 0) + '%',
+        cell: 'border-left: ' + (col ? '1px solid #1D1D20' : '0') + '; border-top: ' + (row ? '1px solid #1D1D20' : '0') +
+          '; padding: ' + (row ? '18px' : '6px') + ' ' + (col === 3 ? '0' : '22px') + ' 12px ' + (col ? '22px' : '0'),
+        rows: rows, open: go
+      });
+    }
+    return { months: months };
+  }
+
+  dayData(d, dimOf, accent) {
+    const T = this.TODAY, tasks = this.state.tasks, HOUR = 48, H0 = 7;
+    const spans = tasks.filter((t) => t.end && t.date && t.date <= d && d <= t.end).map((t) => {
+      const k = this.diff(t.date, d) + 1, n = this.diff(t.date, t.end) + 1;
+      return Object.assign(this.rowItem(t, dimOf), { meta: 'Day ' + k + ' of ' + n });
+    });
+    const list = tasks.filter((t) => t.date === d && !t.end).sort((x, y) => this.byTime(x, y));
+    const items = list.map((t) => this.rowItem(t, dimOf));
+    const hours = [];
+    for (let h = H0; h <= 23; h++) hours.push({ key: 'h' + h, label: this.pad(h) + ':00', top: ((h - H0) * HOUR) + 'px' });
+    const blocks = list.filter((t) => t.time && this.mins(t.time) >= H0 * 60).map((t) => {
+      const st = this.mins(t.time), du = t.dur || 30;
+      const h = Math.max(24, Math.round(du / 60 * HOUR) - 3);
+      const compact = h < 44;
+      return Object.assign(this.rowItem(t, dimOf), {
+        key: 'b' + t.id, range: t.time + ' – ' + this.hhmm(st + du),
+        top: (Math.round((st - H0 * 60) / 60 * HOUR) + 1) + 'px', h: h + 'px',
+        dir: compact ? 'row' : 'column', align: compact ? 'center' : 'flex-start', gap: compact ? '10px' : '2px',
+        pad: compact ? '0 10px' : '7px 10px 0',
+        bbg: t.done ? '#19191C' : accent + '1A', bbd: t.done ? '#26262A' : accent + '40'
+      });
+    });
+    const doneN = list.filter((t) => t.done).length;
+    return {
+      spans: spans, items: items, hours: hours, blocks: blocks, empty: list.length === 0 && spans.length === 0,
+      hasNow: d === T, nowTop: Math.round((this.NOW - H0 * 60) / 60 * HOUR) + 'px', nowLabel: this.hhmm(this.NOW),
+      progress: list.length ? doneN + ' / ' + list.length + ' done' : '', addLabel: 'Add task to ' + this.WDL[this.dow(d)],
+      gridH: (16 * HOUR + 2) + 'px'
+    };
+  }
+
+  inboxData(dimOf, accent) {
+    const T = this.TODAY, tasks = this.state.tasks, T1 = this.addDays(T, 1), horizon = this.addDays(T, 13);
+    const fmt = (d) => this.WD[this.dow(d)] + ' ' + (+d.slice(8, 10)) + ' ' + this.MS[+d.slice(5, 7) - 1];
+    const mk = (t, meta) => Object.assign(this.rowItem(t, dimOf), { meta: meta || '' });
+    const grp = (key, label, items, o) => Object.assign({ key: key, label: label, count: String(items.length), items: items, link: false, plain: true, go: null, lc: '#8C8C92' }, o || {});
+    const und = tasks.filter((t) => !t.date);
+    const left = [];
+    const undOpen = und.filter((t) => !t.done), done = und.filter((t) => t.done);
+    [['asap', 'ASAP', '#D9A066'], ['high', 'High', '#8C8C92'], ['med', 'Medium', '#8C8C92'], ['low', 'Low', '#8C8C92'], [null, 'No priority', '#8C8C92']].forEach((pg) => {
+      const items = undOpen.filter((t) => (t.prio || null) === pg[0]);
+      if (items.length) left.push(grp('p-' + (pg[0] || 'none'), pg[1], items.map((t) => mk(t)), { lc: pg[2] }));
+    });
+    if (!left.length) left.push(grp('p-none', 'No priority', []));
+    if (done.length) left.push(grp('done', 'Done', done.map((t) => mk(t))));
+    const open = tasks.filter((t) => t.date && !t.done);
+    const right = [];
+    const over = open.filter((t) => (t.end || t.date) < T).sort(this.byDate);
+    if (over.length) {
+      right.push(grp('over', 'Overdue', over.map((t) => mk(t, t.end ? (+t.date.slice(8, 10)) + '–' + fmt(t.end).slice(4) : fmt(t.date))), { lc: '#D9A066' }));
+    }
+    let d = T;
+    while (d <= horizon) {
+      const day = d;
+      const list = open.filter((t) => (t.end ? (t.date === day || (day === T && t.date < T && t.end >= T)) : t.date === day)).sort((p, q) => this.byTime(p, q));
+      if (list.length) {
+        right.push(grp(day, day === T ? 'Today' : (day === T1 ? 'Tomorrow' : fmt(day)), list.map((t) => mk(t, t.end ? (this.diff(t.date, t.end) + 1) + ' days' : (t.time || ''))), {
+          link: true, plain: false, go: (e) => this.zoom('day', day, e), lc: day === T ? accent : '#8C8C92'
+        }));
+      }
+      d = this.addDays(d, 1);
+    }
+    const later = open.filter((t) => t.date > horizon).sort(this.byDate);
+    if (later.length) right.push(grp('later', 'Later', [], { count: later.length + ' tasks', link: true, plain: false, go: (e) => this.zoom('month', later[0].date, e) }));
+    return { left: left, right: right, schedCount: open.length + ' open' };
+  }
+
+  moveToToday(id) {
+    this._newId = id;
+    this.setState({ tasks: this.state.tasks.map((t) => (t.id === id ? Object.assign({}, t, { date: this.TODAY }) : t)) });
+  }
+
+  todayData(dimOf, accent) {
+    const T = this.TODAY, tasks = this.state.tasks;
+    const fmt = (d) => this.WD[this.dow(d)] + ' ' + (+d.slice(8, 10)) + ' ' + this.MS[+d.slice(5, 7) - 1];
+    const mk = (t, meta, canMove) => Object.assign(this.rowItem(t, dimOf), {
+      meta: meta || '', canMove: !!canMove, moveLabel: 'Move to today: ' + t.title, move: () => this.moveToToday(t.id)
+    });
+    const grp = (key, label, items, o) => Object.assign({ key: key, label: label, count: String(items.length), items: items, lc: '#8C8C92' }, o || {});
+    const dayTasks = tasks.filter((t) => t.date === T && !t.end);
+    const ongoing = tasks.filter((t) => t.end && t.date && t.date <= T && T <= t.end);
+    const over = tasks.filter((t) => t.date && !t.done && (t.end || t.date) < T).sort(this.byDate);
+    const sched = dayTasks.filter((t) => t.time && !t.done).sort((x, y) => this.byTime(x, y));
+    const anytime = dayTasks.filter((t) => !t.time && !t.done);
+    const done = dayTasks.filter((t) => t.done).sort((x, y) => this.byTime(x, y));
+    const groups = [];
+    if (over.length) {
+      groups.push(grp('over', 'Overdue', over.map((t) => mk(t, t.end ? (+t.date.slice(8, 10)) + '–' + fmt(t.end).slice(4) : fmt(t.date), !t.end)), { lc: '#D9A066' }));
+    }
+    if (ongoing.length) {
+      groups.push(grp('ongoing', 'In progress', ongoing.map((t) => mk(t, 'Day ' + (this.diff(t.date, T) + 1) + ' of ' + (this.diff(t.date, t.end) + 1)))));
+    }
+    if (sched.length) groups.push(grp('sched', 'Scheduled', sched.map((t) => mk(t, t.time + ' – ' + this.hhmm(this.mins(t.time) + (t.dur || 30))))));
+    groups.push(grp('any', 'Anytime', anytime.map((t) => mk(t, ''))));
+    if (done.length) groups.push(grp('done', 'Done', done.map((t) => mk(t, t.time || ''))));
+    const dd = this.dayData(T, dimOf, accent);
+    return {
+      groups: groups,
+      summary: dayTasks.length + ' tasks · ' + done.length + ' done · ' + (dayTasks.length - done.length) + ' left' + (over.length ? ' · ' + over.length + ' overdue' : ''),
+      pct: (dayTasks.length ? Math.round(done.length / dayTasks.length * 100) : 0) + '%',
+      hours: dd.hours, blocks: dd.blocks, nowTop: dd.nowTop, nowLabel: dd.nowLabel, gridH: dd.gridH
+    };
+  }
+
+  renderVals() {
+    const s = this.state, T = this.TODAY;
+    const accent = s.accentO || this.props.accent || '#9FB4C7';
+    this.acc = accent;
+    let op = s.opacityO != null ? s.opacityO : this.props.sidebarOpacity;
+    if (op == null || isNaN(+op)) op = 72;
+    op = Math.max(0, Math.min(100, +op));
+    const view = s.view, a = s.anchor, vi = this.LV.indexOf(view), filt = s.filter;
+    const dimOf = (t) => (filt && t.tag !== filt ? '0.3' : '1');
+    const y = +a.slice(0, 4), m = +a.slice(5, 7) - 1, ws = this.weekStart(a), we = this.addDays(ws, 6), wn = this.weekNo(a);
+    const goLv = (lv) => () => this.zoom(lv, a, null);
+
+    let crumbs = [], title = '', sub = '';
+    if (view === 'inbox') { crumbs = [{ label: 'All tasks' }]; title = 'Inbox'; }
+    else if (view === 'settings') {
+      const TT = { look: 'Appearance', cal: 'Calendar', tasks: 'Tasks', win: 'Windows', data: 'Data', keys: 'Keyboard shortcuts' };
+      crumbs = [{ label: 'Settings' }]; title = TT[s.cfgTab || 'look'];
+    }
+    else if (view === 'today') { crumbs = [{ label: this.WDL[this.dow(T)] + ' · Today' }]; title = (+T.slice(8, 10)) + ' ' + this.MONTHS[+T.slice(5, 7) - 1]; }
+    else if (view === 'year') { crumbs = [{ label: 'Calendar' }]; title = String(y); }
+    else if (view === 'month') { crumbs = [{ label: String(y), go: goLv('year') }]; title = this.MONTHS[m]; }
+    else if (view === 'week') {
+      crumbs = [{ label: String(y), go: goLv('year') }, { label: this.MONTHS[m], go: goLv('month') }];
+      title = 'Week ' + wn;
+      const m1 = +ws.slice(5, 7) - 1, m2 = +we.slice(5, 7) - 1;
+      sub = (+ws.slice(8, 10)) + (m1 === m2 ? '' : ' ' + this.MS[m1]) + ' – ' + (+we.slice(8, 10)) + ' ' + this.MS[m2];
+    } else {
+      crumbs = [{ label: String(y), go: goLv('year') }, { label: this.MONTHS[m], go: goLv('month') }, { label: 'Week ' + wn, go: goLv('week') }];
+      title = (+a.slice(8, 10)) + ' ' + this.MONTHS[m];
+      sub = this.WDL[this.dow(a)] + (a === T ? ' · Today' : '');
+    }
+    crumbs = crumbs.map((c, i) => ({ key: 'c' + i, label: c.label, sep: i > 0, link: !!c.go, plain: !c.go, go: c.go || null }));
+
+    const segs = this.LV.map((l, i) => ({
+      key: l, label: l.charAt(0).toUpperCase() + l.slice(1), pressed: i === vi ? 'true' : 'false',
+      color: i === vi ? '#EDEDEF' : '#A1A1A6', pick: () => this.zoom(l, a, null)
+    }));
+
+    const navItem = (on, fn) => ({ bg: on ? 'rgba(255,255,255,0.08)' : 'transparent', fg: on ? '#F4F4F5' : '#B4B4BB', cur: on ? 'page' : 'false', go: fn });
+    const nv = {
+      inbox: navItem(view === 'inbox', this.openInbox),
+      today: navItem(view === 'today', this.goTodayDay),
+      cal: navItem(vi >= 0, this.goCalendar),
+      settings: navItem(view === 'settings', this.goSettings)
+    };
+    const lists = s.lists.map((k) => {
+      const on = filt === k;
+      return {
+        key: k, label: k, count: s.tasks.filter((t) => t.tag === k && !t.done).length,
+        initial: s.sbHidden ? k.charAt(0).toUpperCase() : '#', badgeBg: s.sbHidden ? (on ? accent : '#26262A') : 'transparent',
+        badgeFg: s.sbHidden ? (on ? '#0E0E0F' : '#C9C9CE') : '#8C8C92', badgeFs: s.sbHidden ? '10px' : '13px', badgeFw: s.sbHidden ? '600' : '400',
+        badgeFf: s.sbHidden ? 'inherit' : "'Geist Mono', 'Cascadia Mono', Consolas, monospace",
+        bg: on ? 'rgba(255,255,255,0.08)' : 'transparent', fg: on ? '#F4F4F5' : '#B4B4BB',
+        pressed: on ? 'true' : 'false', pick: () => this.setFilter(k)
+      };
+    });
+
+    const cf = s.cfg;
+    const setC = (k, v) => () => this.setCfg(k, v);
+    const segRow = (key, label, desc, opts) => ({
+      key: key, label: label, desc: desc, descFont: 'inherit', isSeg: true,
+      segs: opts.map((o) => ({ key: String(o[0]), label: o[1], pressed: cf[key] === o[0] ? 'true' : 'false', bg: cf[key] === o[0] ? '#2A2A2F' : 'transparent', fg: cf[key] === o[0] ? '#EDEDEF' : '#A1A1A6', pick: setC(key, o[0]) }))
+    });
+    const swRow = (key, label, desc) => ({
+      key: key, label: label, desc: desc, descFont: 'inherit', isSwitch: true, aria: cf[key] ? 'true' : 'false',
+      track: cf[key] ? accent : '#2A2A2F', knob: cf[key] ? '#0E0E0F' : '#BDBDC3', kx: cf[key] ? '16px' : '0px',
+      toggle: setC(key, !cf[key])
+    });
+    const SW = [['#9FB4C7', 'Mist'], ['#A3B8A0', 'Sage'], ['#C8B596', 'Sand'], ['#C4C4CA', 'Gray']];
+    const cfg = {
+      sections: [
+        { key: 'look', title: 'Appearance', rows: [
+          { key: 'accent', label: 'Accent color', desc: 'Used for today, progress bars and selections.', descFont: 'inherit', isSwatch: true,
+            swatches: SW.map((w) => {
+              const on = w[0].toLowerCase() === String(accent).toLowerCase();
+              return { key: w[1], name: w[1], color: w[0], pressed: on ? 'true' : 'false', ring: on ? '0 0 0 2px #0F0F10, 0 0 0 3.5px #EDEDEF' : 'none', pick: () => this.setState({ accentO: w[0] }) };
+            }) },
+          { key: 'opacity', label: 'Window transparency', desc: 'How much of the desktop shows through the sidebar and header.', descFont: 'inherit', isRange: true,
+            value: String(op), valueLabel: op + '%', acc: accent, onRange: (e) => this.setState({ opacityO: Number(e && e.target ? e.target.value : 72) }) },
+          segRow('theme', 'Theme', 'System follows the Windows dark/light setting.', [['dark', 'Dark'], ['system', 'System']]),
+          { key: 'density', label: 'Density', desc: 'How tightly tasks are packed. Compact fits about a third more on screen.', descFont: 'inherit', isDensity: true,
+            opts: [['comfortable', 'Comfortable', '18px', '6px'], ['compact', 'Compact', '12px', '3px']].map((o) => ({
+              key: o[0], label: o[1], rowH: o[2], gap: o[3], pressed: cf.density === o[0] ? 'true' : 'false',
+              ring: cf.density === o[0] ? accent : '#2A2A2F', fg: cf.density === o[0] ? '#EDEDEF' : '#A1A1A6', pick: setC('density', o[0])
+            })) }
+        ] },
+        { key: 'cal', title: 'Calendar', rows: [
+          segRow('weekStart', 'Week starts on', 'First column in Week, Month and Year views.', [['mon', 'Monday'], ['sun', 'Sunday']]),
+          segRow('launch', 'Open on launch', 'The screen you see when the app starts.', [['today', 'Today'], ['week', 'Week'], ['inbox', 'Inbox']])
+        ] },
+        { key: 'tasks', title: 'Tasks', rows: [
+          segRow('defPrio', 'Default priority', 'Pre-selected in the New task window.', [[null, 'None'], ['low', 'Low'], ['med', 'Med'], ['high', 'High']]),
+          swRow('carry', 'Carry over unfinished tasks', 'Overdue tasks move to Today every morning.'),
+          swRow('sound', 'Completion sound', 'A soft click when you check off a task.')
+        ] },
+        { key: 'win', title: 'Windows', rows: [
+          swRow('startup', 'Launch at startup', 'Open Todo when Windows starts.'),
+          swRow('tray', 'Keep running in the tray', 'Closing the window hides it instead of quitting.'),
+          { key: 'hotkey', label: 'Quick add from anywhere', desc: 'Opens the New task window on top of any app.', descFont: 'inherit', isKbd: true,
+            keys: [{ key: 'a', k: 'Ctrl' }, { key: 'b', k: 'Alt' }, { key: 'c', k: 'N' }] }
+        ] },
+        { key: 'data', title: 'Data', rows: [
+          { key: 'path', label: 'Stored on this PC', desc: 'C:\\Users\\Vladyslav\\AppData\\Local\\Todo', descFont: "'Geist Mono', 'Cascadia Mono', Consolas, monospace", isBtns: true,
+            btns: [{ key: 'open', label: 'Open folder' }] },
+          swRow('backup', 'Daily backup', 'Keeps the last 7 days of backups next to your data.'),
+          { key: 'io', label: 'Export & import', desc: 'Move your tasks as a single JSON file.', descFont: 'inherit', isBtns: true,
+            btns: [{ key: 'ex', label: 'Export' }, { key: 'im', label: 'Import' }] }
+        ] }
+      ],
+      shortcuts: [
+        ['New task', ['N']], ['Quick add (global)', ['Ctrl', 'Alt', 'N']], ['Search', ['Ctrl', 'K']], ['Inbox', ['G', 'I']], ['Today', ['G', 'T']],
+        ['Year / Month / Week / Day', ['1', '2', '3', '4']], ['Previous / next', ['←', '→']], ['Complete task', ['Space']], ['Close window', ['Esc']]
+      ].map((x, i) => ({ key: 's' + i, label: x[0], keys: x[1].map((k, j) => ({ key: 'k' + j, k: k })) }))
+    };
+    const TABS = [
+      ['look', 'Appearance', 'M12 3.5a8.5 8.5 0 1 0 0 17c1.1 0 1.6-.8 1.6-1.6 0-1-.8-1.4-.8-2.3 0-.9.7-1.6 1.6-1.6h1.8a4.8 4.8 0 0 0 4.8-4.8c0-3.9-4-6.7-9-6.7zM7.5 11.5h.01M10 8h.01M14.5 8h.01'],
+      ['cal', 'Calendar', 'M4 5.5h16v14.5H4zM4 10h16M8.5 3.5v4M15.5 3.5v4'],
+      ['tasks', 'Tasks', 'M5 5h14v14H5zM8.5 12l2.5 2.5 4.5-5'],
+      ['win', 'Windows', 'M3.5 5h17v14h-17zM3.5 9h17'],
+      ['data', 'Data', 'M5 6.5c0-1.7 3.1-3 7-3s7 1.3 7 3-3.1 3-7 3-7-1.3-7-3zM5 6.5v11c0 1.7 3.1 3 7 3s7-1.3 7-3v-11M5 12c0 1.7 3.1 3 7 3s7-1.3 7-3'],
+      ['keys', 'Shortcuts', 'M3.5 7h17v10h-17zM7 10.5h.01M10 10.5h.01M13 10.5h.01M16 10.5h.01M8 14h8']
+    ];
+    const tab = s.cfgTab || 'look';
+    cfg.tabs = TABS.map((t) => {
+      const on = tab === t[0];
+      return { key: t[0], label: t[1], d: t[2], cur: on ? 'page' : 'false', bg: on ? 'rgba(255,255,255,0.08)' : 'transparent', fg: on ? '#F4F4F5' : '#B4B4BB', go: () => this.setTab(t[0]) };
+    });
+    const curSec = cfg.sections.filter((x) => x.key === tab)[0];
+    cfg.rows = curSec ? curSec.rows : [];
+    cfg.isRows = !!curSec; cfg.isKeys = tab === 'keys'; cfg.isData = tab === 'data';
+    cfg.sections.forEach((sec) => sec.rows.forEach((r) => {
+      ['isSwitch', 'isSeg', 'isSwatch', 'isRange', 'isKbd', 'isBtns', 'isDensity'].forEach((f) => { if (!r[f]) r[f] = false; });
+    }));
+
+    const md = s.modal;
+    let nt = {
+      title: '', notes: '', where: '', hasDate: false, showTime: false, pDate: {}, pTime: {}, pPrio: {}, pList: {},
+      dateOpts: [], calLabel: '', calDays: [], wdLetters: [], calPrev: null, calNext: null, calToday: null, daysLabel: '', until: '',
+      daysDec: null, daysInc: null, modeOpts: [], timed: false, untimed: true, hours: [], minutes: [], rangeLabel: '', popDone: null,
+      durOpts: [], prioOpts2: [], listOpts: [], disabled: 'true', createOp: '0.45', heading: 'New task', cta: 'Create task', hint: '', isEdit: false
+    };
+    if (md) {
+      const fmtD = (d) => this.WD[this.dow(d)] + ' ' + (+d.slice(8, 10)) + ' ' + this.MS[+d.slice(5, 7) - 1];
+      const fmtS = (d) => (+d.slice(8, 10)) + ' ' + this.MS[+d.slice(5, 7) - 1];
+      const T1 = this.addDays(T, 1), nextMon = this.addDays(this.weekStart(T), 7);
+      const dayName = (d) => (d === T ? 'Today' : (d === T1 ? 'Tomorrow' : fmtD(d)));
+      const endD = md.date && md.days > 1 ? this.addDays(md.date, md.days - 1) : null;
+      const setP = (p) => () => this.ntSet(p);
+      const pick = (p) => () => this.ntSet(Object.assign({ open: null }, p));
+      const pill = (key, value, isSet) => {
+        const open = md.open === key;
+        return {
+          value: value, show: open, expanded: open ? 'true' : 'false',
+          bg: open ? '#1E1E22' : (isSet ? 'rgba(255,255,255,0.035)' : 'transparent'),
+          bd: open ? '#3A3A40' : '#2E2E33', bs: (isSet || open) ? 'solid' : 'dashed',
+          fg: isSet ? '#EDEDEF' : '#8C8C92',
+          toggle: () => { this._popAnim = !open; this.ntSet({ open: open ? null : key }); }
+        };
+      };
+      const item = (on, label, hint, fn, extra) => Object.assign({
+        key: label, label: label, hint: hint || '', pressed: on ? 'true' : 'false', chk: on ? '1' : '0',
+        bg: on ? 'rgba(255,255,255,0.05)' : 'transparent', acc: accent, pick: fn,
+        cbg: on ? '#2A2A2F' : 'transparent', cbd: on ? '#3A3A40' : '#2A2A2F', cfg: on ? '#EDEDEF' : '#A1A1A6'
+      }, extra || {});
+      const durL = { 15: '15m', 30: '30m', 60: '1h', 120: '2h' }[md.dur] || (md.dur + 'm');
+      const cm = md.calMonth || ((md.date || T).slice(0, 7) + '-01');
+      const cy = +cm.slice(0, 4), cmo = +cm.slice(5, 7) - 1;
+      const mShift = (dir) => {
+        let yy = cy, mm = cmo + dir;
+        if (mm < 0) { mm = 11; yy--; }
+        if (mm > 11) { mm = 0; yy++; }
+        return yy + '-' + this.pad(mm + 1) + '-01';
+      };
+      const gs = this.weekStart(cm);
+      const calDays = [];
+      for (let i = 0; i < 42; i++) {
+        const d = this.addDays(gs, i), inM = d.slice(0, 7) === cm.slice(0, 7), col = i % 7;
+        const sel = d === md.date, isEnd = !!endD && d === endD, inR = !!endD && d > md.date && d < endD, isT = d === T;
+        const band = !!endD && (sel || isEnd || inR);
+        const L = (sel || col === 0) ? '8px' : '0', R = (isEnd || col === 6) ? '8px' : '0';
+        calDays.push({
+          key: d, num: +d.slice(8, 10), aria: fmtD(d) + (isT ? ', today' : ''), pressed: sel ? 'true' : 'false',
+          strip: band ? accent + '26' : 'transparent', stripR: L + ' ' + R + ' ' + R + ' ' + L,
+          dot: (sel || isEnd) ? accent : 'transparent',
+          fg: (sel || isEnd) ? '#0E0E0F' : (isT ? accent : (inM ? (d < T ? '#8C8C92' : '#EDEDEF') : '#77777E')),
+          fw: (sel || isEnd || isT) ? '600' : '400', todayDot: isT && !sel && !isEnd ? accent : 'transparent',
+          pick: pick({ date: d, calMonth: d.slice(0, 7) + '-01' })
+        });
+      }
+      const curM = this.mins(md.time || '10:00');
+      const selH = Math.floor(curM / 60), selMin = Math.min(55, Math.round((curM % 60) / 5) * 5);
+      const wheelItem = (n, sel, idx) => ({
+        key: 'w' + n, label: this.pad(n), sel: sel ? 'true' : 'false',
+        fg: sel ? '#EDEDEF' : '#8C8C92', fs: sel ? '19px' : '15px', fw: sel ? '600' : '400',
+        go: (e) => this.wheelTo(e, idx)
+      });
+      const hours = [], minutes = [];
+      for (let h = 0; h < 24; h++) hours.push(wheelItem(h, !!md.timed && h === selH, h));
+      for (let k = 0; k < 12; k++) minutes.push(wheelItem(k * 5, !!md.timed && k * 5 === selMin, k));
+      const seg = (on, label, fn) => ({ key: label, label: label, pressed: on ? 'true' : 'false', bg: on ? '#2A2A2F' : 'transparent', fg: on ? '#EDEDEF' : '#A1A1A6', pick: fn });
+      const ok = !!String(md.title || '').trim();
+      nt = {
+        title: md.title, notes: md.notes,
+        where: md.date ? dayName(md.date) + (endD ? ' → ' + fmtS(endD) : '') : 'Inbox',
+        hasDate: !!md.date, showTime: !!md.date && md.days === 1,
+        pDate: pill('date', md.date ? dayName(md.date) + (endD ? ' → ' + fmtS(endD) : '') : 'Date', !!md.date),
+        pTime: pill('time', md.timed ? md.time + ' · ' + durL : 'Time', !!md.timed),
+        pPrio: Object.assign(pill('prio', md.prio ? this.PRIO_NAME[md.prio] : 'Priority', !!md.prio), this.prioVis(md.prio || null)),
+        pList: pill('list', md.tag ? md.tag : 'Tag', !!md.tag),
+        dateOpts: [
+          item(md.date === T, 'Today', '', pick({ date: T, calMonth: T.slice(0, 7) + '-01' })),
+          item(md.date === T1, 'Tomorrow', '', pick({ date: T1, calMonth: T1.slice(0, 7) + '-01' })),
+          item(md.date === nextMon, 'Next week', fmtS(nextMon), pick({ date: nextMon, calMonth: nextMon.slice(0, 7) + '-01' })),
+          item(!md.date, 'No date', '', pick({ date: null, days: 1 }))
+        ],
+        calLabel: this.MONTHS[cmo] + ' ' + cy, calDays: calDays,
+        wdLetters: ['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((l, i) => ({ key: 'w' + i, l: l, c: i >= 5 ? '#6E6E75' : '#8C8C92' })),
+        calPrev: setP({ calMonth: mShift(-1) }), calNext: setP({ calMonth: mShift(1) }), calToday: setP({ calMonth: T.slice(0, 7) + '-01' }),
+        daysLabel: md.days + (md.days === 1 ? ' day' : ' days'),
+        until: md.date ? (endD ? 'until ' + fmtS(endD) : '') : '',
+        daysDec: setP({ days: Math.max(1, md.days - 1) }), daysInc: setP({ days: Math.min(14, md.days + 1) }),
+        modeOpts: [seg(!md.timed, 'Any time', setP({ timed: false })), seg(!!md.timed, 'Set time', setP({ timed: true }))],
+        timed: !!md.timed, untimed: !md.timed, hours: hours, minutes: minutes,
+        rangeLabel: md.time + ' – ' + this.hhmm(curM + (md.dur || 60)),
+        popDone: pick({}),
+        durOpts: [[15, '15m'], [30, '30m'], [60, '1h'], [120, '2h']].map((p) => ({
+          key: p[1], label: p[1], pressed: md.dur === p[0] ? 'true' : 'false',
+          bg: md.dur === p[0] ? '#2A2A2F' : 'transparent', fg: md.dur === p[0] ? '#EDEDEF' : '#A1A1A6',
+          pick: setP({ dur: p[0], timed: true })
+        })),
+        prioOpts2: [[null, 'No priority'], ['low', 'Low'], ['med', 'Medium'], ['high', 'High'], ['asap', 'ASAP']].map((p) => item((md.prio || null) === p[0], p[1], '', pick({ prio: p[0] }), this.prioVis(p[0]))),
+        listOpts: [[null, 'No tag']].concat(s.lists.map((k) => [k, k])).map((p) => item((md.tag || null) === p[0], p[1], '', pick({ tag: p[0] }), { sym: p[0] ? '#' : '–' })),
+        disabled: ok ? 'false' : 'true', createOp: ok ? '1' : '0.45',
+        heading: md.editId ? 'Edit task' : 'New task', cta: md.editId ? 'Save' : 'Create task',
+        hint: md.editId ? '↵ save · Esc close' : '↵ create · Esc close', isEdit: !!md.editId
+      };
+    }
+
+    return {
+      navW: s.sbHidden ? '56px' : '232px', navPadX: '10px', navOpc: '1', railClass: s.sbHidden ? 'rail' : '',
+      toggleSidebar: this.toggleSidebar, sbLabel: s.sbHidden ? 'Expand sidebar' : 'Collapse sidebar', sbExpanded: s.sbHidden ? 'false' : 'true', sbRot: s.sbHidden ? '180deg' : '0deg',
+      navY: (4 + Math.min(2, this.secIdx(view)) * 33) + 'px', navOp: view === 'settings' ? '0' : '1',
+      deleteTaskH: this.deleteTaskH, toggleDensity: this.toggleDensity,
+      rootClass: s.cfg.density === 'compact' ? 'compact' : '', densPressed: s.cfg.density === 'compact' ? 'true' : 'false',
+      densBg: s.cfg.density === 'compact' ? '#1E1E22' : 'transparent', densBd: s.cfg.density === 'compact' ? '#3A3A40' : '#26262A', densFg: s.cfg.density === 'compact' ? '#EDEDEF' : '#A1A1A6',
+      hasModal: !!md, nt: nt, cfg: cfg, isSettings: view === 'settings', isApp: view !== 'settings',
+      addingList: s.addingList, listDraft: s.listDraft, startList: this.startList, setListInput: this.setListInput,
+      onListDraft: this.onListDraft, onListKey: this.onListKey, onListBlur: this.onListBlur,
+      setNavA: this.setNavA, setNavS: this.setNavS, backFromSettings: this.backFromSettings, showNew: view !== 'settings',
+      setDlg: this.setDlg, setShade: this.setShade, setNtTitle: this.setNtTitle,
+      ntTitle: this.ntTitle, ntNotes: this.ntNotes, ntKey: this.ntKey, ntEsc: this.ntEsc,
+      ntDayPrev: this.ntDayPrev, ntDayNext: this.ntDayNext, ntDaysDec: this.ntDaysDec, ntDaysInc: this.ntDaysInc,
+      ntTimePrev: this.ntTimePrev, ntTimeNext: this.ntTimeNext, closeModal: this.closeModal, createTaskH: this.createTaskH,
+      moreInbox: this.moreInbox, moreToday: this.moreToday, moreDay: this.moreDay, ntFocus: this.ntFocus,
+      setHourWheel: this.setHourWheel, setMinWheel: this.setMinWheel, onHourScroll: this.onHourScroll, onMinScroll: this.onMinScroll,
+      accent: accent, chromeBg: 'rgba(22,22,24,' + (op / 100).toFixed(2) + ')',
+      title: title, subtitle: sub, crumbs: crumbs, segs: segs, segX: Math.max(0, vi) * 64, segOp: vi < 0 ? '0' : '1',
+      isYear: view === 'year', isMonth: view === 'month', isWeek: view === 'week', isDay: view === 'day',
+      isInbox: view === 'inbox', isTodayV: view === 'today', isCal: vi >= 0,
+      td: view === 'today' ? this.todayData(dimOf, accent) : { groups: [], summary: '', pct: '0%', hours: [], blocks: [], nowTop: '0px', nowLabel: '', gridH: '0px' },
+      onTodayKey: this.onTodayKey,
+      yr: view === 'year' ? this.yearData(a, accent, dimOf) : { months: [] },
+      mo: view === 'month' ? this.monthData(a, dimOf, accent) : { wds: [], weeks: [] },
+      wk: view === 'week' ? this.weekData(ws, dimOf, accent) : { rowsList: [] },
+      dy: view === 'day' ? this.dayData(a, dimOf, accent) : { spans: [], items: [], hours: [], blocks: [], hasNow: false, empty: false },
+      inb: view === 'inbox' ? this.inboxData(dimOf, accent) : { left: [], right: [], schedCount: '' },
+      nv: nv, lists: lists,
+      inboxCount: s.tasks.filter((t) => !t.date && !t.done).length,
+      todayCount: s.tasks.filter((t) => t.date === T && !t.end && !t.done).length,
+      dayDraft: s.dayDraft,
+      prioOpts: [['low', 'Low'], ['med', 'Med'], ['high', 'High'], ['asap', 'ASAP']].map((p) => {
+        const on = s.newPrio === p[0];
+        return Object.assign({
+          key: p[0], label: p[1], title: (on ? 'Clear ' : 'Set ') + this.PRIO_NAME[p[0]] + ' priority for the new task',
+          pressed: on ? 'true' : 'false', bg: on ? '#1E1E22' : 'transparent', fg: on ? '#EDEDEF' : '#8C8C92',
+          pick: () => this.setState({ newPrio: on ? null : p[0] })
+        }, this.prioVis(p[0]));
+      }),
+      setRoot: this.setRoot, setBody: this.setBody, setTitle: this.setTitle, setAdd: this.setAdd,
+      onDayDraft: this.onDayDraft, onDayKey: this.onDayKey, onInboxKey: this.onInboxKey,
+      goPrev: this.goPrev, goNext: this.goNext, goToday: this.goToday, newTask: this.newTask
+    };
+  }
+}
+</script>
+</body>
+</html>

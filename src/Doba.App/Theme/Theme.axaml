@@ -1,0 +1,20 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!-- Placeholder: the design-system package replaces this with tokens + control themes. -->
+  <Styles.Resources>
+    <ResourceDictionary>
+      <FontFamily x:Key="Font.Sans">avares://Doba/Assets/Fonts#Geist</FontFamily>
+      <FontFamily x:Key="Font.Mono">avares://Doba/Assets/Fonts#Geist Mono</FontFamily>
+      <Color x:Key="Color.Window">#0B0B0C</Color>
+      <Color x:Key="Color.Text">#EDEDEF</Color>
+      <SolidColorBrush x:Key="Brush.Window" Color="{StaticResource Color.Window}" />
+      <SolidColorBrush x:Key="Brush.Text" Color="{StaticResource Color.Text}" />
+    </ResourceDictionary>
+  </Styles.Resources>
+  <Style Selector="Window">
+    <Setter Property="Background" Value="{StaticResource Brush.Window}" />
+    <Setter Property="Foreground" Value="{StaticResource Brush.Text}" />
+    <Setter Property="FontFamily" Value="{StaticResource Font.Sans}" />
+    <Setter Property="FontSize" Value="13" />
+  </Style>
+</Styles>

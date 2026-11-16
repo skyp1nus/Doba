@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <RootNamespace>Doba.App</RootNamespace>
+    <AssemblyName>Doba</AssemblyName>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <BuiltInComInteropSupport>false</BuiltInComInteropSupport>
+    <!-- NativeAOT publish (win-x64 in CI); analyzers are on for every build via Directory.Build.props. -->
+    <PublishAot>true</PublishAot>
+    <TrimMode>full</TrimMode>
+    <OptimizationPreference>Speed</OptimizationPreference>
+    <StackTraceSupport>false</StackTraceSupport>
+    <UseSystemResourceKeys>true</UseSystemResourceKeys>
+    <SelfContained Condition="'$(RuntimeIdentifier)' != ''">true</SelfContained>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Doba.Core\Doba.Core.csproj" />
+    <ProjectReference Include="..\Doba.Storage\Doba.Storage.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Avalonia" />
+    <PackageReference Include="Avalonia.Desktop" />
+    <PackageReference Include="CommunityToolkit.Mvvm" />
+  </ItemGroup>
+  <ItemGroup>
+    <AvaloniaResource Include="Assets\**" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Doba.App.Tests" />
+  </ItemGroup>
+</Project>
