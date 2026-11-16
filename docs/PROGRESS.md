@@ -7,15 +7,16 @@ fresh reviewer agent, with no literal colours/durations outside tokens and `Moti
 ## Phase 0 — Bootstrap
 
 - [x] **P0 Bootstrap** — SDK, design read, ARCHITECTURE/PROGRESS/DECISIONS/CLAUDE.md, solution scaffold with analyzers + central versions + CI, headless screenshot test, Core/Storage/App contracts, DemoData contract.
+  - Also done by the lead: `KeyedSync` (row reconciliation), `DayClock` (minute tick + midnight), `--perf/--exit-after-first-frame/--demo/--data` flags.
   - Notes: SDK 11.0.100 from packages.microsoft.com (Debian 12 feed). AOT publish (linux-x64) of the scaffold: 0 warnings.
 
 ## Phase 1 — Foundations
 
-- [ ] **P1.1 Core** — model, `Tags.Normalize`, `DateMath`, `TaskStore` (indexes, events, persistence calls), `Projector` (Inbox, Today, Day, Week, Month, Year, Sidebar, Search), `ScheduleLayout`, `Navigator` + `HeaderProjection`, `TaskDialog` rules, `DemoData` (exact seed incl. mulberry32 fill).
+- [ ] **P1.1 Core** _(in progress, worktree agent)_ — model, `Tags.Normalize`, `DateMath`, `TaskStore` (indexes, events, persistence calls), `Projector` (Inbox, Today, Day, Week, Month, Year, Sidebar, Search), `ScheduleLayout`, `Navigator` + `HeaderProjection`, `TaskDialog` rules, `DemoData` (exact seed incl. mulberry32 fill).
   - Accept: golden tests vs the prototype JS run under Node for all six screen projections + header + dialog labels; unit tests for date math (ISO weeks, Sunday start), store events, navigation; perf test: each projection < 5 ms avg on 10,000 tasks (CI margin ×4).
-- [ ] **P1.2 Storage** — `DobaDatabase` (schema v1, WAL, user_version migrations, write-behind channel, flush on dispose), settings persistence, `Backup.RunDailyAsync` (keep 7), `JsonTransfer` (source-generated).
+- [ ] **P1.2 Storage** _(in progress, worktree agent)_ — `DobaDatabase` (schema v1, WAL, user_version migrations, write-behind channel, flush on dispose), settings persistence, `Backup.RunDailyAsync` (keep 7), `JsonTransfer` (source-generated).
   - Accept: round-trip tests (tasks/tags/settings), crash-safety (dispose flushes), migration from empty, backup rotation, JSON export→import equality, invalid JSON → FormatException; AOT/trim analyzers clean.
-- [ ] **P1.3 Design system** — `Theme/Tokens.axaml`, fonts, ControlThemes (buttons: primary/outline/ghost/icon, checkbox, priority icon, segmented switch with sliding indicator, toggle switch, pill, kbd, text box, scrollbars, menu item), accent as dynamic resources, density resources, `Motion` animator helpers, literal-colour/duration grep test, a controls gallery screenshot.
+- [ ] **P1.3 Design system** _(in progress, worktree agent)_ — `Theme/Tokens.axaml`, fonts, ControlThemes (buttons: primary/outline/ghost/icon, checkbox, priority icon, segmented switch with sliding indicator, toggle switch, pill, kbd, text box, scrollbars, menu item), accent as dynamic resources, density resources, `Motion` animator helpers, literal-colour/duration grep test, a controls gallery screenshot.
   - Accept: gallery screenshot reviewed against the prototype's control styles; grep test passes.
 - [ ] **P1.4 Shell** — `AppServices` composition root, `--demo/--data/--perf` flags, `MainWindow` custom chrome (40 px title bar, search button, caption buttons with element roles), sidebar (Inbox/Today/Calendar with counts, Tags with inline new-tag input + filter, Collapse → 56 px rail, Settings, sliding highlight), page header (crumbs, title+subtitle, Year/Month/Week/Day switch with sliding indicator, Today, ‹ ›, New task), `MainViewModel` with `NavState`, `KeyedSync`, `DayClock`, screen host with placeholder screens, screenshot harness (`ShellFixture`) for every view.
   - Accept: shell screenshot (week placeholder) + collapsed-sidebar screenshot reviewed; navigation unit tests through the VM; New task/keyboard hooks stubbed for Phase 2.
@@ -40,7 +41,7 @@ fresh reviewer agent, with no literal colours/durations outside tokens and `Moti
 
 ## Phase 4 — Platform and remaining features
 
-- [ ] **P4.1 Windows platform** — tray (keep running in tray), autostart (HKCU Run), global hotkey Ctrl+Alt+N, backdrop transparency (Mica/acrylic + tint from the transparency setting), OS animation setting, open folder, completion sound; no-op fallbacks.
+- [ ] **P4.1 Windows platform** _(services in progress, worktree agent; tray/backdrop wiring after the shell)_ — tray (keep running in tray), autostart (HKCU Run), global hotkey Ctrl+Alt+N, backdrop transparency (Mica/acrylic + tint from the transparency setting), OS animation setting, open folder, completion sound; no-op fallbacks.
 - [ ] **P4.2 Data features** — daily backup wiring, Export / Import (file pickers), Open folder, settings persistence wiring, carry-over at startup and midnight, midnight rollover.
 - [ ] **P4.3 Search palette** — Ctrl K overlay in the dialog style, substring search, arrows + Enter opens the task. Screenshot `search.png`.
 - [ ] **P4.4 Keyboard** — N, Ctrl K, G I, G T, 1–4, ← →, Space on focused task, Esc; Tab order with visible focus everywhere.
