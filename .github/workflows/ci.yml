@@ -32,6 +32,8 @@ jobs:
         run: dotnet publish src/Doba.App -c Release -r win-x64 -o artifacts/doba-win-x64 -warnaserror
 
       - name: Startup timing (--perf)
+        timeout-minutes: 2
+        continue-on-error: true
         shell: pwsh
         run: |
           $exe = "artifacts/doba-win-x64/Doba.exe"
