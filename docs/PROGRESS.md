@@ -21,19 +21,19 @@ fresh reviewer agent, with no literal colours/durations outside tokens and `Moti
 - [x] **P1.3 Design system** — `Theme/Tokens.axaml`, fonts, ControlThemes (buttons: primary/outline/ghost/icon, checkbox, priority icon, segmented switch with sliding indicator, toggle switch, pill, kbd, text box, scrollbars, menu item), accent as dynamic resources, density resources, `Motion` animator helpers, literal-colour/duration grep test, a controls gallery screenshot.
   - Notes: tokens in `Theme/Tokens.axaml` (Dark ThemeDictionary, Light-ready), own ControlThemes (no Fluent/Simple), controls (TaskCheckBox, PriorityIcon, SegmentedSwitch, ToggleSwitch, Pill, Kbd, ProgressLine, Card, FocusRing), composition-based `Animator` with cancel/reset, `ThemeService` (accent/density/chrome tint). Gallery `docs/screenshots/controls-gallery.png` compared with the prototype renders by the lead and the implementer; `docs/design-system.md` documents usage. NoLiterals test has a 2-entry allowlist for DayClock's timer arithmetic.
   - Accept: gallery screenshot reviewed against the prototype's control styles; grep test passes.
-- [ ] **P1.4 Shell** — `AppServices` composition root, `--demo/--data/--perf` flags, `MainWindow` custom chrome (40 px title bar, search button, caption buttons with element roles), sidebar (Inbox/Today/Calendar with counts, Tags with inline new-tag input + filter, Collapse → 56 px rail, Settings, sliding highlight), page header (crumbs, title+subtitle, Year/Month/Week/Day switch with sliding indicator, Today, ‹ ›, New task), `MainViewModel` with `NavState`, `KeyedSync`, `DayClock`, screen host with placeholder screens, screenshot harness (`ShellFixture`) for every view.
+- [ ] **P1.4 Shell** _(in progress)_ — `AppServices` composition root, `--demo/--data/--perf` flags, `MainWindow` custom chrome (40 px title bar, search button, caption buttons with element roles), sidebar (Inbox/Today/Calendar with counts, Tags with inline new-tag input + filter, Collapse → 56 px rail, Settings, sliding highlight), page header (crumbs, title+subtitle, Year/Month/Week/Day switch with sliding indicator, Today, ‹ ›, New task), `MainViewModel` with `NavState`, `KeyedSync`, `DayClock`, screen host with placeholder screens, screenshot harness (`ShellFixture`) for every view.
   - Accept: shell screenshot (week placeholder) + collapsed-sidebar screenshot reviewed; navigation unit tests through the VM; New task/keyboard hooks stubbed for Phase 2.
 
 ## Phase 2 — Screens
 
-- [ ] **P2.1 Inbox** — two columns, groups, rows (checkbox, priority, title, tag, meta), Add task row, virtualised list. Screenshot `inbox.png`.
-- [ ] **P2.2 Today** — summary + progress, groups incl. Overdue with "→ Today", In progress, Scheduled, Anytime, Done; schedule timeline with now-line. Screenshot `today.png`.
-- [ ] **P2.3 Week** — two rows of day cells, lanes of multi-day bars, cards, "+N more" from measured size, next-week preview, per-day progress. Screenshot `week.png`.
+- [ ] **P2.1 Inbox** _(in progress)_ — two columns, groups, rows (checkbox, priority, title, tag, meta), Add task row, virtualised list. Screenshot `inbox.png`.
+- [ ] **P2.2 Today** _(in progress)_ — summary + progress, groups incl. Overdue with "→ Today", In progress, Scheduled, Anytime, Done; schedule timeline with now-line. Screenshot `today.png`.
+- [ ] **P2.3 Week** _(in progress)_ — two rows of day cells, lanes of multi-day bars, cards, "+N more" from measured size, next-week preview, per-day progress. Screenshot `week.png`.
 - [ ] **P2.4 Month** — weekday header, week rows with W-numbers, day cells, span bars (2 lanes), "+N more". Screenshot `month.png`.
-- [ ] **P2.5 Year** — 4×3 months with stats, progress, key items, "+N more". Screenshot `year.png`.
+- [ ] **P2.5 Year** _(in progress)_ — 4×3 months with stats, progress, key items, "+N more". Screenshot `year.png`.
 - [ ] **P2.6 Day** — spans, task cards with meta, Add task, timeline. Screenshot `day.png`.
 - [ ] **P2.7 Task dialog** — title, notes, Date/Time/Priority/Tag pills and popovers (mini calendar, quick options, lasts N days; time wheel, duration; priority list; tag list), Enter/Esc/Delete rules, Create disabled until a title. Screenshots `dialog-date.png`, `dialog-time.png`, `dialog-priority.png`, `dialog-tag.png`.
-- [ ] **P2.8 Settings** — settings sidebar, six tabs with live controls bound to `ISettingsService`. Screenshots `settings-*.png` (6).
+- [ ] **P2.8 Settings** _(in progress)_ — settings sidebar, six tabs with live controls bound to `ISettingsService`. Screenshots `settings-*.png` (6).
 - [ ] **P2.9 Density + rail** — compact density across screens; collapsed sidebar rail. Screenshots `density-compact.png`, `sidebar-collapsed.png`.
 
 ## Phase 3 — Motion
