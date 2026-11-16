@@ -19,16 +19,19 @@ public sealed record ScheduleModel(IReadOnlyList<ScheduleBlock> Blocks, int? Now
 public static class ScheduleLayout
 {
     /// <summary>top = round((start − 7h)/60 · hourHeight) + 1.</summary>
-    public static double BlockTop(int startMinutes, double hourHeight) => throw new NotImplementedException();
+    public static double BlockTop(int startMinutes, double hourHeight) =>
+        Math.Floor((startMinutes - ScheduleModel.FirstHour * 60) / 60.0 * hourHeight + 0.5) + 1;
 
     /// <summary>h = max(24, round(duration/60 · hourHeight) − 3).</summary>
-    public static double BlockHeight(int durationMinutes, double hourHeight) => throw new NotImplementedException();
+    public static double BlockHeight(int durationMinutes, double hourHeight) =>
+        Math.Max(24, Math.Floor(durationMinutes / 60.0 * hourHeight + 0.5) - 3);
 
     /// <summary>Blocks shorter than 44 px lay out title and range on one row.</summary>
     public static bool IsCompact(double blockHeight) => blockHeight < 44;
 
     /// <summary>round((now − 7h)/60 · hourHeight).</summary>
-    public static double NowTop(int nowMinutes, double hourHeight) => throw new NotImplementedException();
+    public static double NowTop(int nowMinutes, double hourHeight) =>
+        Math.Floor((nowMinutes - ScheduleModel.FirstHour * 60) / 60.0 * hourHeight + 0.5);
 
     public static double GridHeight(double hourHeight) => 16 * hourHeight + 2;
 }
