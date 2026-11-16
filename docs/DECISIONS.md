@@ -27,3 +27,4 @@ One line per decision, newest last. Format: **topic** — decision (reason).
 - **Animator** — content animations are explicit composition animations (opacity, translation, scale offsets from layout); cancel/reset always restores opacity 1 and identity. Zoom blur not implemented (optional in the spec).
 - **Hover brightness(1.2)** on bars/blocks is approximated with a 4 % white overlay; the dialog backdrop's 3 px blur is not reproduced (shade colour only).
 - **Own ToggleSwitch** — subclass of ToggleButton so the knob moves by render transform, not layout.
+- **CI cost** — owner asked for minimal GitHub Actions use: one windows-latest job, triggered only by `workflow_dispatch` or a pull request to main (docs-only changes skipped), concurrency-cancelled, 30-min timeout; Linux build/test/screenshots run locally in the dev VM instead.
