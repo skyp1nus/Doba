@@ -1,0 +1,87 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:c="using:Doba.App.Controls"
+                    xmlns:m="using:Doba.App.Motion">
+
+  <!-- Task checkbox: ring Border.Check 1.5 px → accent fill (250 ms ease), check mark Text.OnPrimary fades in (200 ms).
+       BoxSize 16 (r4, check 10 px / stroke 3.5), 14 (r4, 9 / 4), 12 (r3, 8 / 4.5), 10 (r3, no mark). -->
+  <ControlTheme x:Key="{x:Type c:TaskCheckBox}" TargetType="c:TaskCheckBox">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Check}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Radius.Check}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="HorizontalAlignment" Value="Left" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Name="PART_Box"
+                Width="{TemplateBinding BoxSize}"
+                Height="{TemplateBinding BoxSize}"
+                CornerRadius="{TemplateBinding CornerRadius}"
+                BorderThickness="1.5"
+                BorderBrush="{TemplateBinding BorderBrush}"
+                Background="{TemplateBinding Background}">
+          <Border.Transitions>
+            <Transitions>
+              <BrushTransition Property="Background" Duration="{x:Static m:MotionTimes.Check}" Easing="{x:Static m:Motion.EaseStd}" />
+              <BrushTransition Property="BorderBrush" Duration="{x:Static m:MotionTimes.Check}" Easing="{x:Static m:Motion.EaseStd}" />
+            </Transitions>
+          </Border.Transitions>
+          <c:Icon Name="PART_Check"
+                  Data="{StaticResource Icon.Check}"
+                  Size="10"
+                  StrokeWidth="3.5"
+                  Foreground="{DynamicResource Brush.Text.OnPrimary}"
+                  HorizontalAlignment="Center"
+                  VerticalAlignment="Center"
+                  Opacity="0">
+            <c:Icon.Transitions>
+              <Transitions>
+                <DoubleTransition Property="Opacity" Duration="{x:Static m:MotionTimes.CheckMark}" Easing="{x:Static m:Motion.EaseStd}" />
+              </Transitions>
+            </c:Icon.Transitions>
+          </c:Icon>
+        </Border>
+      </ControlTemplate>
+    </Setter>
+
+    <Style Selector="^:disabled">
+      <Setter Property="Opacity" Value="{DynamicResource Opacity.Disabled}" />
+    </Style>
+    <Style Selector="^:checked /template/ Border#PART_Box">
+      <Setter Property="Background" Value="{DynamicResource Brush.Accent}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
+    </Style>
+    <Style Selector="^:checked /template/ c|Icon#PART_Check">
+      <Setter Property="Opacity" Value="1" />
+    </Style>
+
+    <Style Selector="^[BoxSize=14] /template/ c|Icon#PART_Check">
+      <Setter Property="Size" Value="9" />
+      <Setter Property="StrokeWidth" Value="4" />
+    </Style>
+    <Style Selector="^[BoxSize=12]">
+      <Setter Property="CornerRadius" Value="{DynamicResource Radius.Badge}" />
+    </Style>
+    <Style Selector="^[BoxSize=12] /template/ c|Icon#PART_Check">
+      <Setter Property="Size" Value="8" />
+      <Setter Property="StrokeWidth" Value="4.5" />
+    </Style>
+    <Style Selector="^[BoxSize=10]">
+      <Setter Property="CornerRadius" Value="{DynamicResource Radius.Badge}" />
+    </Style>
+    <Style Selector="^[BoxSize=10] /template/ c|Icon#PART_Check">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+  </ControlTheme>
+
+  <!-- Priority glyph colours. -->
+  <ControlTheme x:Key="{x:Type c:PriorityIcon}" TargetType="c:PriorityIcon">
+    <Setter Property="OnBrush" Value="{DynamicResource Brush.Priority.On}" />
+    <Setter Property="OffBrush" Value="{DynamicResource Brush.Priority.Off}" />
+    <Setter Property="AsapBrush" Value="{DynamicResource Brush.Warning}" />
+    <Setter Property="AsapForeground" Value="{DynamicResource Brush.Text.OnPrimary}" />
+    <Setter Property="FontFamily" Value="{DynamicResource Font.Sans}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </ControlTheme>
+</ResourceDictionary>

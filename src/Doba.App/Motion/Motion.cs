@@ -21,6 +21,9 @@ public static class Motion
 
     public const int Hover = 180;
     public const int HoverFast = 150;
+
+    /// <summary>200 ms `ease`: sidebar/crumb/link text colour, day-header opacity, bar brightness (prototype `0.2s ease`).</summary>
+    public const int ColorChange = 200;
     public const int Exit = 130;
     public const int DialogExit = 150;
     public const int Pop = 180;

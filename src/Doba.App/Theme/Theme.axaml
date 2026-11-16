@@ -1,20 +1,22 @@
+<!--
+  The app theme: tokens + our own ControlThemes (no Fluent/Simple theme). Included once from App.axaml.
+  See docs/design-system.md for the token table and how to use each control theme.
+-->
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-  <!-- Placeholder: the design-system package replaces this with tokens + control themes. -->
   <Styles.Resources>
     <ResourceDictionary>
-      <FontFamily x:Key="Font.Sans">avares://Doba/Assets/Fonts#Geist</FontFamily>
-      <FontFamily x:Key="Font.Mono">avares://Doba/Assets/Fonts#Geist Mono</FontFamily>
-      <Color x:Key="Color.Window">#0B0B0C</Color>
-      <Color x:Key="Color.Text">#EDEDEF</Color>
-      <SolidColorBrush x:Key="Brush.Window" Color="{StaticResource Color.Window}" />
-      <SolidColorBrush x:Key="Brush.Text" Color="{StaticResource Color.Text}" />
+      <ResourceDictionary.MergedDictionaries>
+        <MergeResourceInclude Source="avares://Doba/Theme/Tokens.axaml" />
+        <MergeResourceInclude Source="avares://Doba/Theme/Icons.axaml" />
+        <MergeResourceInclude Source="avares://Doba/Theme/Controls/Base.axaml" />
+        <MergeResourceInclude Source="avares://Doba/Theme/Controls/Buttons.axaml" />
+        <MergeResourceInclude Source="avares://Doba/Theme/Controls/TaskCheckBox.axaml" />
+        <MergeResourceInclude Source="avares://Doba/Theme/Controls/Switches.axaml" />
+        <MergeResourceInclude Source="avares://Doba/Theme/Controls/Inputs.axaml" />
+        <MergeResourceInclude Source="avares://Doba/Theme/Controls/Surfaces.axaml" />
+      </ResourceDictionary.MergedDictionaries>
     </ResourceDictionary>
   </Styles.Resources>
-  <Style Selector="Window">
-    <Setter Property="Background" Value="{StaticResource Brush.Window}" />
-    <Setter Property="Foreground" Value="{StaticResource Brush.Text}" />
-    <Setter Property="FontFamily" Value="{StaticResource Font.Sans}" />
-    <Setter Property="FontSize" Value="13" />
-  </Style>
+  <StyleInclude Source="avares://Doba/Theme/Styles.axaml" />
 </Styles>

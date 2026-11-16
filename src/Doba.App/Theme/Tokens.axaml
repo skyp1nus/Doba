@@ -1,0 +1,268 @@
+<!--
+  Design tokens. The single source of every colour, radius, font, font size, letter spacing, size and density value.
+  Values are taken from docs/design/design-reference.dc.html (markup lines 1-822 + the script's computed styles).
+  Naming: Color.<Group>.<Role> (Avalonia Color) and Brush.<Group>.<Role> (SolidColorBrush) share the same suffix;
+  numeric tokens are <Kind>.<Role> (Radius.Card, Size.Control) or <Kind>.<px> when the design only names a value
+  (FontSize.13.5). The full table with "where used" is docs/design-system.md.
+
+  Palette colours live in ThemeDictionaries (Dark only today; add a "Light" dictionary with the same keys later) and must
+  be consumed with DynamicResource. Accent and chrome brushes are runtime-mutable (ThemeService) and theme-independent.
+-->
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <ResourceDictionary.ThemeDictionaries>
+    <ResourceDictionary x:Key="Dark">
+      <!-- Backgrounds -->
+      <Color x:Key="Color.Bg.Window">#0B0B0C</Color>
+      <Color x:Key="Color.Bg.Main">#0F0F10</Color>
+      <Color x:Key="Color.Bg.Card">#17171A</Color>
+      <Color x:Key="Color.Bg.CardHover">#1C1C20</Color>
+      <Color x:Key="Color.Bg.SpanDone">#161618</Color>
+      <Color x:Key="Color.Bg.BlockDone">#19191C</Color>
+      <Color x:Key="Color.Bg.Dialog">#141416</Color>
+      <Color x:Key="Color.Bg.DialogFooter">#111113</Color>
+      <Color x:Key="Color.Bg.Popover">#1A1A1D</Color>
+      <Color x:Key="Color.Bg.Selected">#1E1E22</Color>
+      <Color x:Key="Color.Bg.Control">#2A2A2F</Color>
+      <Color x:Key="Color.Bg.Track">#232326</Color>
+      <Color x:Key="Color.Bg.Primary">#E4E4E7</Color>
+      <Color x:Key="Color.Bg.Logo">#EDEDEF</Color>
+      <Color x:Key="Color.Bg.Shade">#99050506</Color>
+      <Color x:Key="Color.Glow.A">#3A3A3E</Color>
+      <Color x:Key="Color.Glow.B">#2A2A2E</Color>
+      <Color x:Key="Color.Glow.C">#303034</Color>
+
+      <!-- White overlays (rgba(255,255,255,a)) -->
+      <Color x:Key="Color.Overlay.Faint">#04FFFFFF</Color>      <!-- 0.015 month cell outside the month -->
+      <Color x:Key="Color.Overlay.Stripe">#06FFFFFF</Color>     <!-- 0.022 next-week preview hatch -->
+      <Color x:Key="Color.Overlay.Cell">#06FFFFFF</Color>       <!-- 0.025 month cell hover -->
+      <Color x:Key="Color.Overlay.Field">#09FFFFFF</Color>      <!-- 0.035 search box, set pill -->
+      <Color x:Key="Color.Overlay.Hover">#0AFFFFFF</Color>      <!-- 0.04 .ob hover, segmented group -->
+      <Color x:Key="Color.Overlay.Selected">#0DFFFFFF</Color>   <!-- 0.05 popover item selected, new-tag input -->
+      <Color x:Key="Color.Overlay.Press">#0FFFFFFF</Color>      <!-- 0.06 caption/menu item hover -->
+      <Color x:Key="Color.Overlay.Edge">#12FFFFFF</Color>       <!-- 0.07 main panel edge, wheel band -->
+      <Color x:Key="Color.Overlay.Active">#14FFFFFF</Color>     <!-- 0.08 nav selection, search border -->
+      <Color x:Key="Color.Overlay.KbdBorder">#1FFFFFFF</Color>  <!-- 0.12 search Ctrl K border -->
+      <Color x:Key="Color.Overlay.OnPrimary">#1F000000</Color>  <!-- rgba(0,0,0,0.12) kbd inside primary button -->
+
+      <!-- Text -->
+      <Color x:Key="Color.Text.Strong">#F4F4F5</Color>
+      <Color x:Key="Color.Text.Primary">#EDEDEF</Color>
+      <Color x:Key="Color.Text.Bright">#D9D9DE</Color>
+      <Color x:Key="Color.Text.Secondary">#C9C9CE</Color>
+      <Color x:Key="Color.Text.Nav">#B4B4BB</Color>
+      <Color x:Key="Color.Text.Tertiary">#A1A1A6</Color>
+      <Color x:Key="Color.Text.Muted">#8C8C92</Color>
+      <Color x:Key="Color.Text.Dim">#77777E</Color>
+      <Color x:Key="Color.Text.Faded">#6E6E75</Color>
+      <Color x:Key="Color.Text.Faint">#55555B</Color>
+      <Color x:Key="Color.Text.OnPrimary">#0E0E0F</Color>
+      <Color x:Key="Color.Text.White">#FFFFFF</Color>
+
+      <!-- Borders -->
+      <Color x:Key="Color.Border.Subtle">#1D1D20</Color>
+      <Color x:Key="Color.Border.Default">#26262A</Color>
+      <Color x:Key="Color.Border.Popover">#2A2A2F</Color>
+      <Color x:Key="Color.Border.Strong">#2E2E33</Color>
+      <Color x:Key="Color.Border.Emphasis">#3A3A40</Color>
+      <Color x:Key="Color.Border.Focus">#4A4A52</Color>
+      <Color x:Key="Color.Border.Danger">#3A2A28</Color>
+      <Color x:Key="Color.Border.Check">#66666E</Color>
+
+      <!-- Status and fixed-meaning colours -->
+      <Color x:Key="Color.Warning">#D9A066</Color>
+      <Color x:Key="Color.Danger">#E8907F</Color>
+      <Color x:Key="Color.CloseHover">#C42B1C</Color>
+      <Color x:Key="Color.Priority.On">#D9D9DE</Color>
+      <Color x:Key="Color.Priority.Off">#3A3A40</Color>
+      <Color x:Key="Color.Knob.Off">#BDBDC3</Color>
+      <Color x:Key="Color.Knob.On">#0E0E0F</Color>
+      <Color x:Key="Color.Slider.Border">#858585</Color>
+      <Color x:Key="Color.Slider.Rail">#3B3B3B</Color>
+
+      <SolidColorBrush x:Key="Brush.Bg.Window" Color="{StaticResource Color.Bg.Window}" />
+      <SolidColorBrush x:Key="Brush.Bg.Main" Color="{StaticResource Color.Bg.Main}" />
+      <SolidColorBrush x:Key="Brush.Bg.Card" Color="{StaticResource Color.Bg.Card}" />
+      <SolidColorBrush x:Key="Brush.Bg.CardHover" Color="{StaticResource Color.Bg.CardHover}" />
+      <SolidColorBrush x:Key="Brush.Bg.SpanDone" Color="{StaticResource Color.Bg.SpanDone}" />
+      <SolidColorBrush x:Key="Brush.Bg.BlockDone" Color="{StaticResource Color.Bg.BlockDone}" />
+      <SolidColorBrush x:Key="Brush.Bg.Dialog" Color="{StaticResource Color.Bg.Dialog}" />
+      <SolidColorBrush x:Key="Brush.Bg.DialogFooter" Color="{StaticResource Color.Bg.DialogFooter}" />
+      <SolidColorBrush x:Key="Brush.Bg.Popover" Color="{StaticResource Color.Bg.Popover}" />
+      <SolidColorBrush x:Key="Brush.Bg.Selected" Color="{StaticResource Color.Bg.Selected}" />
+      <SolidColorBrush x:Key="Brush.Bg.Control" Color="{StaticResource Color.Bg.Control}" />
+      <SolidColorBrush x:Key="Brush.Bg.Track" Color="{StaticResource Color.Bg.Track}" />
+      <SolidColorBrush x:Key="Brush.Bg.Primary" Color="{StaticResource Color.Bg.Primary}" />
+      <SolidColorBrush x:Key="Brush.Bg.Logo" Color="{StaticResource Color.Bg.Logo}" />
+      <SolidColorBrush x:Key="Brush.Bg.Shade" Color="{StaticResource Color.Bg.Shade}" />
+      <SolidColorBrush x:Key="Brush.Glow.A" Color="{StaticResource Color.Glow.A}" />
+      <SolidColorBrush x:Key="Brush.Glow.B" Color="{StaticResource Color.Glow.B}" />
+      <SolidColorBrush x:Key="Brush.Glow.C" Color="{StaticResource Color.Glow.C}" />
+
+      <SolidColorBrush x:Key="Brush.Overlay.Faint" Color="{StaticResource Color.Overlay.Faint}" />
+      <SolidColorBrush x:Key="Brush.Overlay.Stripe" Color="{StaticResource Color.Overlay.Stripe}" />
+      <SolidColorBrush x:Key="Brush.Overlay.Cell" Color="{StaticResource Color.Overlay.Cell}" />
+      <SolidColorBrush x:Key="Brush.Overlay.Field" Color="{StaticResource Color.Overlay.Field}" />
+      <SolidColorBrush x:Key="Brush.Overlay.Hover" Color="{StaticResource Color.Overlay.Hover}" />
+      <SolidColorBrush x:Key="Brush.Overlay.Selected" Color="{StaticResource Color.Overlay.Selected}" />
+      <SolidColorBrush x:Key="Brush.Overlay.Press" Color="{StaticResource Color.Overlay.Press}" />
+      <SolidColorBrush x:Key="Brush.Overlay.Edge" Color="{StaticResource Color.Overlay.Edge}" />
+      <SolidColorBrush x:Key="Brush.Overlay.Active" Color="{StaticResource Color.Overlay.Active}" />
+      <SolidColorBrush x:Key="Brush.Overlay.KbdBorder" Color="{StaticResource Color.Overlay.KbdBorder}" />
+      <SolidColorBrush x:Key="Brush.Overlay.OnPrimary" Color="{StaticResource Color.Overlay.OnPrimary}" />
+
+      <SolidColorBrush x:Key="Brush.Text.Strong" Color="{StaticResource Color.Text.Strong}" />
+      <SolidColorBrush x:Key="Brush.Text.Primary" Color="{StaticResource Color.Text.Primary}" />
+      <SolidColorBrush x:Key="Brush.Text.Bright" Color="{StaticResource Color.Text.Bright}" />
+      <SolidColorBrush x:Key="Brush.Text.Secondary" Color="{StaticResource Color.Text.Secondary}" />
+      <SolidColorBrush x:Key="Brush.Text.Nav" Color="{StaticResource Color.Text.Nav}" />
+      <SolidColorBrush x:Key="Brush.Text.Tertiary" Color="{StaticResource Color.Text.Tertiary}" />
+      <SolidColorBrush x:Key="Brush.Text.Muted" Color="{StaticResource Color.Text.Muted}" />
+      <SolidColorBrush x:Key="Brush.Text.Dim" Color="{StaticResource Color.Text.Dim}" />
+      <SolidColorBrush x:Key="Brush.Text.Faded" Color="{StaticResource Color.Text.Faded}" />
+      <SolidColorBrush x:Key="Brush.Text.Faint" Color="{StaticResource Color.Text.Faint}" />
+      <SolidColorBrush x:Key="Brush.Text.OnPrimary" Color="{StaticResource Color.Text.OnPrimary}" />
+      <SolidColorBrush x:Key="Brush.Text.White" Color="{StaticResource Color.Text.White}" />
+
+      <SolidColorBrush x:Key="Brush.Border.Subtle" Color="{StaticResource Color.Border.Subtle}" />
+      <SolidColorBrush x:Key="Brush.Border.Default" Color="{StaticResource Color.Border.Default}" />
+      <SolidColorBrush x:Key="Brush.Border.Popover" Color="{StaticResource Color.Border.Popover}" />
+      <SolidColorBrush x:Key="Brush.Border.Strong" Color="{StaticResource Color.Border.Strong}" />
+      <SolidColorBrush x:Key="Brush.Border.Emphasis" Color="{StaticResource Color.Border.Emphasis}" />
+      <SolidColorBrush x:Key="Brush.Border.Focus" Color="{StaticResource Color.Border.Focus}" />
+      <SolidColorBrush x:Key="Brush.Border.Danger" Color="{StaticResource Color.Border.Danger}" />
+      <SolidColorBrush x:Key="Brush.Border.Check" Color="{StaticResource Color.Border.Check}" />
+
+      <SolidColorBrush x:Key="Brush.Warning" Color="{StaticResource Color.Warning}" />
+      <SolidColorBrush x:Key="Brush.Danger" Color="{StaticResource Color.Danger}" />
+      <SolidColorBrush x:Key="Brush.CloseHover" Color="{StaticResource Color.CloseHover}" />
+      <SolidColorBrush x:Key="Brush.Priority.On" Color="{StaticResource Color.Priority.On}" />
+      <SolidColorBrush x:Key="Brush.Priority.Off" Color="{StaticResource Color.Priority.Off}" />
+      <SolidColorBrush x:Key="Brush.Knob.Off" Color="{StaticResource Color.Knob.Off}" />
+      <SolidColorBrush x:Key="Brush.Knob.On" Color="{StaticResource Color.Knob.On}" />
+      <SolidColorBrush x:Key="Brush.Slider.Border" Color="{StaticResource Color.Slider.Border}" />
+      <SolidColorBrush x:Key="Brush.Slider.Rail" Color="{StaticResource Color.Slider.Rail}" />
+    </ResourceDictionary>
+  </ResourceDictionary.ThemeDictionaries>
+
+  <!-- Accent swatches (Settings > Appearance) and the runtime accent (ThemeService.ApplyAccent mutates these brushes). -->
+  <Color x:Key="Color.Accent.Mist">#9FB4C7</Color>
+  <Color x:Key="Color.Accent.Sage">#A3B8A0</Color>
+  <Color x:Key="Color.Accent.Sand">#C8B596</Color>
+  <Color x:Key="Color.Accent.Gray">#C4C4CA</Color>
+  <Color x:Key="Color.Accent">#9FB4C7</Color>
+  <SolidColorBrush x:Key="Brush.Accent" Color="#9FB4C7" />
+  <SolidColorBrush x:Key="Brush.Accent10" Color="#1A9FB4C7" />
+  <SolidColorBrush x:Key="Brush.Accent15" Color="#269FB4C7" />
+  <SolidColorBrush x:Key="Brush.Accent25" Color="#409FB4C7" />
+  <!-- Chrome tint over the backdrop: rgba(22,22,24, transparency/100); default 72 %. ThemeService.ApplyChromeOpacity. -->
+  <Color x:Key="Color.Chrome.Base">#161618</Color>
+  <SolidColorBrush x:Key="Brush.Chrome" Color="#B8161618" />
+
+  <!-- Fonts. Geist / Geist Mono are embedded; fallbacks match the prototype's font stacks. -->
+  <FontFamily x:Key="Font.Sans">avares://Doba/Assets/Fonts#Geist, Segoe UI Variable Text, Segoe UI</FontFamily>
+  <FontFamily x:Key="Font.Mono">avares://Doba/Assets/Fonts#Geist Mono, Cascadia Mono, Consolas</FontFamily>
+  <!-- font-variant-numeric: tabular-nums, applied app-wide by the Window theme. -->
+  <FontFeatureCollection x:Key="Font.Features">tnum</FontFeatureCollection>
+
+  <x:Double x:Key="FontSize.10">10</x:Double>
+  <x:Double x:Key="FontSize.10.5">10.5</x:Double>
+  <x:Double x:Key="FontSize.11">11</x:Double>
+  <x:Double x:Key="FontSize.11.5">11.5</x:Double>
+  <x:Double x:Key="FontSize.12">12</x:Double>
+  <x:Double x:Key="FontSize.12.5">12.5</x:Double>
+  <x:Double x:Key="FontSize.13">13</x:Double>
+  <x:Double x:Key="FontSize.13.5">13.5</x:Double>
+  <x:Double x:Key="FontSize.14">14</x:Double>
+  <x:Double x:Key="FontSize.15">15</x:Double>
+  <x:Double x:Key="FontSize.18">18</x:Double>
+  <x:Double x:Key="FontSize.19">19</x:Double>
+  <x:Double x:Key="FontSize.20">20</x:Double>
+  <x:Double x:Key="FontSize.24">24</x:Double>
+  <x:Double x:Key="FontSize.40">40</x:Double>
+
+  <!-- Letter spacing in px (CSS em × font size). -->
+  <x:Double x:Key="LetterSpacing.Label">0.88</x:Double>        <!-- 0.08em @ 11px: mono uppercase labels, crumbs -->
+  <x:Double x:Key="LetterSpacing.LabelSmall">0.84</x:Double>   <!-- 0.08em @ 10.5px: sidebar TAGS / SETTINGS -->
+  <x:Double x:Key="LetterSpacing.Stat">0.66</x:Double>         <!-- 0.06em @ 11px: year month stats -->
+  <x:Double x:Key="LetterSpacing.Title">-0.48</x:Double>       <!-- -0.02em @ 24px: page title -->
+  <x:Double x:Key="LetterSpacing.MonthName">-0.72</x:Double>   <!-- -0.03em @ 24px: year view month names -->
+  <x:Double x:Key="LetterSpacing.DayNumber">-1.6</x:Double>    <!-- -0.04em @ 40px: week day numbers -->
+  <x:Double x:Key="LetterSpacing.DialogTitle">-0.2</x:Double>  <!-- -0.01em @ 20px: task name input -->
+  <x:Double x:Key="LetterSpacing.PopoverTitle">-0.14</x:Double><!-- -0.01em @ 14px: mini calendar month -->
+
+  <!-- Line heights in px (CSS factor × font size). -->
+  <x:Double x:Key="LineHeight.Body">18.2</x:Double>       <!-- 13px × 1.4, the root line height -->
+  <x:Double x:Key="LineHeight.Card">18</x:Double>         <!-- week card title (2-line clamp) -->
+  <x:Double x:Key="LineHeight.DayTitle">18.225</x:Double> <!-- 13.5px × 1.35 day card title -->
+  <x:Double x:Key="LineHeight.Notes">20.925</x:Double>    <!-- 13.5px × 1.55 dialog notes -->
+  <x:Double x:Key="LineHeight.Desc">18.125</x:Double>     <!-- 12.5px × 1.45 settings row description -->
+  <x:Double x:Key="LineHeight.Para">19.375</x:Double>     <!-- 12.5px × 1.55 settings data paragraph -->
+  <x:Double x:Key="LineHeight.Title">27.6</x:Double>      <!-- 24px × 1.15 page title -->
+
+  <!-- Corner radii -->
+  <CornerRadius x:Key="Radius.Bar">2</CornerRadius>
+  <CornerRadius x:Key="Radius.Badge">3</CornerRadius>
+  <CornerRadius x:Key="Radius.Check">4</CornerRadius>
+  <CornerRadius x:Key="Radius.KeyCap">5</CornerRadius>
+  <CornerRadius x:Key="Radius.Item">6</CornerRadius>
+  <CornerRadius x:Key="Radius.Control">7</CornerRadius>
+  <CornerRadius x:Key="Radius.Card">8</CornerRadius>
+  <CornerRadius x:Key="Radius.Panel">10</CornerRadius>
+  <CornerRadius x:Key="Radius.Dialog">12</CornerRadius>
+  <CornerRadius x:Key="Radius.MainPanel">10,0,0,0</CornerRadius>
+
+  <!-- Opacity -->
+  <x:Double x:Key="Opacity.Disabled">0.45</x:Double>   <!-- Create task without a title -->
+  <x:Double x:Key="Opacity.Dimmed">0.3</x:Double>      <!-- tasks of other tags while a tag filter is on -->
+  <x:Double x:Key="Opacity.HeaderHover">0.75</x:Double><!-- .hd:hover day / month headers -->
+
+  <!-- Sizes (px) -->
+  <x:Double x:Key="Size.TitleBar">40</x:Double>
+  <x:Double x:Key="Size.Sidebar">232</x:Double>
+  <x:Double x:Key="Size.Rail">56</x:Double>
+  <x:Double x:Key="Size.Control">30</x:Double>          <!-- header buttons, pills, outline buttons -->
+  <x:Double x:Key="Size.ControlSmall">28</x:Double>     <!-- dialog close, popover buttons, search box -->
+  <x:Double x:Key="Size.Caption.Width">46</x:Double>
+  <x:Double x:Key="Size.NavItem">32</x:Double>
+  <x:Double x:Key="Size.TagItem">30</x:Double>
+  <x:Double x:Key="Size.Segment.Width">62</x:Double>
+  <x:Double x:Key="Size.AddTask">38</x:Double>
+  <x:Double x:Key="Size.Icon">16</x:Double>
+  <x:Double x:Key="Size.Check">16</x:Double>
+  <x:Double x:Key="Size.Dialog.Width">640</x:Double>
+  <x:Double x:Key="Size.Dialog.Top">150</x:Double>
+  <x:Double x:Key="Size.Popover.Date">316</x:Double>
+  <x:Double x:Key="Size.Popover.Time">248</x:Double>
+  <x:Double x:Key="Size.Popover.List">200</x:Double>
+  <x:Double x:Key="Size.Schedule.Width">380</x:Double>
+  <x:Double x:Key="Size.Settings.MaxWidth">780</x:Double>
+  <x:Double x:Key="Size.Today.MaxWidth">760</x:Double>
+  <x:Double x:Key="Size.Day.MaxWidth">680</x:Double>
+  <x:Double x:Key="Size.Scrollbar">8</x:Double>
+
+  <!-- Spacing (Thickness = left,top,right,bottom or horizontal,vertical) -->
+  <Thickness x:Key="Space.PageHeader">28,20,24,18</Thickness>
+  <Thickness x:Key="Space.PageBody">28,16,24,20</Thickness>
+  <Thickness x:Key="Space.Sidebar">10,4,10,10</Thickness>
+  <Thickness x:Key="Space.NavItem">10,0</Thickness>
+  <Thickness x:Key="Space.Button">12,0</Thickness>
+  <Thickness x:Key="Space.ButtonWithKbd">12,0,6,0</Thickness>
+  <Thickness x:Key="Space.Pill">11,0</Thickness>
+  <Thickness x:Key="Space.AddTask">12,0,8,0</Thickness>
+  <Thickness x:Key="Space.SettingsRow">4,14</Thickness>
+  <Thickness x:Key="Space.Dialog.Header">20,0,10,0</Thickness>
+  <Thickness x:Key="Space.Dialog.Body">20,0,20,4</Thickness>
+  <Thickness x:Key="Space.Dialog.Pills">20,10,20,18</Thickness>
+  <Thickness x:Key="Space.Dialog.Footer">20,12,14,12</Thickness>
+
+  <!-- Density (Comfortable defaults; ThemeService.ApplyDensity writes the active set into Application.Resources).
+       Consume with DynamicResource. Compact values: see ThemeService.Compact / docs/design-system.md. -->
+  <Thickness x:Key="Density.RowPadding">4,11</Thickness>      <!-- list rows (Inbox, Today): padding 11px 4px -->
+  <x:Double x:Key="Density.TitleSize">13.5</x:Double>          <!-- .tt list-row / day-card title -->
+  <Thickness x:Key="Density.CardPadding">11,9</Thickness>     <!-- week cards: padding 9px 11px -->
+  <x:Double x:Key="Density.CardMinHeight">36</x:Double>        <!-- week cards -->
+  <x:Double x:Key="Density.CardGap">9</x:Double>               <!-- week card: checkbox ↔ title -->
+  <Thickness x:Key="Density.DayCardPadding">12,11</Thickness> <!-- day cards: padding 11px 12px -->
+  <x:Double x:Key="Density.DayCardGap">6</x:Double>            <!-- day card: title row ↔ meta row -->
+</ResourceDictionary>

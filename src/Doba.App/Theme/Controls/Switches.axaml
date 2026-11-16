@@ -1,0 +1,283 @@
+<!-- ToggleSwitch, SegmentedSwitch (page header), SegmentedControl (settings / popover pill group), Pill. -->
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:c="using:Doba.App.Controls"
+                    xmlns:m="using:Doba.App.Motion"
+                    xmlns:t="using:Doba.App.Theme">
+
+  <!-- Settings switch: 36×20 track r10 padding 2, Bg.Control → accent (200 ms); 16 px knob Knob.Off → Knob.On (200 ms),
+       travels 16 px (composition, 250 ms ease-out, see ToggleSwitch.cs). -->
+  <ControlTheme x:Key="{x:Type c:ToggleSwitch}" TargetType="c:ToggleSwitch">
+    <Setter Property="Background" Value="{DynamicResource Brush.Bg.Control}" />
+    <Setter Property="Foreground" Value="{DynamicResource Brush.Knob.Off}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Radius.Panel}" />
+    <Setter Property="Width" Value="36" />
+    <Setter Property="Height" Value="20" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Name="PART_Track"
+                Background="{TemplateBinding Background}"
+                CornerRadius="{TemplateBinding CornerRadius}"
+                Padding="2">
+          <Border.Transitions>
+            <Transitions>
+              <BrushTransition Property="Background" Duration="{x:Static m:MotionTimes.ToggleTrack}" Easing="{x:Static m:Motion.EaseStd}" />
+            </Transitions>
+          </Border.Transitions>
+          <Border Name="PART_Knob"
+                  Width="16" Height="16"
+                  CornerRadius="8"
+                  HorizontalAlignment="Left"
+                  VerticalAlignment="Center"
+                  Background="{TemplateBinding Foreground}">
+            <Border.Transitions>
+              <Transitions>
+                <BrushTransition Property="Background" Duration="{x:Static m:MotionTimes.ToggleTrack}" Easing="{x:Static m:Motion.EaseStd}" />
+              </Transitions>
+            </Border.Transitions>
+          </Border>
+        </Border>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^:disabled">
+      <Setter Property="Opacity" Value="{DynamicResource Opacity.Disabled}" />
+    </Style>
+    <Style Selector="^:checked /template/ Border#PART_Track">
+      <Setter Property="Background" Value="{DynamicResource Brush.Accent}" />
+    </Style>
+    <Style Selector="^:checked /template/ Border#PART_Knob">
+      <Setter Property="Background" Value="{DynamicResource Brush.Knob.On}" />
+      <Setter Property="RenderTransform" Value="translateX(16px)" />
+    </Style>
+  </ControlTheme>
+
+  <!-- Page header Year/Month/Week/Day: items 62×30, gap 2, sliding Bg.Selected indicator (r7). -->
+  <ControlTheme x:Key="SegmentedSwitchItem" TargetType="ListBoxItem">
+    <Setter Property="Width" Value="{DynamicResource Size.Segment.Width}" />
+    <Setter Property="Height" Value="{DynamicResource Size.Control}" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Tertiary}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Radius.Control}" />
+    <Setter Property="FontSize" Value="{DynamicResource FontSize.12.5}" />
+    <Setter Property="FontWeight" Value="Medium" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <ContentPresenter Name="PART_ContentPresenter"
+                          Background="{TemplateBinding Background}"
+                          CornerRadius="{TemplateBinding CornerRadius}"
+                          Content="{TemplateBinding Content}"
+                          ContentTemplate="{TemplateBinding ContentTemplate}"
+                          HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                          VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                          Foreground="{TemplateBinding Foreground}">
+          <ContentPresenter.Transitions>
+            <Transitions>
+              <BrushTransition Property="Foreground" Duration="{x:Static m:MotionTimes.SegColor}" Easing="{x:Static m:Motion.EaseStd}" />
+            </Transitions>
+          </ContentPresenter.Transitions>
+        </ContentPresenter>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^:disabled">
+      <Setter Property="Opacity" Value="{DynamicResource Opacity.Disabled}" />
+    </Style>
+    <Style Selector="^:selected /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
+    </Style>
+  </ControlTheme>
+
+  <ControlTheme x:Key="{x:Type c:SegmentedSwitch}" TargetType="c:SegmentedSwitch">
+    <Setter Property="ItemContainerTheme" Value="{StaticResource SegmentedSwitchItem}" />
+    <Setter Property="SelectionMode" Value="Single" />
+    <Setter Property="ItemsPanel">
+      <ItemsPanelTemplate>
+        <StackPanel Orientation="Horizontal" Spacing="2" />
+      </ItemsPanelTemplate>
+    </Setter>
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Panel>
+          <Border Name="PART_Indicator"
+                  HorizontalAlignment="Left"
+                  VerticalAlignment="Top"
+                  CornerRadius="{DynamicResource Radius.Control}"
+                  Background="{DynamicResource Brush.Bg.Selected}"
+                  IsHitTestVisible="False">
+            <Border.Transitions>
+              <Transitions>
+                <DoubleTransition Property="Opacity" Duration="{x:Static m:MotionTimes.SegColor}" Easing="{x:Static m:Motion.EaseStd}" />
+              </Transitions>
+            </Border.Transitions>
+          </Border>
+          <ItemsPresenter Name="PART_ItemsPresenter" ItemsPanel="{TemplateBinding ItemsPanel}" />
+        </Panel>
+      </ControlTemplate>
+    </Setter>
+  </ControlTheme>
+
+  <!-- Settings segmented control ("Dark | System", "Monday | Sunday") and popover pill groups ("Any time | Set time",
+       durations): Theme="{StaticResource SegmentedControl}" on a ListBox. Group: Overlay.Hover, r8, padding 2, gap 2;
+       item 26 px, 0 11, r6, 12.5 Medium Text.Tertiary; selected Bg.Control + Text.Primary (200 ms).
+       Variants below: SegmentedControl.Fill and SegmentedControl.Mono. -->
+  <ControlTheme x:Key="SegmentedControlItem" TargetType="ListBoxItem">
+    <Setter Property="Height" Value="26" />
+    <Setter Property="Padding" Value="11,0" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Tertiary}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Radius.Item}" />
+    <Setter Property="FontSize" Value="{DynamicResource FontSize.12.5}" />
+    <Setter Property="FontWeight" Value="Medium" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <ContentPresenter Name="PART_ContentPresenter"
+                          Background="{TemplateBinding Background}"
+                          CornerRadius="{TemplateBinding CornerRadius}"
+                          Padding="{TemplateBinding Padding}"
+                          Content="{TemplateBinding Content}"
+                          ContentTemplate="{TemplateBinding ContentTemplate}"
+                          HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                          VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                          Foreground="{TemplateBinding Foreground}">
+          <ContentPresenter.Transitions>
+            <Transitions>
+              <BrushTransition Property="Background" Duration="{x:Static m:MotionTimes.Segment}" Easing="{x:Static m:Motion.EaseStd}" />
+              <BrushTransition Property="Foreground" Duration="{x:Static m:MotionTimes.Segment}" Easing="{x:Static m:Motion.EaseStd}" />
+            </Transitions>
+          </ContentPresenter.Transitions>
+        </ContentPresenter>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^:disabled">
+      <Setter Property="Opacity" Value="{DynamicResource Opacity.Disabled}" />
+    </Style>
+    <Style Selector="^:selected /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource Brush.Bg.Control}" />
+      <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
+    </Style>
+  </ControlTheme>
+
+  <ControlTheme x:Key="SegmentedControl" TargetType="ListBox">
+    <Setter Property="ItemContainerTheme" Value="{StaticResource SegmentedControlItem}" />
+    <Setter Property="SelectionMode" Value="Single" />
+    <Setter Property="Background" Value="{DynamicResource Brush.Overlay.Hover}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Radius.Card}" />
+    <Setter Property="Padding" Value="2" />
+    <Setter Property="HorizontalAlignment" Value="Left" />
+    <Setter Property="ItemsPanel">
+      <ItemsPanelTemplate>
+        <StackPanel Orientation="Horizontal" Spacing="2" />
+      </ItemsPanelTemplate>
+    </Setter>
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Background="{TemplateBinding Background}"
+                CornerRadius="{TemplateBinding CornerRadius}"
+                Padding="{TemplateBinding Padding}">
+          <ItemsPresenter Name="PART_ItemsPresenter" ItemsPanel="{TemplateBinding ItemsPanel}" />
+        </Border>
+      </ControlTemplate>
+    </Setter>
+  </ControlTheme>
+
+  <!-- Variants: SegmentedControl.Fill (time mode "Any time | Set time": equal-width items stretching, 28 px) and
+       SegmentedControl.Mono (durations "15m 30m 1h 2h": 24 px, 0 8, mono 11, 150 ms). -->
+  <ControlTheme x:Key="SegmentedControlItem.Fill" TargetType="ListBoxItem" BasedOn="{StaticResource SegmentedControlItem}">
+    <Setter Property="Height" Value="{DynamicResource Size.ControlSmall}" />
+    <Setter Property="Padding" Value="0" />
+  </ControlTheme>
+
+  <ControlTheme x:Key="SegmentedControl.Fill" TargetType="ListBox" BasedOn="{StaticResource SegmentedControl}">
+    <Setter Property="ItemContainerTheme" Value="{StaticResource SegmentedControlItem.Fill}" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="ItemsPanel">
+      <ItemsPanelTemplate>
+        <UniformGrid Rows="1" ColumnSpacing="2" />
+      </ItemsPanelTemplate>
+    </Setter>
+  </ControlTheme>
+
+  <ControlTheme x:Key="SegmentedControlItem.Mono" TargetType="ListBoxItem" BasedOn="{StaticResource SegmentedControlItem}">
+    <Setter Property="Height" Value="24" />
+    <Setter Property="Padding" Value="8,0" />
+    <Setter Property="FontFamily" Value="{DynamicResource Font.Mono}" />
+    <Setter Property="FontSize" Value="{DynamicResource FontSize.11}" />
+    <Setter Property="FontWeight" Value="Normal" />
+  </ControlTheme>
+
+  <ControlTheme x:Key="SegmentedControl.Mono" TargetType="ListBox" BasedOn="{StaticResource SegmentedControl}">
+    <Setter Property="ItemContainerTheme" Value="{StaticResource SegmentedControlItem.Mono}" />
+  </ControlTheme>
+
+  <!-- Task dialog pill (see Pill.cs): 30 px, r8, 0 11, 12.5 Medium, gap 7. -->
+  <ControlTheme x:Key="{x:Type c:Pill}" TargetType="c:Pill">
+    <Setter Property="Height" Value="{DynamicResource Size.Control}" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Muted}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Radius.Card}" />
+    <Setter Property="Padding" Value="{DynamicResource Space.Pill}" />
+    <Setter Property="FontSize" Value="{DynamicResource FontSize.12.5}" />
+    <Setter Property="FontWeight" Value="Medium" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Panel>
+          <Rectangle Name="PART_Dash"
+                     RadiusX="{TemplateBinding CornerRadius, Converter={x:Static t:ThemeConverters.TopLeftRadius}}"
+                     RadiusY="{TemplateBinding CornerRadius, Converter={x:Static t:ThemeConverters.TopLeftRadius}}"
+                     Stroke="{DynamicResource Brush.Border.Strong}"
+                     StrokeThickness="1"
+                     StrokeDashArray="3,2" />
+          <ContentPresenter Name="PART_ContentPresenter"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="{TemplateBinding CornerRadius}"
+                            Padding="{TemplateBinding Padding}"
+                            Content="{TemplateBinding Content}"
+                            ContentTemplate="{TemplateBinding ContentTemplate}"
+                            VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                            Foreground="{TemplateBinding Foreground}">
+            <ContentPresenter.Transitions>
+              <Transitions>
+                <BrushTransition Property="Background" Duration="{x:Static m:MotionTimes.Hover}" Easing="{x:Static m:Motion.EaseStd}" />
+                <BrushTransition Property="BorderBrush" Duration="{x:Static m:MotionTimes.Hover}" Easing="{x:Static m:Motion.EaseStd}" />
+                <BrushTransition Property="Foreground" Duration="{x:Static m:MotionTimes.Hover}" Easing="{x:Static m:Motion.EaseStd}" />
+              </Transitions>
+            </ContentPresenter.Transitions>
+          </ContentPresenter>
+        </Panel>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^:disabled">
+      <Setter Property="Opacity" Value="{DynamicResource Opacity.Disabled}" />
+    </Style>
+    <Style Selector="^:set /template/ Rectangle#PART_Dash">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector="^:set /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource Brush.Overlay.Field}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Strong}" />
+      <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
+    </Style>
+    <Style Selector="^:checked /template/ Rectangle#PART_Dash">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector="^:checked /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource Brush.Bg.Selected}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Emphasis}" />
+    </Style>
+    <Style Selector="^:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource Brush.Overlay.Hover}" />
+    </Style>
+  </ControlTheme>
+</ResourceDictionary>

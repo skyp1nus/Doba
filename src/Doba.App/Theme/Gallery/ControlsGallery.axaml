@@ -1,0 +1,597 @@
+<!--
+  Every design-system control in its states, rendered by tests/Doba.App.Tests/DesignSystem/ControlsGalleryTests.cs to
+  docs/screenshots/controls-gallery.png (1600×1000). Doubles as usage examples for the screen work packages.
+  Classes "demo-hover" / "demo-pressed" are turned into :pointerover / :pressed by the test; "FocusDemo" gets keyboard focus.
+-->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:Doba.App.Controls"
+             x:Class="Doba.App.Theme.Gallery.ControlsGallery"
+             Background="{DynamicResource Brush.Bg.Main}">
+  <UserControl.Styles>
+    <Style Selector="TextBlock.h">
+      <Setter Property="FontFamily" Value="{DynamicResource Font.Mono}" />
+      <Setter Property="FontSize" Value="{DynamicResource FontSize.10.5}" />
+      <Setter Property="LetterSpacing" Value="{DynamicResource LetterSpacing.LabelSmall}" />
+      <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Faint}" />
+      <Setter Property="Margin" Value="0,0,0,8" />
+    </Style>
+    <Style Selector="StackPanel.sec">
+      <Setter Property="Spacing" Value="8" />
+      <Setter Property="Margin" Value="0,0,0,22" />
+    </Style>
+    <Style Selector="StackPanel.row">
+      <Setter Property="Orientation" Value="Horizontal" />
+      <Setter Property="Spacing" Value="8" />
+    </Style>
+  </UserControl.Styles>
+
+  <Grid ColumnDefinitions="390,400,400,*" Margin="28,22,24,0">
+
+    <!-- Column 1: buttons ================================================================================== -->
+    <StackPanel Grid.Column="0">
+      <StackPanel Classes="sec">
+        <TextBlock Classes="h" Text="BUTTON.PRIMARY · OUTLINE · ICON · DANGER · SMALL" />
+        <StackPanel Classes="row">
+          <Button Theme="{StaticResource Button.Primary}">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <TextBlock Text="New task" VerticalAlignment="Center" />
+              <c:Kbd Classes="onPrimary" Content="N" />
+            </StackPanel>
+          </Button>
+          <Button Theme="{StaticResource Button.Primary}" IsEnabled="False">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <TextBlock Text="Create task" VerticalAlignment="Center" />
+              <c:Kbd Classes="onPrimary" Content="↵" />
+            </StackPanel>
+          </Button>
+          <Button Theme="{StaticResource Button.Outline}" Content="Today" />
+          <Button Theme="{StaticResource Button.Outline}" Classes="demo-hover" Content="Hover" />
+        </StackPanel>
+        <StackPanel Classes="row">
+          <Button Theme="{StaticResource Button.OutlineIcon}">
+            <c:Icon Data="{StaticResource Icon.Sidebar}" Size="16" StrokeWidth="1.7" />
+          </Button>
+          <Button Theme="{StaticResource Button.OutlineIcon}">
+            <c:Icon Data="{StaticResource Icon.ChevronLeft}" Size="15" StrokeWidth="1.8" />
+          </Button>
+          <Button Theme="{StaticResource Button.OutlineIcon}" Classes="demo-hover">
+            <c:Icon Data="{StaticResource Icon.ChevronRight}" Size="15" StrokeWidth="1.8" />
+          </Button>
+          <Button Theme="{StaticResource Button.Danger}" Content="Delete" />
+          <Button Theme="{StaticResource Button.Outline}" Content="Cancel" Name="FocusDemo" />
+          <Button Theme="{StaticResource Button.Small}" Content="→ Today" VerticalAlignment="Center" />
+        </StackPanel>
+        <StackPanel Classes="row">
+          <Button Width="24" Height="24">
+            <c:Icon Data="{StaticResource Icon.Plus}" Size="13" StrokeWidth="2" />
+          </Button>
+          <Button Width="24" Height="24" Classes="demo-hover">
+            <c:Icon Data="{StaticResource Icon.Plus}" Size="13" StrokeWidth="2" />
+          </Button>
+          <Button Width="28" Height="28">
+            <c:Icon Data="{StaticResource Icon.Close}" Size="14" StrokeWidth="1.8" />
+          </Button>
+          <Button Theme="{StaticResource Button.PopoverDone}" Content="Done" />
+          <Button Theme="{StaticResource Button.Search}" Width="190">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+              <c:Icon Data="{StaticResource Icon.Search}" Size="14" StrokeWidth="1.8" Margin="0,0,8,0" />
+              <TextBlock Grid.Column="1" Text="Search tasks" VerticalAlignment="Center" />
+              <c:Kbd Grid.Column="2" Content="Ctrl K" />
+            </Grid>
+          </Button>
+        </StackPanel>
+      </StackPanel>
+
+      <StackPanel Classes="sec">
+        <TextBlock Classes="h" Text="BUTTON.CAPTION · CAPTIONCLOSE (NORMAL / HOVER)" />
+        <Border Background="{DynamicResource Brush.Bg.Window}" HorizontalAlignment="Left">
+          <StackPanel Orientation="Horizontal">
+            <Button Theme="{StaticResource Button.Caption}">
+              <c:Icon Data="{StaticResource Icon.Caption.Minimize}" ViewBox="10" Size="10" StrokeWidth="1" />
+            </Button>
+            <Button Theme="{StaticResource Button.Caption}" Classes="demo-hover">
+              <c:Icon Data="{StaticResource Icon.Caption.Maximize}" ViewBox="10" Size="10" StrokeWidth="1" />
+            </Button>
+            <Button Theme="{StaticResource Button.CaptionClose}">
+              <c:Icon Data="{StaticResource Icon.Caption.Close}" ViewBox="10" Size="10" StrokeWidth="1" />
+            </Button>
+            <Button Theme="{StaticResource Button.CaptionClose}" Classes="demo-hover">
+              <c:Icon Data="{StaticResource Icon.Caption.Close}" ViewBox="10" Size="10" StrokeWidth="1" />
+            </Button>
+          </StackPanel>
+        </Border>
+      </StackPanel>
+
+      <StackPanel Classes="sec">
+        <TextBlock Classes="h" Text="BUTTON.NAV (NORMAL / HOVER / SELECTED)" />
+        <Border Background="{DynamicResource Brush.Bg.Window}" Width="232" HorizontalAlignment="Left" Padding="10,4">
+          <StackPanel Spacing="1">
+            <Button Theme="{StaticResource Button.Nav}">
+              <Grid ColumnDefinitions="Auto,*,Auto">
+                <c:Icon Data="{StaticResource Icon.Inbox}" Margin="0,0,10,0" />
+                <TextBlock Grid.Column="1" Text="Inbox" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="2" Classes="meta" Text="6" VerticalAlignment="Center" />
+              </Grid>
+            </Button>
+            <Button Theme="{StaticResource Button.Nav}" Classes="demo-hover">
+              <Grid ColumnDefinitions="Auto,*,Auto">
+                <c:Icon Data="{StaticResource Icon.Today}" Margin="0,0,10,0" />
+                <TextBlock Grid.Column="1" Text="Today" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="2" Classes="meta" Text="2" VerticalAlignment="Center" />
+              </Grid>
+            </Button>
+            <Button Theme="{StaticResource Button.Nav}" Classes="selected">
+              <Grid ColumnDefinitions="Auto,*">
+                <c:Icon Data="{StaticResource Icon.Calendar}" Margin="0,0,10,0" />
+                <TextBlock Grid.Column="1" Text="Calendar" VerticalAlignment="Center" />
+              </Grid>
+            </Button>
+            <Button Theme="{StaticResource Button.Nav}" Height="{DynamicResource Size.TagItem}" FontWeight="Normal">
+              <Grid ColumnDefinitions="16,*,Auto" ColumnSpacing="10">
+                <TextBlock Classes="mono muted" Text="#" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="1" Text="work" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="2" Classes="meta" Text="12" VerticalAlignment="Center" />
+              </Grid>
+            </Button>
+          </StackPanel>
+        </Border>
+      </StackPanel>
+
+      <StackPanel Classes="sec">
+        <TextBlock Classes="h" Text="BUTTON.CRUMB · LINK · DASHED (NORMAL / HOVER)" />
+        <StackPanel Classes="row" Spacing="4">
+          <Button Theme="{StaticResource Button.Crumb}" Content="2026" />
+          <TextBlock Classes="label faint" Text="/" VerticalAlignment="Center" />
+          <Button Theme="{StaticResource Button.Crumb}" Classes="demo-hover" Content="NOVEMBER" />
+          <TextBlock Classes="label faint" Text="/" VerticalAlignment="Center" />
+          <TextBlock Classes="label" Text="WEEK 46" VerticalAlignment="Center" Padding="2,0" />
+          <Button Theme="{StaticResource Button.Link}" Content="+2 more" Margin="16,0,0,0" />
+          <Button Theme="{StaticResource Button.Link}" Classes="demo-hover" Content="+3 more" />
+        </StackPanel>
+        <Button Theme="{StaticResource Button.Dashed}" Width="360" HorizontalAlignment="Left">
+          <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+            <c:Icon Data="{StaticResource Icon.Plus}" Size="14" StrokeWidth="1.8" />
+            <TextBlock Grid.Column="1" Text="Add task" VerticalAlignment="Center" />
+            <c:Kbd Grid.Column="2" Classes="muted" Content="N" />
+          </Grid>
+        </Button>
+        <Button Theme="{StaticResource Button.Dashed}" Classes="demo-hover" Width="360" HorizontalAlignment="Left">
+          <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+            <c:Icon Data="{StaticResource Icon.Plus}" Size="14" StrokeWidth="1.8" />
+            <TextBlock Grid.Column="1" Text="Add task" VerticalAlignment="Center" />
+            <c:Kbd Grid.Column="2" Classes="muted" Content="N" />
+          </Grid>
+        </Button>
+      </StackPanel>
+
+      <StackPanel Classes="sec">
+        <TextBlock Classes="h" Text="BUTTON.BAR (OPEN / HOVER / DONE)" />
+        <Button Theme="{StaticResource Button.Bar}" Height="28" Width="360" HorizontalAlignment="Left">
+          <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+            <c:TaskCheckBox BoxSize="14" />
+            <TextBlock Grid.Column="1" Text="Portfolio site redesign" FontSize="{DynamicResource FontSize.12.5}" FontWeight="Medium" VerticalAlignment="Center" />
+            <TextBlock Grid.Column="2" Classes="meta-sm tertiary" Text="4 days →" VerticalAlignment="Center" />
+          </Grid>
+        </Button>
+        <Button Theme="{StaticResource Button.Bar}" Classes="demo-hover" Height="28" Width="360" HorizontalAlignment="Left">
+          <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+            <c:TaskCheckBox BoxSize="14" />
+            <TextBlock Grid.Column="1" Text="Portfolio site redesign" FontSize="{DynamicResource FontSize.12.5}" FontWeight="Medium" VerticalAlignment="Center" />
+            <TextBlock Grid.Column="2" Classes="meta-sm tertiary" Text="4 days →" VerticalAlignment="Center" />
+          </Grid>
+        </Button>
+        <Button Theme="{StaticResource Button.Bar}" Background="{DynamicResource Brush.Bg.SpanDone}" BorderBrush="{DynamicResource Brush.Bg.Track}"
+                Height="28" Width="360" HorizontalAlignment="Left">
+          <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+            <c:TaskCheckBox BoxSize="14" IsChecked="True" />
+            <TextBlock Grid.Column="1" Text="API migration to the new gateway" Foreground="{DynamicResource Brush.Text.Muted}" TextDecorations="Strikethrough"
+                       FontSize="{DynamicResource FontSize.12.5}" FontWeight="Medium" VerticalAlignment="Center" />
+            <TextBlock Grid.Column="2" Classes="meta-sm tertiary" Text="3 days" VerticalAlignment="Center" />
+          </Grid>
+        </Button>
+      </StackPanel>
+
+      <StackPanel Classes="sec">
+        <TextBlock Classes="h" Text="BUTTON.MENU IN BORDER.POPOVER-SM · TOGGLEBUTTON.CHIP" />
+        <StackPanel Classes="row" Spacing="16">
+          <Border Classes="popover-sm" Width="200" Padding="6">
+            <StackPanel>
+              <Button Theme="{StaticResource Button.Menu}">
+                <Grid ColumnDefinitions="14,*,14" ColumnSpacing="10">
+                  <c:PriorityIcon Priority="High" />
+                  <TextBlock Grid.Column="1" Text="High" VerticalAlignment="Center" />
+                </Grid>
+              </Button>
+              <Button Theme="{StaticResource Button.Menu}" Classes="selected">
+                <Grid ColumnDefinitions="14,*,14" ColumnSpacing="10">
+                  <c:PriorityIcon Priority="Asap" />
+                  <TextBlock Grid.Column="1" Text="ASAP" VerticalAlignment="Center" />
+                  <c:Icon Grid.Column="2" Data="{StaticResource Icon.Check}" Size="13" StrokeWidth="2.4" Foreground="{DynamicResource Brush.Accent}" />
+                </Grid>
+              </Button>
+              <Button Theme="{StaticResource Button.Menu}" Classes="demo-hover">
+                <Grid ColumnDefinitions="14,*,14" ColumnSpacing="10">
+                  <TextBlock Classes="mono muted" Text="#" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="1" Text="work" VerticalAlignment="Center" />
+                </Grid>
+              </Button>
+            </StackPanel>
+          </Border>
+          <WrapPanel Width="160" VerticalAlignment="Top" ItemSpacing="4" LineSpacing="4">
+            <ToggleButton Theme="{StaticResource ToggleButton.Chip}" Content="Today" />
+            <ToggleButton Theme="{StaticResource ToggleButton.Chip}" Content="Tomorrow" IsChecked="True" />
+            <ToggleButton Theme="{StaticResource ToggleButton.Chip}">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <TextBlock Text="Next week" VerticalAlignment="Center" />
+                <TextBlock Classes="meta-sm" Text="16 Nov" VerticalAlignment="Center" />
+              </StackPanel>
+            </ToggleButton>
+            <ToggleButton Theme="{StaticResource ToggleButton.Chip}" Classes="demo-hover" Content="No date" />
+          </WrapPanel>
+        </StackPanel>
+      </StackPanel>
+    </StackPanel>
+
+    <!-- Column 2: checkboxes, priority, switches, pills ===================================================== -->
+    <StackPanel Grid.Column="1" Margin="24,0,0,0">
+      <StackPanel Classes="sec">
+        <TextBlock Classes="h" Text="TASKCHECKBOX 16 · 14 · 12 · 10 (OFF / ON) · DISABLED" />
+        <StackPanel Classes="row" Spacing="14">
+          <c:TaskCheckBox />
+          <c:TaskCheckBox IsChecked="True" />
+          <c:TaskCheckBox BoxSize="14" />
+          <c:TaskCheckBox BoxSize="14" IsChecked="True" />
+          <c:TaskCheckBox BoxSize="12" />
+          <c:TaskCheckBox BoxSize="12" IsChecked="True" />
+          <c:TaskCheckBox BoxSize="10" />
+          <c:TaskCheckBox BoxSize="10" IsChecked="True" />
+          <c:TaskCheckBox IsEnabled="False" />
+          <c:TaskCheckBox IsEnabled="False" IsChecked="True" />
+        </StackPanel>
+      </StackPanel>
+
+      <StackPanel Classes="sec">
+        <TextBlock Classes="h" Text="PRIORITYICON NONE…HIGH · ASAP · IN GHOST (HOVER)" />
+        <StackPanel Classes="row" Spacing="14">
+          <c:PriorityIcon Priority="None" />
+          <c:PriorityIcon Priority="Low" />
+          <c:PriorityIcon Priority="Medium" />
+          <c:PriorityIcon Priority="High" />
+          <c:PriorityIcon Priority="Asap" />
+          <Button Width="18" Height="18" CornerRadius="{DynamicResource Radius.Check}" Classes="demo-hover">
+            <c:PriorityIcon Priority="Medium" />
+          </Button>
+        </StackPanel>
+      </StackPanel>
+
+      <StackPanel Classes="sec">
+        <TextBlock Classes="h" Text="SEGMENTEDSWITCH (WEEK / NONE SELECTED)" />
+        <c:SegmentedSwitch SelectedIndex="2" HorizontalAlignment="Left">
+          <ListBoxItem Content="Year" />
+          <ListBoxItem Content="Month" />
+          <ListBoxItem Content="Week" />
+          <ListBoxItem Content="Day" />
+        </c:SegmentedSwitch>
+        <c:SegmentedSwitch SelectedIndex="-1" HorizontalAlignment="Left">
+          <ListBoxItem Content="Year" />
+          <ListBoxItem Content="Month" />
+          <ListBoxItem Content="Week" />
+          <ListBoxItem Content="Day" />
+        </c:SegmentedSwitch>
+      </StackPanel>
+
+      <StackPanel Classes="sec">
+        <TextBlock Classes="h" Text="SEGMENTEDCONTROL · .FILL · .MONO" />
+        <ListBox Theme="{StaticResource SegmentedControl}" SelectedIndex="0">
+          <ListBoxItem Content="Dark" />
+          <ListBoxItem Content="System" />
+        </ListBox>
+        <Border Classes="popover" Width="248" Padding="10" HorizontalAlignment="Left">
+          <StackPanel Spacing="10">
+            <ListBox Theme="{StaticResource SegmentedControl.Fill}" SelectedIndex="1">
+              <ListBoxItem Content="Any time" />
+              <ListBoxItem Content="Set time" />
+            </ListBox>
+            <Grid ColumnDefinitions="*,Auto" Margin="4,0,0,0">
+              <TextBlock Text="Duration" FontSize="{DynamicResource FontSize.12.5}" Classes="tertiary" VerticalAlignment="Center" />
+              <ListBox Grid.Column="1" Theme="{StaticResource SegmentedControl.Mono}" SelectedIndex="2">
+                <ListBoxItem Content="15m" />
+                <ListBoxItem Content="30m" />
+                <ListBoxItem Content="1h" />
+                <ListBoxItem Content="2h" />
+              </ListBox>
+            </Grid>
+          </StackPanel>
+        </Border>
+      </StackPanel>
+
+      <StackPanel Classes="sec">
+        <TextBlock Classes="h" Text="TOGGLESWITCH ON · OFF · DISABLED  ·  SLIDER 72%" />
+        <StackPanel Classes="row" Spacing="14">
+          <c:ToggleSwitch IsChecked="True" />
+          <c:ToggleSwitch />
+          <c:ToggleSwitch IsEnabled="False" />
+          <Slider Width="180" Minimum="0" Maximum="100" Value="72" Margin="16,0,0,0" VerticalAlignment="Center" />
+          <TextBlock Classes="meta tertiary" Text="72%" VerticalAlignment="Center" />
+        </StackPanel>
+      </StackPanel>
+
+      <StackPanel Classes="sec">
+        <TextBlock Classes="h" Text="PILL UNSET · SET · OPEN · HOVER (ON BG.DIALOG)" />
+        <Border Background="{DynamicResource Brush.Bg.Dialog}" Padding="12" CornerRadius="{DynamicResource Radius.Dialog}" HorizontalAlignment="Left">
+          <WrapPanel ItemSpacing="6" LineSpacing="6" Width="360">
+            <c:Pill>
+              <StackPanel Orientation="Horizontal" Spacing="7">
+                <c:Icon Data="{StaticResource Icon.Date}" Size="14" StrokeWidth="1.7" />
+                <TextBlock Text="Date" VerticalAlignment="Center" />
+              </StackPanel>
+            </c:Pill>
+            <c:Pill HasValue="True">
+              <StackPanel Orientation="Horizontal" Spacing="7">
+                <c:Icon Data="{StaticResource Icon.Date}" Size="14" StrokeWidth="1.7" />
+                <TextBlock Text="Tomorrow" VerticalAlignment="Center" />
+              </StackPanel>
+            </c:Pill>
+            <c:Pill HasValue="True" IsChecked="True">
+              <StackPanel Orientation="Horizontal" Spacing="7">
+                <c:Icon Data="{StaticResource Icon.Clock}" Size="14" StrokeWidth="1.7" />
+                <TextBlock Text="14:00 · 1h" VerticalAlignment="Center" />
+              </StackPanel>
+            </c:Pill>
+            <c:Pill HasValue="True">
+              <StackPanel Orientation="Horizontal" Spacing="7">
+                <c:PriorityIcon Priority="High" />
+                <TextBlock Text="High" VerticalAlignment="Center" />
+              </StackPanel>
+            </c:Pill>
+            <c:Pill Classes="demo-hover">
+              <StackPanel Orientation="Horizontal" Spacing="7">
+                <TextBlock Classes="mono muted" Text="#" VerticalAlignment="Center" />
+                <TextBlock Text="Tag" VerticalAlignment="Center" />
+              </StackPanel>
+            </c:Pill>
+          </WrapPanel>
+        </Border>
+      </StackPanel>
+
+      <StackPanel Classes="sec">
+        <TextBlock Classes="h" Text="KBD DEFAULT · .MUTED · .ONPRIMARY · .KEYCAP" />
+        <StackPanel Classes="row" Spacing="10">
+          <c:Kbd Content="Ctrl K" />
+          <c:Kbd Classes="muted" Content="N" />
+          <Border Background="{DynamicResource Brush.Bg.Primary}" CornerRadius="{DynamicResource Radius.Control}" Padding="6">
+            <c:Kbd Classes="onPrimary" Content="N" />
+          </Border>
+          <c:Kbd Classes="keycap" Content="Ctrl" />
+          <c:Kbd Classes="keycap" Content="Alt" />
+          <c:Kbd Classes="keycap" Content="N" />
+        </StackPanel>
+      </StackPanel>
+
+      <StackPanel Classes="sec">
+        <TextBlock Classes="h" Text="PROGRESSLINE 0 · 40% · 100%" />
+        <c:ProgressLine Value="0" Width="300" HorizontalAlignment="Left" />
+        <c:ProgressLine Value="0.4" Width="300" HorizontalAlignment="Left" />
+        <c:ProgressLine Value="1" Width="300" HorizontalAlignment="Left" />
+      </StackPanel>
+    </StackPanel>
+
+    <!-- Column 3: text input, cards, scroll, dialog ========================================================= -->
+    <StackPanel Grid.Column="2" Margin="24,0,0,0">
+      <StackPanel Classes="sec">
+        <TextBlock Classes="h" Text="TEXTBOX .TITLE · .NOTES · FIELD (IN BORDER.DIALOG)" />
+        <Border Classes="dialog" Width="380" HorizontalAlignment="Left">
+          <StackPanel>
+            <Grid ColumnDefinitions="Auto,Auto,*,Auto" Height="46" Margin="20,0,10,0">
+              <TextBlock Classes="section" Text="NEW TASK" VerticalAlignment="Center" />
+              <TextBlock Grid.Column="1" Classes="meta" Margin="8,0" VerticalAlignment="Center">
+                <Run Foreground="{DynamicResource Brush.Text.Faint}" Text="/" />
+                <Run Foreground="{DynamicResource Brush.Text.Tertiary}" Text=" Tomorrow" />
+              </TextBlock>
+              <Button Grid.Column="3" Width="28" Height="28">
+                <c:Icon Data="{StaticResource Icon.Close}" Size="14" StrokeWidth="1.8" />
+              </Button>
+            </Grid>
+            <StackPanel Spacing="6" Margin="20,0,20,4">
+              <TextBox Classes="title" PlaceholderText="Task name" />
+              <TextBox Classes="notes" PlaceholderText="Add notes…" Height="62" />
+            </StackPanel>
+            <StackPanel Spacing="6" Margin="20,0,20,4">
+              <TextBox Classes="title" Text="Prepare slides for the Friday demo" />
+              <TextBox Classes="notes" Height="42" Text="Outline: problem → live demo → next steps. Ask for feedback on the onboarding flow." />
+            </StackPanel>
+            <Border Background="{DynamicResource Brush.Bg.DialogFooter}" CornerRadius="0,0,12,12" Padding="{DynamicResource Space.Dialog.Footer}" Margin="0,10,0,0">
+              <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="8">
+                <TextBlock Classes="meta" Text="↵ create · Esc close" VerticalAlignment="Center" />
+                <Button Grid.Column="2" Theme="{StaticResource Button.Outline}" Content="Cancel" />
+                <Button Grid.Column="3" Theme="{StaticResource Button.Primary}">
+                  <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBlock Text="Create task" VerticalAlignment="Center" />
+                    <c:Kbd Classes="onPrimary" Content="↵" />
+                  </StackPanel>
+                </Button>
+              </Grid>
+            </Border>
+          </StackPanel>
+        </Border>
+        <Border Height="30" Width="208" HorizontalAlignment="Left" CornerRadius="{DynamicResource Radius.Item}"
+                Background="{DynamicResource Brush.Overlay.Selected}" BoxShadow="inset 0 0 0 1 #3A3A40" Padding="10,0">
+          <Grid ColumnDefinitions="16,*" ColumnSpacing="10">
+            <TextBlock Classes="mono muted" Text="#" HorizontalAlignment="Center" VerticalAlignment="Center" />
+            <TextBox Grid.Column="1" PlaceholderText="Tag name" />
+          </Grid>
+        </Border>
+      </StackPanel>
+
+      <StackPanel Classes="sec">
+        <TextBlock Classes="h" Text="CARD (NORMAL / HOVER / DONE) · DAY CARD" />
+        <c:Card Width="310" HorizontalAlignment="Left" MinHeight="{DynamicResource Density.CardMinHeight}">
+          <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{DynamicResource Density.CardGap}">
+            <c:TaskCheckBox VerticalAlignment="Top" Margin="0,1,0,0" />
+            <Button Grid.Column="1" Theme="{StaticResource Button.Title}" FontSize="{DynamicResource FontSize.13}" FontWeight="Medium" Content="Take the bike in for a brake repair" />
+            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
+              <c:PriorityIcon Priority="Medium" />
+              <TextBlock Classes="meta-sm" Text="#work" VerticalAlignment="Center" />
+            </StackPanel>
+          </Grid>
+        </c:Card>
+        <c:Card Width="310" HorizontalAlignment="Left" Classes="demo-hover" MinHeight="{DynamicResource Density.CardMinHeight}">
+          <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{DynamicResource Density.CardGap}">
+            <c:TaskCheckBox VerticalAlignment="Top" Margin="0,1,0,0" />
+            <Button Grid.Column="1" Theme="{StaticResource Button.Title}" Classes="demo-hover" FontSize="{DynamicResource FontSize.13}" FontWeight="Medium" Content="Laundry" />
+            <TextBlock Grid.Column="2" Classes="meta-sm secondary" Text="10:00" VerticalAlignment="Center" />
+          </Grid>
+        </c:Card>
+        <c:Card Width="310" HorizontalAlignment="Left" MinHeight="{DynamicResource Density.CardMinHeight}">
+          <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{DynamicResource Density.CardGap}">
+            <c:TaskCheckBox VerticalAlignment="Top" Margin="0,1,0,0" IsChecked="True" />
+            <Button Grid.Column="1" Theme="{StaticResource Button.Title}" Foreground="{DynamicResource Brush.Text.Muted}" FontSize="{DynamicResource FontSize.13}" FontWeight="Medium">
+              <TextBlock Text="Coffee with Alex" TextDecorations="Strikethrough" />
+            </Button>
+            <TextBlock Grid.Column="2" Classes="meta-sm secondary" Text="18:30" VerticalAlignment="Center" />
+          </Grid>
+        </c:Card>
+      </StackPanel>
+
+      <StackPanel Classes="sec">
+        <TextBlock Classes="h" Text="SCROLLVIEWER (8 PX THUMB) · LIST ROW + DIVIDERS" />
+        <ScrollViewer Height="132" Width="380" HorizontalAlignment="Left" Padding="0,0,12,0">
+          <StackPanel>
+            <Border Classes="divider" />
+            <Grid ColumnDefinitions="Auto,Auto,*,Auto" ColumnSpacing="12" Margin="{DynamicResource Density.RowPadding}">
+              <c:TaskCheckBox />
+              <c:PriorityIcon Grid.Column="1" Priority="Asap" />
+              <Button Grid.Column="2" Theme="{StaticResource Button.Title}" Content="Portfolio site redesign" />
+              <TextBlock Grid.Column="3" Classes="meta" Text="11–14 Nov" VerticalAlignment="Center" />
+            </Grid>
+            <Border Classes="divider" />
+            <Grid ColumnDefinitions="Auto,Auto,*,Auto" ColumnSpacing="12" Margin="{DynamicResource Density.RowPadding}">
+              <c:TaskCheckBox />
+              <c:PriorityIcon Grid.Column="1" Priority="Low" />
+              <Button Grid.Column="2" Theme="{StaticResource Button.Title}" Content="Laundry" />
+              <Button Grid.Column="3" Theme="{StaticResource Button.Small}" Content="→ Today" />
+            </Grid>
+            <Border Classes="divider" />
+            <Grid ColumnDefinitions="Auto,Auto,*,Auto" ColumnSpacing="12" Margin="{DynamicResource Density.RowPadding}">
+              <c:TaskCheckBox IsChecked="True" />
+              <c:PriorityIcon Grid.Column="1" Priority="None" />
+              <Button Grid.Column="2" Theme="{StaticResource Button.Title}" Foreground="{DynamicResource Brush.Text.Muted}">
+                <TextBlock Text="Morning run along the river" TextDecorations="Strikethrough" />
+              </Button>
+              <TextBlock Grid.Column="3" Classes="meta secondary" Text="08:00" VerticalAlignment="Center" />
+            </Grid>
+            <Border Classes="divider" />
+            <Grid ColumnDefinitions="Auto,Auto,*,Auto" ColumnSpacing="12" Margin="{DynamicResource Density.RowPadding}">
+              <c:TaskCheckBox />
+              <c:PriorityIcon Grid.Column="1" Priority="High" />
+              <Button Grid.Column="2" Theme="{StaticResource Button.Title}" Content="Plan next week and set top 3 priorities" />
+              <TextBlock Grid.Column="3" Classes="meta secondary" Text="22:00" VerticalAlignment="Center" />
+            </Grid>
+            <Border Classes="divider" />
+          </StackPanel>
+        </ScrollViewer>
+      </StackPanel>
+    </StackPanel>
+
+    <!-- Column 4: type, headers, icons, accents ================================================================ -->
+    <StackPanel Grid.Column="3" Margin="24,0,0,0">
+      <StackPanel Classes="sec">
+        <TextBlock Classes="h" Text="TYPE" />
+        <StackPanel Orientation="Horizontal" Spacing="8">
+          <TextBlock Classes="title" Text="Week 46" />
+          <TextBlock Classes="subtitle" Text="9 – 15 Nov" VerticalAlignment="Bottom" Margin="0,0,0,3" />
+        </StackPanel>
+        <TextBlock Classes="section warning" Text="OVERDUE" />
+        <TextBlock Classes="section" Text="SCHEDULED" />
+        <TextBlock Classes="label-sm" Text="TAGS" />
+        <TextBlock Classes="meta" Text="6 tasks · 4 done · 2 left · 3 overdue" />
+        <TextBlock Classes="row-label" Text="Accent color" />
+        <TextBlock Classes="desc" Text="Used for today, progress bars and selections." />
+      </StackPanel>
+
+      <StackPanel Classes="sec">
+        <TextBlock Classes="h" Text="BUTTON.HEADER (NORMAL / HOVER)" />
+        <StackPanel Orientation="Horizontal" Spacing="16">
+          <Button Theme="{StaticResource Button.Header}" Width="150" Padding="14,2,14,0">
+            <StackPanel>
+              <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Classes="label" Text="SUN" />
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
+                  <Ellipse Width="6" Height="6" Fill="{DynamicResource Brush.Accent}" VerticalAlignment="Center" />
+                  <TextBlock Classes="label accent" Text="TODAY" />
+                </StackPanel>
+              </Grid>
+              <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,6,0,0">
+                <TextBlock Classes="day-number accent" Text="15" />
+                <TextBlock Classes="tertiary" Text="Nov" VerticalAlignment="Bottom" Margin="0,0,0,4" />
+              </StackPanel>
+              <c:ProgressLine Value="0.67" Margin="0,14,0,0" />
+            </StackPanel>
+          </Button>
+          <Button Theme="{StaticResource Button.Header}" Classes="demo-hover" Width="150" Padding="14,2,14,0">
+            <StackPanel>
+              <TextBlock Classes="label" Text="MON" />
+              <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,6,0,0">
+                <TextBlock Classes="day-number" Text="16" />
+                <TextBlock Classes="tertiary" Text="Nov" VerticalAlignment="Bottom" Margin="0,0,0,4" />
+              </StackPanel>
+              <c:ProgressLine Value="0" Margin="0,14,0,0" />
+            </StackPanel>
+          </Button>
+        </StackPanel>
+      </StackPanel>
+
+      <StackPanel Classes="sec">
+        <TextBlock Classes="h" Text="ICONS" />
+        <WrapPanel ItemSpacing="14" LineSpacing="12" Width="300" HorizontalAlignment="Left">
+          <c:Icon Data="{StaticResource Icon.Inbox}" Foreground="{DynamicResource Brush.Text.Nav}" />
+          <c:Icon Data="{StaticResource Icon.Today}" Foreground="{DynamicResource Brush.Text.Nav}" />
+          <c:Icon Data="{StaticResource Icon.Calendar}" Foreground="{DynamicResource Brush.Text.Nav}" />
+          <c:Icon Data="{StaticResource Icon.SidebarCollapse}" Foreground="{DynamicResource Brush.Text.Nav}" />
+          <c:Icon Data="{StaticResource Icon.Settings}" Foreground="{DynamicResource Brush.Text.Nav}" />
+          <c:Icon Data="{StaticResource Icon.Back}" StrokeWidth="1.7" Foreground="{DynamicResource Brush.Text.Nav}" />
+          <c:Icon Data="{StaticResource Icon.Sidebar}" StrokeWidth="1.7" Foreground="{DynamicResource Brush.Text.Tertiary}" />
+          <c:Icon Data="{StaticResource Icon.Search}" Size="14" StrokeWidth="1.8" Foreground="{DynamicResource Brush.Text.Tertiary}" />
+          <c:Icon Data="{StaticResource Icon.Date}" Size="14" StrokeWidth="1.7" Foreground="{DynamicResource Brush.Text.Tertiary}" />
+          <c:Icon Data="{StaticResource Icon.Clock}" Size="14" StrokeWidth="1.7" Foreground="{DynamicResource Brush.Text.Tertiary}" />
+          <c:Icon Data="{StaticResource Icon.ArrowRight}" Size="11" StrokeWidth="2" Foreground="{DynamicResource Brush.Text.Muted}" />
+          <c:Icon Data="{StaticResource Icon.Tab.Appearance}" Foreground="{DynamicResource Brush.Text.Nav}" />
+          <c:Icon Data="{StaticResource Icon.Tab.Calendar}" Foreground="{DynamicResource Brush.Text.Nav}" />
+          <c:Icon Data="{StaticResource Icon.Tab.Tasks}" Foreground="{DynamicResource Brush.Text.Nav}" />
+          <c:Icon Data="{StaticResource Icon.Tab.Windows}" Foreground="{DynamicResource Brush.Text.Nav}" />
+          <c:Icon Data="{StaticResource Icon.Tab.Data}" Foreground="{DynamicResource Brush.Text.Nav}" />
+          <c:Icon Data="{StaticResource Icon.Tab.Shortcuts}" Foreground="{DynamicResource Brush.Text.Nav}" />
+          <Border Width="18" Height="18" CornerRadius="5" Background="{DynamicResource Brush.Bg.Logo}">
+            <c:Icon Data="{StaticResource Icon.Logo}" Size="11" StrokeWidth="3.2" Foreground="{DynamicResource Brush.Bg.DialogFooter}" />
+          </Border>
+        </WrapPanel>
+      </StackPanel>
+
+      <StackPanel Classes="sec">
+        <TextBlock Classes="h" Text="ACCENT MIST · SAGE · SAND · GRAY · ACCENT10/15/25" />
+        <StackPanel Classes="row" Spacing="10">
+          <Ellipse Width="22" Height="22" Fill="{DynamicResource Brush.Accent}" />
+          <Ellipse Width="22" Height="22">
+            <Ellipse.Fill>
+              <SolidColorBrush Color="{DynamicResource Color.Accent.Sage}" />
+            </Ellipse.Fill>
+          </Ellipse>
+          <Ellipse Width="22" Height="22">
+            <Ellipse.Fill>
+              <SolidColorBrush Color="{DynamicResource Color.Accent.Sand}" />
+            </Ellipse.Fill>
+          </Ellipse>
+          <Ellipse Width="22" Height="22">
+            <Ellipse.Fill>
+              <SolidColorBrush Color="{DynamicResource Color.Accent.Gray}" />
+            </Ellipse.Fill>
+          </Ellipse>
+          <Border Width="40" Height="22" CornerRadius="{DynamicResource Radius.Item}" Background="{DynamicResource Brush.Accent10}" />
+          <Border Width="40" Height="22" CornerRadius="{DynamicResource Radius.Item}" Background="{DynamicResource Brush.Accent15}" />
+          <Border Width="40" Height="22" CornerRadius="{DynamicResource Radius.Item}" Background="{DynamicResource Brush.Accent25}" />
+        </StackPanel>
+      </StackPanel>
+    </StackPanel>
+  </Grid>
+</UserControl>
