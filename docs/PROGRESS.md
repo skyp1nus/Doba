@@ -29,9 +29,9 @@ fresh reviewer agent, with no literal colours/durations outside tokens and `Moti
 - [ ] **P2.1 Inbox** _(screen done + 7 tests, virtualised: 5k undated → <200 realised rows; awaiting shell wiring + review)_ — two columns, groups, rows (checkbox, priority, title, tag, meta), Add task row, virtualised list. Screenshot `inbox.png`.
 - [ ] **P2.2 Today** _(screen done + 8 tests; awaiting shell wiring + review)_ — summary + progress, groups incl. Overdue with "→ Today", In progress, Scheduled, Anytime, Done; schedule timeline with now-line. Screenshot `today.png`.
 - [ ] **P2.3 Week** _(screen done + 12 tests, measured fit; awaiting shell wiring + review)_ — two rows of day cells, lanes of multi-day bars, cards, "+N more" from measured size, next-week preview, per-day progress. Screenshot `week.png`.
-- [ ] **P2.4 Month** — weekday header, week rows with W-numbers, day cells, span bars (2 lanes), "+N more". Screenshot `month.png`.
+- [ ] **P2.4 Month** _(in progress)_ — weekday header, week rows with W-numbers, day cells, span bars (2 lanes), "+N more". Screenshot `month.png`.
 - [ ] **P2.5 Year** _(screen done + 8 tests; awaiting shell wiring, full-window screenshot and review)_ — 4×3 months with stats, progress, key items, "+N more". Screenshot `year.png`.
-- [ ] **P2.6 Day** — spans, task cards with meta, Add task, timeline. Screenshot `day.png`.
+- [ ] **P2.6 Day** _(in progress)_ — spans, task cards with meta, Add task, timeline. Screenshot `day.png`.
 - [ ] **P2.7 Task dialog** _(in progress)_ — title, notes, Date/Time/Priority/Tag pills and popovers (mini calendar, quick options, lasts N days; time wheel, duration; priority list; tag list), Enter/Esc/Delete rules, Create disabled until a title. Screenshots `dialog-date.png`, `dialog-time.png`, `dialog-priority.png`, `dialog-tag.png`.
 - [ ] **P2.8 Settings** _(content done + 29 tests incl. export/import round trip; awaiting shell wiring/theme application, screenshots, review)_ — settings sidebar, six tabs with live controls bound to `ISettingsService`. Screenshots `settings-*.png` (6).
 - [ ] **P2.9 Density + rail** — compact density across screens; collapsed sidebar rail. Screenshots `density-compact.png`, `sidebar-collapsed.png`.
