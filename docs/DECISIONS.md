@@ -31,3 +31,6 @@ One line per decision, newest last. Format: **topic** — decision (reason).
 - **Import** replaces all tasks, tags and settings with no confirmation (the design has none); result/error shown inline under "Export & import".
 - **Theme "System"** is stored but rendered as Dark (no light palette yet).
 - **Strike-through** — Avalonia cannot bind a TextDecoration stroke brush per state cheaply, so done titles toggle the strike and fade the text colour (Motion.Strike); the strike line itself does not fade from transparent.
+- **Inbox virtualisation** — per-group ItemsControls with VirtualizingStackPanel inside one page ScrollViewer (Avalonia 12 virtualises against the effective viewport), so both columns still scroll together as designed.
+- **Week fit measurement** — the view reports each row's height; card heights come from shaping the title with the real font at the real column width (≤2 lines), per density; Core's `WeekMetrics.CardHeight` receives the measured map.
+- **Week compact** — compact density shows as many cards as actually fit (the prototype's compact render reuses its fixed 403 px heuristic).

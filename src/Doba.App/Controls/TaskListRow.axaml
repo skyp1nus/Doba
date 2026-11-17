@@ -1,0 +1,78 @@
+<!--
+  A task in a list (Inbox, Today; Day reuses it): the prototype's <li data-id> row. DataContext = TaskRowViewModel.
+  Layout (flex, gap 12, padding Density.RowPadding = 11 4, 1 px Border.Subtle bottom border):
+  checkbox 16 · priority button 18 (margin-left −4) · title (fills, ellipsis) · [#tag] meta · [→ Today].
+  The title's strike-through is always present; only its colour animates (code-behind, Motion.Strike).
+-->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:Doba.App.Controls"
+             xmlns:m="using:Doba.App.Motion"
+             xmlns:vm="using:Doba.App.ViewModels"
+             x:Class="Doba.App.Controls.TaskListRow"
+             x:DataType="vm:TaskRowViewModel"
+             MetaForeground="{DynamicResource Brush.Text.Secondary}"
+             Classes.done="{Binding Done}"
+             Classes.dimmed="{Binding Dimmed}">
+  <UserControl.Transitions>
+    <Transitions>
+      <DoubleTransition Property="Opacity" Duration="{x:Static m:MotionTimes.Dim}" Easing="{x:Static m:Motion.EaseStd}" />
+    </Transitions>
+  </UserControl.Transitions>
+  <UserControl.Styles>
+    <Style Selector="c|TaskListRow.dimmed">
+      <Setter Property="Opacity" Value="{DynamicResource Opacity.Dimmed}" />
+    </Style>
+    <Style Selector="c|TaskListRow.done Button#PART_Title">
+      <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Muted}" />
+    </Style>
+  </UserControl.Styles>
+
+  <Border Name="PART_Row"
+          Background="Transparent"
+          BorderBrush="{DynamicResource Brush.Border.Subtle}"
+          BorderThickness="0,0,0,1"
+          Padding="{DynamicResource Density.RowPadding}">
+    <Grid ColumnDefinitions="Auto,Auto,*,Auto">
+      <c:TaskCheckBox Name="PART_Check"
+                      IsChecked="{Binding Done, Mode=OneWay}"
+                      Command="{Binding ToggleCommand}"
+                      AutomationProperties.Name="{Binding ToggleLabel}" />
+      <Button Name="PART_Priority"
+              Grid.Column="1"
+              Width="18"
+              Height="18"
+              Margin="8,0,0,0"
+              CornerRadius="{DynamicResource Radius.Check}"
+              Command="{Binding CyclePriorityCommand}"
+              ToolTip.Tip="{Binding PriorityTitle}"
+              AutomationProperties.Name="{Binding PriorityLabel}">
+        <c:PriorityIcon Priority="{Binding Priority}" />
+      </Button>
+      <Button Name="PART_Title"
+              Grid.Column="2"
+              Theme="{StaticResource Button.Title}"
+              Margin="12,0,0,0"
+              HorizontalAlignment="Stretch"
+              Command="{Binding OpenCommand}"
+              AutomationProperties.Name="{Binding Title}">
+        <TextBlock Name="PART_TitleText"
+                   Text="{Binding Title}"
+                   TextTrimming="CharacterEllipsis"
+                   LineHeight="{Binding $self.FontSize, Converter={x:Static c:TaskListRow.CssLineHeight}}" />
+      </Button>
+      <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="12" Margin="12,0,0,0">
+        <TextBlock Name="PART_Tag" Classes="meta" Text="{Binding TagLabel}" IsVisible="{Binding HasTag}" VerticalAlignment="Center" />
+        <TextBlock Name="PART_Meta" Classes="meta" Text="{Binding Meta}" VerticalAlignment="Center"
+                   Foreground="{Binding $parent[c:TaskListRow].MetaForeground}" />
+        <Button Name="PART_Move"
+                Theme="{StaticResource Button.Small}"
+                Content="→ Today"
+                VerticalAlignment="Center"
+                IsVisible="{Binding CanMoveToToday}"
+                Command="{Binding MoveToTodayCommand}"
+                AutomationProperties.Name="{Binding MoveLabel}" />
+      </StackPanel>
+    </Grid>
+  </Border>
+</UserControl>

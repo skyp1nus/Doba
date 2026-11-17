@@ -1,0 +1,154 @@
+<!--
+  One week row (design-reference lines 506–558): four equal day columns — each a background (left separator,
+  next-week hatch), the day header button (86 px), a spacer for the row's multi-day lanes (36 px each) and the
+  card list — with the multi-day bars laid over them in lanes. DataContext: WeekRowViewModel.
+-->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:Doba.App.Controls"
+             xmlns:vm="using:Doba.App.ViewModels"
+             xmlns:w="using:Doba.App.Screens.Week"
+             x:Class="Doba.App.Screens.Week.WeekRowView"
+             x:DataType="w:WeekRowViewModel">
+  <UserControl.Styles>
+    <Style Selector="Border.cell-bg.sep">
+      <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Subtle}" />
+      <Setter Property="BorderThickness" Value="1,0,0,0" />
+    </Style>
+    <!-- Next-week preview: 135° hatch, 6 px Overlay.Stripe / 6 px transparent (period 12 px along the gradient). -->
+    <Style Selector="Border.cell-bg.preview">
+      <Setter Property="Background">
+        <LinearGradientBrush StartPoint="0,0" EndPoint="8.485,8.485" SpreadMethod="Repeat">
+          <GradientStop Offset="0" Color="{DynamicResource Color.Overlay.Stripe}" />
+          <GradientStop Offset="0.5" Color="{DynamicResource Color.Overlay.Stripe}" />
+          <GradientStop Offset="0.5" Color="Transparent" />
+          <GradientStop Offset="1" Color="Transparent" />
+        </LinearGradientBrush>
+      </Setter>
+    </Style>
+    <Style Selector="TextBlock.day-number.today">
+      <Setter Property="Foreground" Value="{DynamicResource Brush.Accent}" />
+    </Style>
+    <Style Selector="TextBlock.day-number.preview">
+      <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Faded}" />
+    </Style>
+    <Style Selector="ItemsControl.preview c|TaskCard">
+      <Setter Property="Faded" Value="True" />
+    </Style>
+    <!-- Item containers are logical children of the ItemsControl. -->
+    <Style Selector="ItemsControl#SpansHost > ContentPresenter" x:DataType="w:WeekSpanViewModel">
+      <Setter Property="w:WeekSpanPanel.Column" Value="{Binding Column}" />
+      <Setter Property="w:WeekSpanPanel.ColumnSpan" Value="{Binding ColumnSpan}" />
+      <Setter Property="w:WeekSpanPanel.Lane" Value="{Binding Lane}" />
+    </Style>
+  </UserControl.Styles>
+
+  <Panel>
+    <!-- Day columns -->
+    <ItemsControl Name="CellsHost" ItemsSource="{Binding Cells}">
+      <ItemsControl.ItemsPanel>
+        <ItemsPanelTemplate>
+          <UniformGrid Columns="4" Rows="1" />
+        </ItemsPanelTemplate>
+      </ItemsControl.ItemsPanel>
+      <ItemsControl.ItemTemplate>
+        <DataTemplate x:DataType="w:WeekCellViewModel">
+          <Panel>
+            <Border Classes="cell-bg" Classes.sep="{Binding HasSeparator}" Classes.preview="{Binding IsPreview}" />
+            <Grid RowDefinitions="Auto,Auto,*">
+              <!-- Day header (.hd): weekday · badge, day number + month, progress line. -->
+              <Button Classes="day-header"
+                      Theme="{StaticResource Button.Header}"
+                      Height="{x:Static w:WeekLayout.HeaderHeight}"
+                      Padding="14,2,14,0"
+                      HorizontalAlignment="Stretch"
+                      Click="OnOpenDay"
+                      AutomationProperties.Name="{Binding OpenLabel}">
+                <StackPanel>
+                  <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Classes="label" Text="{Binding Weekday}" />
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" IsVisible="{Binding IsToday}">
+                      <Ellipse Width="6" Height="6" Fill="{DynamicResource Brush.Accent}" VerticalAlignment="Center" />
+                      <TextBlock Classes="label accent" Text="TODAY" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" IsVisible="{Binding IsPreview}">
+                      <TextBlock Classes="label" Text="NEXT WEEK" />
+                      <c:Icon Data="{StaticResource Icon.ArrowRight}" Size="11" StrokeWidth="2"
+                              Foreground="{DynamicResource Brush.Text.Muted}" VerticalAlignment="Center" />
+                    </StackPanel>
+                  </Grid>
+                  <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,6,0,0">
+                    <!-- Margins: CSS centres the 40 px line box differently; these match the prototype's glyph
+                         positions (number 5 px higher, "Nov" baseline-aligned to it). -->
+                    <TextBlock Classes="day-number"
+                               Margin="0,-5,0,5"
+                               Classes.today="{Binding IsToday}"
+                               Classes.preview="{Binding IsPreview}"
+                               Text="{Binding DayNumber}" />
+                    <TextBlock Classes="tertiary"
+                               FontSize="{DynamicResource FontSize.13}"
+                               Text="{Binding Month}"
+                               VerticalAlignment="Bottom"
+                               Margin="-1,0,0,2" />
+                  </StackPanel>
+                  <c:ProgressLine Value="{Binding Progress}" Margin="0,14,0,0" />
+                </StackPanel>
+              </Button>
+
+              <!-- Room for the row's multi-day lanes. -->
+              <Border Grid.Row="1" Height="{Binding LaneCount, Converter={x:Static w:WeekView.LanesHeight}}" />
+
+              <!-- Cards: padding 10 8 0, gap 6; "Nothing here"; "+N more". -->
+              <Border Grid.Row="2" ClipToBounds="True" Padding="8,10,8,0">
+                <StackPanel VerticalAlignment="Top">
+                  <TextBlock Classes="muted"
+                             Text="Nothing here"
+                             FontSize="{DynamicResource FontSize.12.5}"
+                             Padding="6"
+                             IsVisible="{Binding Empty}" />
+                  <ItemsControl Classes="cards" Classes.preview="{Binding IsPreview}" ItemsSource="{Binding Tasks}">
+                    <ItemsControl.ItemsPanel>
+                      <ItemsPanelTemplate>
+                        <StackPanel Spacing="{x:Static w:WeekLayout.CardGap}" />
+                      </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="vm:TaskRowViewModel">
+                        <c:TaskCard />
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                  <Button Classes="more"
+                          Theme="{StaticResource Button.Link}"
+                          Margin="0,6,0,0"
+                          Content="{Binding MoreLabel}"
+                          IsVisible="{Binding HasMore}"
+                          Click="OnOpenDay" />
+                </StackPanel>
+              </Border>
+            </Grid>
+          </Panel>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+
+    <!-- Multi-day bars over the columns, one 36 px lane each below the headers. -->
+    <ItemsControl Name="SpansHost" ItemsSource="{Binding Spans}">
+      <ItemsControl.ItemsPanel>
+        <ItemsPanelTemplate>
+          <w:WeekSpanPanel />
+        </ItemsPanelTemplate>
+      </ItemsControl.ItemsPanel>
+      <ItemsControl.ItemTemplate>
+        <DataTemplate x:DataType="w:WeekSpanViewModel">
+          <c:SpanBarButton DataContext="{Binding Row}"
+                           Height="{x:Static w:WeekLayout.BarHeight}"
+                           VerticalAlignment="Center"
+                           Inset="{x:Static w:WeekLayout.BarInset}"
+                           ClipStart="{Binding $parent[ContentPresenter].((w:WeekSpanViewModel)DataContext).ClipStart}"
+                           ClipEnd="{Binding $parent[ContentPresenter].((w:WeekSpanViewModel)DataContext).ClipEnd}" />
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+  </Panel>
+</UserControl>

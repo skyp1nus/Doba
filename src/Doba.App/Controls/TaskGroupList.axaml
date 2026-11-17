@@ -1,0 +1,63 @@
+<!--
+  A labelled section of task rows (Inbox, Today): <section> = header (mono 11 uppercase, 0.08em, tone colour; count right)
+  + <ul> with a 1 px Border.Subtle top border and TaskListRows. DataContext = TaskGroupViewModel.
+  Rows are virtualised (VirtualizingStackPanel): only rows inside the enclosing ScrollViewer's viewport are realised.
+-->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:Doba.App.Controls"
+             xmlns:t="using:Doba.App.Theme"
+             xmlns:vm="using:Doba.App.ViewModels"
+             x:Class="Doba.App.Controls.TaskGroupList"
+             x:DataType="vm:TaskGroupViewModel"
+             MetaForeground="{DynamicResource Brush.Text.Secondary}">
+  <UserControl.Styles>
+    <Style Selector="Button#PART_Link">
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="FontSize" Value="{DynamicResource FontSize.11}" />
+      <Setter Property="LetterSpacing" Value="{DynamicResource LetterSpacing.Label}" />
+      <Setter Property="FontWeight" Value="Medium" />
+    </Style>
+    <Style Selector="Button#PART_Link.warning">
+      <Setter Property="Foreground" Value="{DynamicResource Brush.Warning}" />
+    </Style>
+    <Style Selector="Button#PART_Link.accent">
+      <Setter Property="Foreground" Value="{DynamicResource Brush.Accent}" />
+    </Style>
+  </UserControl.Styles>
+
+  <StackPanel>
+    <Grid Name="PART_Header" ColumnDefinitions="*,Auto" Margin="0,0,0,6">
+      <TextBlock Name="PART_Label"
+                 Classes="section"
+                 Classes.warning="{Binding Tone, Converter={x:Static c:TaskGroupList.IsWarning}}"
+                 Classes.accent="{Binding Tone, Converter={x:Static c:TaskGroupList.IsAccent}}"
+                 Text="{Binding Label, Converter={x:Static t:ThemeConverters.Upper}}"
+                 IsVisible="{Binding !HasLink}"
+                 VerticalAlignment="Center" />
+      <Button Name="PART_Link"
+              Theme="{StaticResource Button.Link}"
+              Classes.warning="{Binding Tone, Converter={x:Static c:TaskGroupList.IsWarning}}"
+              Classes.accent="{Binding Tone, Converter={x:Static c:TaskGroupList.IsAccent}}"
+              Content="{Binding Label, Converter={x:Static t:ThemeConverters.Upper}}"
+              IsVisible="{Binding HasLink}"
+              VerticalAlignment="Center"
+              Click="OnLinkClick" />
+      <TextBlock Name="PART_Count" Grid.Column="1" Classes="label" Text="{Binding Count}" VerticalAlignment="Center" />
+    </Grid>
+    <Border BorderBrush="{DynamicResource Brush.Border.Subtle}" BorderThickness="0,1,0,0">
+      <ItemsControl Name="PART_Rows" ItemsSource="{Binding Items}">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate>
+            <VirtualizingStackPanel />
+          </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:TaskRowViewModel">
+            <c:TaskListRow MetaForeground="{Binding $parent[c:TaskGroupList].MetaForeground}" />
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </Border>
+  </StackPanel>
+</UserControl>

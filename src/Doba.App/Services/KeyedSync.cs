@@ -25,6 +25,7 @@ public static class KeyedSync
         Func<TRecord, TViewModel> create,
         Action<TViewModel, TRecord> update)
         where TKey : notnull
+        where TViewModel : class
     {
         ArgumentNullException.ThrowIfNull(target);
         ArgumentNullException.ThrowIfNull(source);
@@ -58,7 +59,13 @@ public static class KeyedSync
             var key = keyOfSource(record);
             if (existing.TryGetValue(key, out var vm))
             {
-                var at = target.IndexOf(vm);
+                // Items before i are already placed, so search from i; in the common (unchanged order) case this is O(1).
+                var at = i;
+                while (at < target.Count && !ReferenceEquals(target[at], vm))
+                {
+                    at++;
+                }
+
                 if (at != i)
                 {
                     target.Move(at, i);

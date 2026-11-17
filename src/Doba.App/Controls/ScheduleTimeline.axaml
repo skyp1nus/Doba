@@ -1,0 +1,134 @@
+<!--
+  The Schedule column of Today and Day (the prototype's <aside aria-label="Schedule"> content): header "SCHEDULE · 07–23",
+  then a 770 px grid with hour lines every 48 px, task blocks (Button.Bar, r7; compact = one line when < 44 px) and the
+  accent now-line (label on Bg.Main, 7 px dot, 1 px line). DataContext = ScheduleViewModel. The screen draws the aside
+  frame (380 px, padding-left 24, Border.Subtle left border).
+-->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:Doba.App.Controls"
+             xmlns:m="using:Doba.App.Motion"
+             x:Class="Doba.App.Controls.ScheduleTimeline"
+             x:DataType="c:ScheduleViewModel">
+  <UserControl.Styles>
+    <Style Selector="Button.block">
+      <Setter Property="CornerRadius" Value="{DynamicResource Radius.Control}" />
+      <Setter Property="Padding" Value="10,7,10,0" />
+      <Setter Property="VerticalAlignment" Value="Top" />
+      <Setter Property="VerticalContentAlignment" Value="Top" />
+    </Style>
+    <Style Selector="Button.block.compact">
+      <Setter Property="Padding" Value="10,0" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.block.done">
+      <Setter Property="Background" Value="{DynamicResource Brush.Bg.BlockDone}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Default}" />
+    </Style>
+    <Style Selector="Button.block.dimmed">
+      <Setter Property="Opacity" Value="{DynamicResource Opacity.Dimmed}" />
+    </Style>
+    <Style Selector="Button.block Grid#PART_Content">
+      <Setter Property="RowSpacing" Value="2" />
+    </Style>
+    <Style Selector="Button.block.compact Grid#PART_Content">
+      <Setter Property="RowSpacing" Value="0" />
+      <Setter Property="ColumnSpacing" Value="10" />
+    </Style>
+    <Style Selector="Button.block TextBlock#PART_Range">
+      <Setter Property="Grid.Row" Value="1" />
+      <Setter Property="Grid.Column" Value="0" />
+    </Style>
+    <Style Selector="Button.block.compact TextBlock#PART_Range">
+      <Setter Property="Grid.Row" Value="0" />
+      <Setter Property="Grid.Column" Value="1" />
+    </Style>
+    <Style Selector="Button.block.done TextBlock#PART_BlockTitle">
+      <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Muted}" />
+      <Setter Property="TextDecorations" Value="Strikethrough" />
+    </Style>
+  </UserControl.Styles>
+
+  <StackPanel Margin="0,0,0,8">
+    <Grid Name="PART_Header" ColumnDefinitions="*,Auto" Margin="0,4,0,14">
+      <TextBlock Classes="section" Text="SCHEDULE" VerticalAlignment="Center" />
+      <TextBlock Grid.Column="1" Classes="label" Text="{x:Static c:ScheduleViewModel.RangeLabel}" VerticalAlignment="Center" />
+    </Grid>
+
+    <Panel Name="PART_Grid" Height="{x:Static c:ScheduleViewModel.GridHeight}" VerticalAlignment="Top">
+      <!-- Hour rows are 16 px tall and centred on their line, so the first/last overhang the grid by 8 px: the layer is
+           extended by that much (and rows are placed at their line's top) so nothing clips them. -->
+      <ItemsControl Name="PART_Hours" ItemsSource="{x:Static c:ScheduleViewModel.Hours}" IsHitTestVisible="False" Margin="0,-8,0,-8">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate>
+            <Panel />
+          </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="c:ScheduleHour">
+            <Grid Margin="{Binding Margin}" Height="16" VerticalAlignment="Top" ColumnDefinitions="40,*" ColumnSpacing="12">
+              <TextBlock Classes="meta" Text="{Binding Label}" VerticalAlignment="Center" />
+              <Border Grid.Column="1" Classes="divider" VerticalAlignment="Center" />
+            </Grid>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+
+      <ItemsControl Name="PART_Blocks" ItemsSource="{Binding Blocks}">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate>
+            <Panel />
+          </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="c:ScheduleBlockViewModel">
+            <Button Theme="{StaticResource Button.Bar}"
+                    Classes="block"
+                    Classes.compact="{Binding IsCompact}"
+                    Classes.done="{Binding Row.Done}"
+                    Classes.dimmed="{Binding Row.Dimmed}"
+                    Margin="{Binding Margin}"
+                    Height="{Binding Height}"
+                    Command="{Binding Row.ToggleCommand}"
+                    AutomationProperties.Name="{Binding Row.ToggleLabel}">
+              <Button.Transitions>
+                <Transitions>
+                  <DoubleTransition Property="Opacity" Duration="{x:Static m:MotionTimes.Dim}" Easing="{x:Static m:Motion.EaseStd}" />
+                </Transitions>
+              </Button.Transitions>
+              <Grid Name="PART_Content" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" HorizontalAlignment="Left">
+                <TextBlock Name="PART_BlockTitle"
+                           Text="{Binding Row.Title}"
+                           FontSize="{DynamicResource FontSize.12.5}"
+                           FontWeight="Medium"
+                           TextTrimming="CharacterEllipsis"
+                           VerticalAlignment="Center"
+                           LineHeight="{Binding $self.FontSize, Converter={x:Static c:TaskListRow.CssLineHeight}}" />
+                <TextBlock Name="PART_Range"
+                           Classes="meta-sm tertiary"
+                           Text="{Binding Range}"
+                           VerticalAlignment="Center"
+                           LineHeight="{Binding $self.FontSize, Converter={x:Static c:TaskListRow.CssLineHeight}}" />
+              </Grid>
+            </Button>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+
+      <Grid Name="PART_Now"
+            IsVisible="{Binding HasNow}"
+            Margin="{Binding NowMargin}"
+            Height="16"
+            VerticalAlignment="Top"
+            ColumnDefinitions="46,Auto,*"
+            ZIndex="2"
+            IsHitTestVisible="False">
+        <Border Background="{DynamicResource Brush.Bg.Main}">
+          <TextBlock Classes="meta accent" Text="{Binding NowLabel}" LineHeight="16" VerticalAlignment="Center" />
+        </Border>
+        <Ellipse Grid.Column="1" Width="7" Height="7" Margin="4,0,0,0" Fill="{DynamicResource Brush.Accent}" VerticalAlignment="Center" />
+        <Border Grid.Column="2" Height="1" Background="{DynamicResource Brush.Accent}" VerticalAlignment="Center" />
+      </Grid>
+    </Panel>
+  </StackPanel>
+</UserControl>

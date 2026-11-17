@@ -26,9 +26,9 @@ fresh reviewer agent, with no literal colours/durations outside tokens and `Moti
 
 ## Phase 2 — Screens
 
-- [ ] **P2.1 Inbox** _(in progress)_ — two columns, groups, rows (checkbox, priority, title, tag, meta), Add task row, virtualised list. Screenshot `inbox.png`.
-- [ ] **P2.2 Today** _(in progress)_ — summary + progress, groups incl. Overdue with "→ Today", In progress, Scheduled, Anytime, Done; schedule timeline with now-line. Screenshot `today.png`.
-- [ ] **P2.3 Week** _(in progress)_ — two rows of day cells, lanes of multi-day bars, cards, "+N more" from measured size, next-week preview, per-day progress. Screenshot `week.png`.
+- [ ] **P2.1 Inbox** _(screen done + 7 tests, virtualised: 5k undated → <200 realised rows; awaiting shell wiring + review)_ — two columns, groups, rows (checkbox, priority, title, tag, meta), Add task row, virtualised list. Screenshot `inbox.png`.
+- [ ] **P2.2 Today** _(screen done + 8 tests; awaiting shell wiring + review)_ — summary + progress, groups incl. Overdue with "→ Today", In progress, Scheduled, Anytime, Done; schedule timeline with now-line. Screenshot `today.png`.
+- [ ] **P2.3 Week** _(screen done + 12 tests, measured fit; awaiting shell wiring + review)_ — two rows of day cells, lanes of multi-day bars, cards, "+N more" from measured size, next-week preview, per-day progress. Screenshot `week.png`.
 - [ ] **P2.4 Month** — weekday header, week rows with W-numbers, day cells, span bars (2 lanes), "+N more". Screenshot `month.png`.
 - [ ] **P2.5 Year** _(screen done + 8 tests; awaiting shell wiring, full-window screenshot and review)_ — 4×3 months with stats, progress, key items, "+N more". Screenshot `year.png`.
 - [ ] **P2.6 Day** — spans, task cards with meta, Add task, timeline. Screenshot `day.png`.

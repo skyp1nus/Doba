@@ -1,0 +1,165 @@
+using Avalonia;
+using CommunityToolkit.Mvvm.ComponentModel;
+using Doba.App.Controls;
+using Doba.App.ViewModels;
+using Doba.Core.Navigation;
+using Doba.Core.Projections;
+using Doba.Core.Time;
+
+namespace Doba.App.Screens.Week;
+
+/// <summary>
+/// The Week screen (the app's main view): two rows of four day columns, multi-day bars in lanes, task cards and
+/// "+N more", projected by <see cref="Projector.Week"/> for <see cref="ScreenViewModel.State"/>'s anchor.
+/// <para>
+/// Measurement: the view reports each row's content height and width after layout (<see cref="ReportLayout"/>); the
+/// projection then fits cards with <see cref="WeekMetrics"/> built from those heights and a card-height function that
+/// shapes each title with the real font at the real column width (<see cref="WeekCardMeasurer"/>). Until the first
+/// report it uses <see cref="WeekMetrics.Design"/>. Re-projection reconciles rows → cells (by date) → cards and bars
+/// (by task id) through <c>KeyedSync</c>, so completing a task only changes that card's properties.
+/// </para>
+/// </summary>
+public sealed partial class WeekViewModel : ScreenViewModel, ITaskEntranceSource
+{
+    /// <summary>Row size changes smaller than this (layout rounding) do not re-project.</summary>
+    private const double Tolerance = 0.5;
+
+    private readonly WeekCardMeasurer _measurer = new();
+    private readonly Dictionary<string, double> _heights = new(StringComparer.Ordinal);
+    private readonly Func<string, double> _cardHeight;
+    private readonly Func<TaskRow, TaskRowViewModel> _createRow;
+
+    private double _row1Height = double.NaN;
+    private double _row2Height = double.NaN;
+    private double _rowWidth = double.NaN;
+    private DateOnly _projectedToday;
+
+    public WeekViewModel(ScreenServices services)
+        : base(services)
+    {
+        _createRow = r => new TaskRowViewModel(r, Services.Actions, Services.Commands);
+        _cardHeight = CardHeight;
+        Row1 = new WeekRowViewModel(_createRow);
+        Row2 = new WeekRowViewModel(_createRow);
+    }
+
+    /// <summary>Days 1–4 of the week.</summary>
+    public WeekRowViewModel Row1 { get; }
+
+    /// <summary>Days 5–7 and the next week's first day (preview).</summary>
+    public WeekRowViewModel Row2 { get; }
+
+    /// <summary>First day of the shown week.</summary>
+    [ObservableProperty] public partial DateOnly WeekStart { get; private set; }
+
+    /// <summary>The last projection (row 2 comes from the second row's metrics).</summary>
+    public WeekModel? Model { get; private set; }
+
+    /// <summary>True once the view has reported its size; before that the design metrics (403 px rows) are used.</summary>
+    public bool IsMeasured => !double.IsNaN(_rowWidth);
+
+    /// <summary>The metrics the last projection used for row <paramref name="row"/> (0 or 1).</summary>
+    public WeekMetrics MetricsFor(int row)
+    {
+        if (!IsMeasured)
+        {
+            return WeekMetrics.Design();
+        }
+
+        return new WeekMetrics(row == 0 ? _row1Height : _row2Height, _cardHeight, WeekLayout.CardGap, WeekLayout.MoreReserve,
+            WeekLayout.HeaderHeight, WeekLayout.LaneHeight);
+    }
+
+    /// <summary>
+    /// Called by the view after a layout pass with the content height of each row grid and their width. Re-projects
+    /// (while active) only when something changed by more than half a pixel, so the resulting card changes — which
+    /// never change the row sizes — cannot loop.
+    /// </summary>
+    public void ReportLayout(double row1Height, double row2Height, double rowWidth)
+    {
+        if (row1Height <= 0 || row2Height <= 0 || rowWidth <= 0)
+        {
+            return;
+        }
+
+        if (Near(row1Height, _row1Height) && Near(row2Height, _row2Height) && Near(rowWidth, _rowWidth))
+        {
+            return;
+        }
+
+        _row1Height = row1Height;
+        _row2Height = row2Height;
+        _rowWidth = rowWidth;
+        RefreshIfActive();
+    }
+
+    /// <summary>Day header or "+N more" clicked: zoom into the day from <paramref name="origin"/> (fractions of the view).</summary>
+    public void OpenDay(DateOnly date, Point? origin) => Services.Commands.ZoomTo(AppView.Day, date, origin);
+
+    public bool ConsumeEntrance(long id) => Services.Actions.ConsumeEntrance(id);
+
+    protected override void Refresh()
+    {
+        if (State is null)
+        {
+            return;
+        }
+
+        var ctx = Context;
+        _projectedToday = ctx.Today;
+        var anchor = State.Anchor;
+        WeekModel model;
+        if (!IsMeasured)
+        {
+            model = Projector.Week(Store, ctx, anchor, WeekMetrics.Design());
+        }
+        else
+        {
+            PrepareCardHeights(DateMath.WeekStart(anchor, ctx.WeekStart));
+            var first = Projector.Week(Store, ctx, anchor, MetricsFor(0));
+            model = Near(_row1Height, _row2Height)
+                ? first
+                : first with { Rows = [first.Rows[0], Projector.Week(Store, ctx, anchor, MetricsFor(1)).Rows[1]] };
+        }
+
+        Model = model;
+        WeekStart = model.WeekStart;
+        Row1.Update(model.Rows[0]);
+        Row2.Update(model.Rows[1]);
+    }
+
+    /// <summary>The week view only depends on the date, not the minute.</summary>
+    protected override void OnMinute()
+    {
+        if (Services.App.DayClock.Today != _projectedToday)
+        {
+            RefreshIfActive();
+        }
+    }
+
+    /// <summary>Measures every single-day task of the shown week and the preview day once per refresh (cached).</summary>
+    private void PrepareCardHeights(DateOnly weekStart)
+    {
+        var cardWidth = Math.Floor(_rowWidth / 4) - (2 * WeekLayout.ListPaddingX);
+        _measurer.Configure(cardWidth, Services.App.Settings.Current.Density);
+        _heights.Clear();
+        for (var i = 0; i <= 7; i++)
+        {
+            foreach (var t in Store.OnDate(weekStart.AddDays(i)))
+            {
+                var h = _measurer.Height(t.Title, t.Tag, t.Time, t.Priority != Core.Model.Priority.None);
+
+                // Two tasks with the same title: fit with the taller card (the projection asks by title).
+                if (!_heights.TryGetValue(t.Title, out var known) || h > known)
+                {
+                    _heights[t.Title] = h;
+                }
+            }
+        }
+    }
+
+    private double CardHeight(string title) =>
+        _heights.TryGetValue(title, out var h) ? h : _measurer.Height(title, null, null, false);
+
+    private static bool Near(double a, double b) => Math.Abs(a - b) < Tolerance;
+}

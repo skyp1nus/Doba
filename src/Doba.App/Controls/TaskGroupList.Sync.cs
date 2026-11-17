@@ -1,0 +1,70 @@
+using System.Collections.ObjectModel;
+using Doba.App.Services;
+using Doba.App.Shell;
+using Doba.App.ViewModels;
+using Doba.Core.Projections;
+
+namespace Doba.App.Controls;
+
+/// <summary>
+/// Reconciles one or more bound group collections (Inbox: left + right column; Today: one list) with a fresh projection.
+/// Groups are matched by <see cref="TaskGroup.Key"/> and rows by task id through <see cref="KeyedSync"/>, like
+/// <see cref="TaskGroupViewModel.Update"/> — and, in addition, a row that changes group (an Inbox task completed moves
+/// from "ASAP" to "Done", a Today task from "Anytime" to "Done", "→ Today" moves it out of "Overdue") keeps its
+/// <see cref="TaskRowViewModel"/> instance: it is moved into the new group before that group is updated.
+/// </summary>
+public static class TaskGroupSync
+{
+    private static readonly TaskRow[] s_noRows = [];
+
+    /// <summary>Applies each (bound collection, projected groups) pair. Task ids must be unique across all pairs.</summary>
+    public static void Apply(
+        IReadOnlyList<(ObservableCollection<TaskGroupViewModel> Target, IReadOnlyList<TaskGroup> Source)> lists,
+        TaskActions actions,
+        IAppCommands commands)
+    {
+        ArgumentNullException.ThrowIfNull(lists);
+
+        // 1. Where every existing row view-model lives now.
+        var owner = new Dictionary<long, (TaskGroupViewModel Group, TaskRowViewModel Row)>();
+        foreach (var (target, _) in lists)
+        {
+            foreach (var group in target)
+            {
+                foreach (var row in group.Items)
+                {
+                    owner[row.Id] = (group, row);
+                }
+            }
+        }
+
+        // 2. Groups by key (new ones start empty so step 3 can move existing rows into them).
+        foreach (var (target, source) in lists)
+        {
+            KeyedSync.Apply(target, source, g => g.Key, vm => vm.Key,
+                g => new TaskGroupViewModel(g with { Items = s_noRows }, actions, commands),
+                static (_, _) => { });
+        }
+
+        // 3. Move row view-models that changed group, then let each group reconcile its rows (update / create / order).
+        foreach (var (target, source) in lists)
+        {
+            for (var i = 0; i < source.Count; i++)
+            {
+                var group = target[i];
+                foreach (var row in source[i].Items)
+                {
+                    if (owner.TryGetValue(row.Id, out var from) && !ReferenceEquals(from.Group, group))
+                    {
+                        // The old group may already have dropped it (it was reconciled earlier in this pass).
+                        from.Group.Items.Remove(from.Row);
+                        group.Items.Add(from.Row);
+                        owner[row.Id] = (group, from.Row);
+                    }
+                }
+
+                group.Update(source[i]);
+            }
+        }
+    }
+}

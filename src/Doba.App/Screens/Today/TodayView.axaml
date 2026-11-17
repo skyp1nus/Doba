@@ -1,0 +1,51 @@
+<!--
+  Today content area (design-reference.dc.html lines 353–423): a scrolling list (padding-right 32, content max-width 760,
+  sections gap 28, padding 6 0 24) — summary + 2 px progress, "Add task", groups — and the Schedule aside (380 px,
+  padding-left 24, Border.Subtle left border).
+-->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:Doba.App.Controls"
+             xmlns:local="using:Doba.App.Screens.Today"
+             xmlns:vm="using:Doba.App.ViewModels"
+             x:Class="Doba.App.Screens.Today.TodayView"
+             x:DataType="local:TodayViewModel"
+             c:TaskListRow.Entrances="{Binding Entrances}">
+  <Grid ColumnDefinitions="*,Auto">
+    <ScrollViewer Name="PART_Scroll" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Padding="0,0,32,0">
+      <Grid>
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*" MaxWidth="{StaticResource Size.Today.MaxWidth}" />
+          <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+        <StackPanel Name="PART_List" Spacing="28" Margin="0,6,0,24">
+          <StackPanel>
+            <TextBlock Name="PART_Summary" Classes="mono tertiary" FontSize="{DynamicResource FontSize.12}" Text="{Binding Summary}" />
+            <c:ProgressLine Name="PART_Progress" Value="{Binding Progress}" Margin="0,12,0,0" />
+          </StackPanel>
+          <c:AddTaskButton Name="PART_AddTask" Command="{Binding AddTaskCommand}" />
+          <ItemsControl ItemsSource="{Binding Groups}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <StackPanel Spacing="28" />
+              </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:TaskGroupViewModel">
+                <c:TaskGroupList />
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </Grid>
+    </ScrollViewer>
+
+    <Border Name="PART_Aside"
+            Grid.Column="1"
+            BorderBrush="{DynamicResource Brush.Border.Subtle}"
+            BorderThickness="1,0,0,0"
+            Padding="24,0,0,0">
+      <c:ScheduleTimeline Name="PART_Schedule" Width="{DynamicResource Size.Schedule.Width}" DataContext="{Binding Schedule}" />
+    </Border>
+  </Grid>
+</UserControl>

@@ -1,0 +1,52 @@
+<!--
+  Inbox content area (design-reference.dc.html lines 200–269): one page scroll (thin scrollbar, padding-right 12) with two
+  equal columns, gap 48, each a column of sections (gap 28, padding 6 0 24). Left: "Add task" + undated groups (meta in
+  Text.Muted). Right: "Scheduled · N open" header (38 px) + dated groups (meta in Text.Secondary, day labels are links).
+-->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:Doba.App.Controls"
+             xmlns:local="using:Doba.App.Screens.Inbox"
+             xmlns:vm="using:Doba.App.ViewModels"
+             x:Class="Doba.App.Screens.Inbox.InboxView"
+             x:DataType="local:InboxViewModel"
+             c:TaskListRow.Entrances="{Binding Entrances}">
+  <ScrollViewer Name="PART_Scroll" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Padding="0,0,12,0">
+    <Grid ColumnDefinitions="*,*" ColumnSpacing="48">
+      <StackPanel Name="PART_Left" Spacing="28" Margin="0,6,0,24">
+        <c:AddTaskButton Name="PART_AddTask" Command="{Binding AddTaskCommand}" />
+        <ItemsControl ItemsSource="{Binding Left}">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <StackPanel Spacing="28" />
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:TaskGroupViewModel">
+              <c:TaskGroupList MetaForeground="{DynamicResource Brush.Text.Muted}" />
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+
+      <StackPanel Name="PART_Right" Grid.Column="1" Spacing="28" Margin="0,6,0,24">
+        <Grid Height="{DynamicResource Size.AddTask}" ColumnDefinitions="*,Auto">
+          <TextBlock Classes="mono tertiary" FontSize="{DynamicResource FontSize.12}" Text="Scheduled" VerticalAlignment="Center" />
+          <TextBlock Grid.Column="1" Classes="meta" Text="{Binding ScheduledCount}" VerticalAlignment="Center" />
+        </Grid>
+        <ItemsControl ItemsSource="{Binding Right}">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <StackPanel Spacing="28" />
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:TaskGroupViewModel">
+              <c:TaskGroupList />
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+    </Grid>
+  </ScrollViewer>
+</UserControl>
