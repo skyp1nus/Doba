@@ -295,6 +295,19 @@
   <!-- == Dialog == -->
 
   <!-- == TimeWheel == -->
+  <!-- Time popover wheel (design lines 731-743). Band colour = Brush.Overlay.Edge, radius = Radius.Card,
+       numbers FontSize.15 / FontSize.19, ":" FontSize.18 (the dialog's). -->
+  <x:Double x:Key="Size.TimeWheel.Row">34</x:Double>       <!-- row height; 5 rows visible -->
+  <x:Double x:Key="Size.TimeWheel.Width">70</x:Double>     <!-- one column -->
+  <x:Double x:Key="Size.TimeWheel.Height">170</x:Double>   <!-- 5 × 34; padding 68 top/bottom centres first/last -->
+  <Thickness x:Key="Space.TimeWheel.Band">4,0</Thickness>   <!-- shared band inset in the popover (left/right 4) -->
+  <!-- mask-image: linear-gradient(to bottom, transparent 0%, #000 32%, #000 68%, transparent 100%); only alpha counts. -->
+  <LinearGradientBrush x:Key="Brush.TimeWheel.Mask" StartPoint="0%,0%" EndPoint="0%,100%">
+    <GradientStop Offset="0" Color="#00000000" />
+    <GradientStop Offset="0.32" Color="#FF000000" />
+    <GradientStop Offset="0.68" Color="#FF000000" />
+    <GradientStop Offset="1" Color="#00000000" />
+  </LinearGradientBrush>
 
   <!-- == Search == -->
 </ResourceDictionary>
