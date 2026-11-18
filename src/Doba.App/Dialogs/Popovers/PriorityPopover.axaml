@@ -20,15 +20,18 @@
                   Classes.selected="{Binding IsSelected}"
                   Command="{Binding PickCommand}"
                   AutomationProperties.Name="{Binding Label}">
-            <Grid ColumnDefinitions="14,*,14" ColumnSpacing="{DynamicResource Space.Dialog.MenuGap}">
-              <c:PriorityIcon Priority="{Binding Priority}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{DynamicResource Space.Dialog.MenuGap}">
+              <Panel Width="{DynamicResource Size.Dialog.MenuIcon}">
+                <c:PriorityIcon Priority="{Binding Priority}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+              </Panel>
               <TextBlock Grid.Column="1" Text="{Binding Label}" VerticalAlignment="Center" />
-              <c:Icon Grid.Column="2"
-                      Data="{StaticResource Icon.Check}"
-                      Size="{DynamicResource Size.Dialog.MenuTick}"
-                      StrokeWidth="2.4"
-                      Foreground="{DynamicResource Brush.Accent}"
-                      IsVisible="{Binding IsSelected}" />
+              <Panel Grid.Column="2" Width="{DynamicResource Size.Dialog.MenuIcon}">
+                <c:Icon Data="{StaticResource Icon.Check}"
+                        Size="{DynamicResource Size.Dialog.MenuTick}"
+                        StrokeWidth="2.4"
+                        Foreground="{DynamicResource Brush.Accent}"
+                        IsVisible="{Binding IsSelected}" />
+              </Panel>
             </Grid>
           </Button>
         </DataTemplate>

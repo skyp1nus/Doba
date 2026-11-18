@@ -175,13 +175,86 @@ public class AppLifecycleTests
     {
         using var folder = new TempFolder();
         using var h = LifecycleHarness.Disk(folder, Clock(), settings: s => s with { KeepInTray = true });
+        using var stall = WriterStall.Hold(folder.Location);
         h.App.Store.Add(Task("written on hide", Day));
 
         h.Window.Close();
-        h.Lifecycle.LastFlush.Wait();
 
+        // The hide started a flush, and that flush is what waits for the held write (not a writer that happened to be quick).
+        var flush = h.Lifecycle.LastFlush;
         Assert.True(h.Lifecycle.IsHiddenInTray);
+        Assert.False(flush.IsCompleted);
+        Assert.DoesNotContain("written on hide", folder.TitlesOnDisk());
+
+        stall.Release();
+        Assert.True(flush.Wait(TimeSpan.FromSeconds(20)));
         Assert.Contains("written on hide", folder.TitlesOnDisk());
+    }
+
+    [AvaloniaFact]
+    public void A_save_still_in_its_exit_animation_is_written_before_the_hide_flush()
+    {
+        using var folder = new TempFolder();
+        using var held = new HeldOverlayExit();
+        using var h = LifecycleHarness.Disk(folder, Clock(), settings: s => s with { KeepInTray = true });
+        h.Vm.OpenOverlay(new TaskDialogViewModel(h.Vm.Screens,
+            Doba.Core.Editing.TaskDialog.NewDraft(Day, Day, Priority.None) with { Title = "saved, then hidden" }));
+        h.Settle();
+        var dialog = Assert.IsType<TaskDialogViewModel>(h.Vm.Overlay);
+        using var stall = WriterStall.Hold(folder.Location);
+        dialog.CommitCommand.Execute(null);
+        Assert.True(held.IsRunning);                                                // the exit is still playing
+
+        h.Window.Close();                                                           // to the tray at once
+
+        Assert.Null(h.Vm.Overlay);
+        Assert.Contains(h.App.Store.All, t => t.Title == "saved, then hidden");
+        var flush = h.Lifecycle.LastFlush;
+        Assert.False(flush.IsCompleted);
+        stall.Release();
+        Assert.True(flush.Wait(TimeSpan.FromSeconds(20)));
+        Assert.Contains("saved, then hidden", folder.TitlesOnDisk());
+    }
+
+    [AvaloniaFact]
+    public void A_save_still_in_its_exit_animation_survives_closing_the_window_and_quitting()
+    {
+        using var folder = new TempFolder();
+        using var held = new HeldOverlayExit();
+        using (var h = LifecycleHarness.Disk(folder, Clock(), settings: s => s with { KeepInTray = false }))
+        {
+            h.Vm.OpenOverlay(new TaskDialogViewModel(h.Vm.Screens,
+                Doba.Core.Editing.TaskDialog.NewDraft(Day, Day, Priority.None) with { Title = "saved, then closed" }));
+            h.Settle();
+            Assert.IsType<TaskDialogViewModel>(h.Vm.Overlay).CommitCommand.Execute(null);
+            Assert.True(held.IsRunning);
+
+            h.Window.Close();                                                       // tray off: quits
+            h.Settle();
+            Assert.Equal(1, h.ShutdownCalls);
+            h.Exit();
+        }
+
+        Assert.Contains("saved, then closed", folder.Reopen().Tasks.Select(t => t.Title));
+    }
+
+    [AvaloniaFact]
+    public void A_dialog_that_is_merely_open_when_the_app_quits_writes_nothing()
+    {
+        using var folder = new TempFolder();
+        using (var h = LifecycleHarness.Disk(folder, Clock(), settings: s => s with { KeepInTray = false }))
+        {
+            h.Vm.OpenOverlay(new TaskDialogViewModel(h.Vm.Screens,
+                Doba.Core.Editing.TaskDialog.NewDraft(Day, Day, Priority.None) with { Title = "typed, never saved" }));
+            h.Settle();
+
+            h.Window.Close();
+            h.Settle();
+            Assert.Null(h.Vm.Overlay);
+            h.Exit();
+        }
+
+        Assert.DoesNotContain("typed, never saved", folder.Reopen().Tasks.Select(t => t.Title));
     }
 
     [AvaloniaFact]
@@ -225,11 +298,20 @@ public class AppLifecycleTests
     {
         using var folder = new TempFolder();
         using var h = LifecycleHarness.Disk(folder, Clock());
+        using var stall = WriterStall.Hold(folder.Location);
         h.App.Store.Add(Task("session end", Day));
+        Assert.DoesNotContain("session end", folder.TitlesOnDisk());
 
+        // The write is held for a while; only a handler that waits for it finds it on disk when it returns.
+        var release = System.Threading.Tasks.Task.Run(async () =>
+        {
+            await System.Threading.Tasks.Task.Delay(400).ConfigureAwait(false);
+            stall.Release();
+        });
         h.Lifecycle.OnShutdownRequested(null, new Avalonia.Controls.ApplicationLifetimes.ShutdownRequestedEventArgs());
 
         Assert.Contains("session end", folder.TitlesOnDisk());
+        release.Wait();
     }
 
     [AvaloniaFact]

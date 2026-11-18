@@ -131,6 +131,14 @@ public partial class MainWindow : Window
         ShellComposition.Transitions.Launch(targets);
     }
 
+    /// <summary>Any close (to the tray, Quit, Windows session end) first finishes an overlay whose exit animation is still
+    /// running, so a task saved a moment before is in the store before the Closing handlers hide the window and flush.</summary>
+    protected override void OnClosing(WindowClosingEventArgs e)
+    {
+        ViewModel?.CompletePendingOverlayClose();
+        base.OnClosing(e);
+    }
+
     private void OnClosed(object? sender, EventArgs e)
     {
         Opened -= OnOpened;

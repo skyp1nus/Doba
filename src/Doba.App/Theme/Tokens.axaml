@@ -351,6 +351,10 @@
   <x:Double x:Key="Space.Shell.ActionGap">6</x:Double>      <!-- right-hand group and calendar group gap 6px -->
   <Thickness x:Key="Space.Shell.Actions">12,0,0,0</Thickness> <!-- the header's 12px gap before the right-hand group -->
   <x:Double x:Key="Size.Shell.ChevronIcon">15</x:Double>    <!-- ‹ › icons 15×15 -->
+  <!-- The 15 px chevron in the 28 px button content sits at a 6.5 px offset; the reference draws the SVG there unsnapped,
+       its ink a pixel left of where the icon's round-half-up centring (PixelCentring) puts it. A 1 px end margin makes
+       the slack even (offset 6), which lands the ink on the reference columns (prev 1398-1402, next 1434-1438). -->
+  <Thickness x:Key="Space.Shell.Chevron">0,0,1,0</Thickness>
   <x:Double x:Key="Space.Shell.NewTaskGap">8</x:Double>     <!-- "New task" ↔ N key cap gap 8px -->
   <!-- Avalonia's layout rounding rounds a text block's width up to whole pixels (Chromium keeps 34.x px for "Today",
        6.3 px for the mono "N"), which made Today and the N key cap 1 px wider than the design and pushed the right-aligned
@@ -377,6 +381,11 @@
   <Thickness x:Key="Sidebar.SettingsLabel">10,18,10,6</Thickness>    <!-- SETTINGS small caps -->
   <Thickness x:Key="Sidebar.Footer">10,16,10,6</Thickness>           <!-- "Doba 0.1 · local only" -->
   <x:Double x:Key="Sidebar.LabelLineHeight">14.7</x:Double>           <!-- 10.5 px × the root line height 1.4 -->
+  <!-- Tag-row count and rail initial: Avalonia centres these short lines a pixel below where Chromium puts them in the
+       30 px row / 16 px badge (measured against week.png and sidebar-collapsed.png); a 1 px bottom inset lifts them.
+       Both are also drawn at their fractional x (TextAlignment inside the rounded-up box), as Chromium does. -->
+  <Thickness x:Key="Sidebar.TagCount">0,0,0,1</Thickness>
+  <Thickness x:Key="Sidebar.RailInitial">0,0,0,1</Thickness>
 
   <!-- == Month == -->
   <!-- Month grid (design-reference lines 456–501). Row/lane/chip heights live in Screens/Month/MonthLayout.cs because

@@ -112,6 +112,78 @@ internal sealed class LifecycleHarness : IDisposable
     }
 }
 
+/// <summary>Keeps every overlay exit animation running until disposed (a save waits in its exit, OnClosed not yet run).</summary>
+internal sealed class HeldOverlayExit : IOverlayTransitions, IDisposable
+{
+    private readonly IOverlayTransitions _previous = OverlayHost.OverlayTransitions;
+
+    public HeldOverlayExit() => OverlayHost.OverlayTransitions = this;
+
+    /// <summary>An exit was started and its done callback has not been called.</summary>
+    public bool IsRunning { get; private set; }
+
+    public void Open(Avalonia.Controls.Control shade, Avalonia.Controls.Control panel)
+    {
+    }
+
+    public void Close(Avalonia.Controls.Control shade, Avalonia.Controls.Control panel, Action done) => IsRunning = true;
+
+    public void Dispose() => OverlayHost.OverlayTransitions = _previous;
+}
+
+/// <summary>
+/// Holds the database's write lock from a second connection (<c>BEGIN IMMEDIATE</c>), so the app's background writer
+/// cannot commit anything until <see cref="Release"/>: its own transaction waits on the busy lock (Microsoft.Data.Sqlite
+/// retries for the command timeout, 30 s). Readers still see the last committed state (WAL). With it a test can tell
+/// "the app waited for its writes" from "the writer happened to be quick".
+/// </summary>
+internal sealed class WriterStall : IDisposable
+{
+    private readonly Microsoft.Data.Sqlite.SqliteConnection _connection;
+    private readonly Lock _gate = new();
+    private bool _released;
+
+    private WriterStall(Microsoft.Data.Sqlite.SqliteConnection connection) => _connection = connection;
+
+    public static WriterStall Hold(DataLocation location)
+    {
+        var connection = new Microsoft.Data.Sqlite.SqliteConnection(new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder
+        {
+            DataSource = location.DatabasePath,
+            Mode = Microsoft.Data.Sqlite.SqliteOpenMode.ReadWrite,
+            Pooling = false,
+        }.ToString());
+        connection.Open();
+        using var begin = connection.CreateCommand();
+        begin.CommandText = "BEGIN IMMEDIATE;";
+        begin.ExecuteNonQuery();
+        return new WriterStall(connection);
+    }
+
+    /// <summary>Lets the writer go on (any thread; once).</summary>
+    public void Release()
+    {
+        lock (_gate)
+        {
+            if (_released)
+            {
+                return;
+            }
+
+            _released = true;
+            using (var rollback = _connection.CreateCommand())
+            {
+                rollback.CommandText = "ROLLBACK;";
+                rollback.ExecuteNonQuery();
+            }
+
+            _connection.Dispose();
+        }
+    }
+
+    public void Dispose() => Release();
+}
+
 /// <summary>A data folder under the test's temp directory, deleted afterwards.</summary>
 internal sealed class TempFolder : IDisposable
 {

@@ -206,8 +206,15 @@ public sealed partial class MainViewModel : ObservableObject, IAppCommands, IShe
         Overlay = overlay;
     }
 
-    /// <summary>Removes the open overlay and calls its <see cref="OverlayViewModel.OnClosed"/>. Called by the overlay
-    /// host after the exit animation.</summary>
+    /// <summary>True while the open overlay plays its exit animation (the host asked it to close; Save / Delete have
+    /// already decided what <see cref="OverlayViewModel.OnClosed"/> will write).</summary>
+    public bool IsOverlayClosing { get; private set; }
+
+    /// <summary>The overlay host started the exit animation of the open overlay.</summary>
+    internal void MarkOverlayClosing() => IsOverlayClosing = Overlay is not null;
+
+    /// <summary>Removes the open overlay and calls its <see cref="OverlayViewModel.OnClosed"/> (once). Called by the
+    /// overlay host after the exit animation, and by <see cref="CompletePendingOverlayClose"/> and <see cref="Dispose"/>.</summary>
     public void CloseOverlay()
     {
         if (Overlay is not { } overlay)
@@ -215,8 +222,22 @@ public sealed partial class MainViewModel : ObservableObject, IAppCommands, IShe
             return;
         }
 
+        IsOverlayClosing = false;
         Overlay = null;
         overlay.OnClosed();
+    }
+
+    /// <summary>
+    /// Finishes an overlay close that is still playing its exit animation, at once: the task dialog writes the save the
+    /// user already decided on. Called before anything that may end the process or flush the store (window close,
+    /// hide to the tray, shutdown), so a save made a moment before is never lost. An overlay that is merely open stays.
+    /// </summary>
+    public void CompletePendingOverlayClose()
+    {
+        if (IsOverlayClosing)
+        {
+            CloseOverlay();
+        }
     }
 
     // ---- Navigation plumbing --------------------------------------------------------------------------------------
@@ -315,6 +336,9 @@ public sealed partial class MainViewModel : ObservableObject, IAppCommands, IShe
             return;
         }
 
+        // The overlay's OnClosed runs first, exactly once, while everything is still wired: a save whose exit animation
+        // is still running is written now (a dialog that was merely open writes nothing).
+        CloseOverlay();
         _disposed = true;
         App.Store.Changed -= OnStoreChanged;
         App.Settings.Changed -= OnSettingsChanged;

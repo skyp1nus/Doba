@@ -4,7 +4,10 @@ using Avalonia.Controls.Chrome;
 using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.Input;
+using Avalonia.Media;
+using Avalonia.Media.Imaging;
 using Avalonia.VisualTree;
+using Doba.App.Tests.DesignSystem;
 using Doba.App.Tests.Support;
 using Doba.Core.Navigation;
 
@@ -88,6 +91,40 @@ public class ShellChromeTests
     }
 
     [AvaloniaFact]
+    public void Panel_hairline_chevrons_and_sidebar_counts_sit_on_the_reference_pixels()
+    {
+        // Measured in docs/design/screens/week.png and sidebar-collapsed.png (ink = luminance above 110).
+        using var shell = ShellFixture.Open(AppView.Week);
+        using (var frame = Frame(shell.Window))
+        {
+            // The main panel's translucent hairline lies over the panel's own fill (CSS background-clip: border-box).
+            var edge = Pixels.Resource("Brush.Overlay.Edge");
+            var fill = Pixels.Resource("Brush.Bg.Main");
+            var hairline = Over(edge, fill);
+            Assert.True(Pixels.Near(hairline, Pixels.At(frame, 232, 300), 1), $"left hairline {Pixels.At(frame, 232, 300)}");
+            Assert.True(Pixels.Near(hairline, Pixels.At(frame, 600, 40), 1), $"top hairline {Pixels.At(frame, 600, 40)}");
+
+            Assert.Equal((1398, 1402, 89, 97), Ink(frame, 1386, 80, 1415, 102));          // ‹ in its 30 px button
+            Assert.Equal((1434, 1438, 89, 97), Ink(frame, 1422, 80, 1451, 102));          // ›
+            Assert.Equal((200, 210, 196, 203), Ink(frame, 190, 188, 226, 212));           // "work 12"
+            Assert.Equal((206, 210, 258, 265), Ink(frame, 190, 250, 226, 274));           // "learning 6"
+        }
+
+        shell.Vm.ToggleSidebar();
+        shell.Settle();
+        using (var frame = Frame(shell.Window))
+        {
+            Assert.True(Pixels.Near(Over(Pixels.Resource("Brush.Overlay.Edge"), Pixels.Resource("Brush.Bg.Main")),
+                Pixels.At(frame, 56, 300), 1), $"rail hairline {Pixels.At(frame, 56, 300)}");
+            Assert.Equal((197, 203), Rows(Ink(frame, 21, 194, 34, 207)));                 // W
+            Assert.Equal((25, 30, 228, 234), Ink(frame, 21, 225, 34, 238));               // P
+            Assert.Equal((259, 265), Rows(Ink(frame, 21, 256, 34, 269)));                 // L
+        }
+
+        static (int, int) Rows((int, int, int Top, int Bottom) box) => (box.Top, box.Bottom);
+    }
+
+    [AvaloniaFact]
     public void Collapsed_sidebar_is_the_56px_rail()
     {
         using var shell = ShellFixture.Open(AppView.Week);
@@ -148,6 +185,42 @@ public class ShellChromeTests
         Assert.Equal(WindowState.Maximized, shell.Window.WindowState);
         shell.Click(bar.MaximizeButton);
         Assert.Equal(WindowState.Normal, shell.Window.WindowState);
+    }
+
+    private static WriteableBitmap Frame(Window window)
+    {
+        AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+        return window.CaptureRenderedFrame() ?? throw new InvalidOperationException("No frame rendered.");
+    }
+
+    /// <summary><paramref name="top"/> (with its alpha) composited over the opaque <paramref name="under"/>.</summary>
+    private static Color Over(Color top, Color under)
+    {
+        var a = top.A / 255.0;
+        byte Mix(byte t, byte u) => (byte)Math.Round((t * a) + (u * (1 - a)));
+        return Color.FromRgb(Mix(top.R, under.R), Mix(top.G, under.G), Mix(top.B, under.B));
+    }
+
+    /// <summary>The bounding box (left, right, top, bottom) of the pixels brighter than luminance 110 in the area.</summary>
+    private static (int Left, int Right, int Top, int Bottom) Ink(WriteableBitmap frame, int x0, int y0, int x1, int y1)
+    {
+        int left = int.MaxValue, right = -1, top = int.MaxValue, bottom = -1;
+        for (var y = y0; y <= y1; y++)
+        {
+            for (var x = x0; x <= x1; x++)
+            {
+                var c = Pixels.At(frame, x, y);
+                if ((0.299 * c.R) + (0.587 * c.G) + (0.114 * c.B) > 110)
+                {
+                    left = Math.Min(left, x);
+                    right = Math.Max(right, x);
+                    top = Math.Min(top, y);
+                    bottom = Math.Max(bottom, y);
+                }
+            }
+        }
+
+        return (left, right, top, bottom);
     }
 
     private static Rect Bounds(Visual v, Visual root)

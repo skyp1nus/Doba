@@ -3,7 +3,8 @@
   (window colour + three blurred glows) and the chrome tint (Brush.Chrome, Settings › Window transparency) sit behind
   the 40 px title bar and the sidebar column (232 px, 56 px rail when collapsed; the settings sidebar is always 232);
   the main panel (Bg.Main, top-left radius 10, 1 px Overlay.Edge top/left hairline) holds the page header and the screen
-  host. The overlay host covers everything, title bar included. Composed by ShellComposition.CreateMainWindow.
+  host. Its fill reaches under the translucent hairline (BackgroundSizing OuterBorderEdge = CSS background-clip:
+  border-box), so the edge is the panel colour lifted by 7 % white, not the backdrop's. The overlay host covers everything, title bar included. Composed by ShellComposition.CreateMainWindow.
 -->
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -46,6 +47,7 @@
 
         <Border Name="PART_Main" Grid.Column="1"
                 Background="{DynamicResource Brush.Bg.Main}"
+                BackgroundSizing="OuterBorderEdge"
                 BorderBrush="{DynamicResource Brush.Overlay.Edge}"
                 BorderThickness="{DynamicResource Thickness.Shell.MainEdge}"
                 CornerRadius="{DynamicResource Radius.MainPanel}"

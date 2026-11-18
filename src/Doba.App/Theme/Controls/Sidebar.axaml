@@ -140,7 +140,7 @@
                          FontFamily="{DynamicResource Font.Mono}"
                          FontSize="{DynamicResource FontSize.13}"
                          Foreground="{DynamicResource Brush.Text.Muted}"
-                         HorizontalAlignment="Center"
+                         TextAlignment="Center"
                          VerticalAlignment="Center">
                 <TextBlock.Transitions>
                   <Transitions>
@@ -168,6 +168,8 @@
                        Foreground="{DynamicResource Brush.Text.Muted}"
                        Text="{TemplateBinding Count}"
                        IsVisible="{TemplateBinding Count, Converter={x:Static ObjectConverters.IsNotNull}}"
+                       TextAlignment="Right"
+                       Margin="{DynamicResource Sidebar.TagCount}"
                        VerticalAlignment="Center">
               <TextBlock.Transitions>
                 <Transitions>
@@ -188,6 +190,7 @@
       <Setter Property="FontSize" Value="{DynamicResource FontSize.10}" />
       <Setter Property="FontWeight" Value="SemiBold" />
       <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Secondary}" />
+      <Setter Property="Margin" Value="{DynamicResource Sidebar.RailInitial}" />
     </Style>
     <Style Selector="^:rail:selected /template/ Border#PART_Badge">
       <Setter Property="Background" Value="{DynamicResource Brush.Accent}" />

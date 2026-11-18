@@ -325,6 +325,13 @@ public sealed partial class TaskDialogViewModel : OverlayViewModel
     {
         if (_pending is PendingAction.None)
         {
+            if (action == PendingAction.Commit && Draft.Open == DraftPopover.Time)
+            {
+                // Closing the Time popover removes it from the tree, which commits a wheel that has not been still for
+                // the settle time yet (a quick Save right after a scroll); only then is the draft taken.
+                ClosePopover();
+            }
+
             _pending = action;
             _closingDraft = Draft;
         }
@@ -437,6 +444,12 @@ public sealed partial class TaskDialogViewModel : OverlayViewModel
         IsTimeOpen = open == DraftPopover.Time;
         IsPriorityOpen = open == DraftPopover.Priority;
         IsTagOpen = open == DraftPopover.Tag;
+        if (!ReferenceEquals(d, Draft))
+        {
+            // Closing the Time popover above flushed a pending wheel commit, which replaced the draft and projected the
+            // newer one completely; carrying on with this one would put stale labels back (the range, the calendar).
+            return;
+        }
 
         CalendarLabel = TaskDialog.CalendarLabel(d);
         UntilLabel = TaskDialog.UntilLabel(d);

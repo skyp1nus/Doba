@@ -34,7 +34,13 @@ public class ShellOverlayTests
             return HandlesEscape;
         }
 
-        public override void OnClosed() => Closed++;
+        public Action? WhenClosed { get; init; }
+
+        public override void OnClosed()
+        {
+            Closed++;
+            WhenClosed?.Invoke();
+        }
 
         public void Close() => RequestClose();
     }
@@ -157,6 +163,55 @@ public class ShellOverlayTests
             held.Pending!();
             Assert.Null(shell.Vm.Overlay);
             Assert.Equal(1, overlay.Closed);
+        }
+        finally
+        {
+            OverlayHost.OverlayTransitions = previous;
+        }
+    }
+
+    [AvaloniaFact]
+    public void Disposing_the_shell_finishes_a_running_close_exactly_once_before_unsubscribing()
+    {
+        var held = new HeldOverlayTransitions();
+        var previous = OverlayHost.OverlayTransitions;
+        OverlayHost.OverlayTransitions = held;
+        try
+        {
+            using var shell = ShellFixture.Open(AppView.Week);
+            var overlay = new FakeOverlay();
+            shell.Vm.OpenOverlay(overlay);
+            overlay.Close();
+            Assert.True(shell.Vm.IsOverlayClosing);
+
+            shell.Vm.CompletePendingOverlayClose();                             // e.g. the window closing
+            Assert.Null(shell.Vm.Overlay);
+            Assert.False(shell.Vm.IsOverlayClosing);
+            Assert.Equal(1, overlay.Closed);
+            held.Pending!();                                                    // the exit finishing later changes nothing
+            Assert.Equal(1, overlay.Closed);
+
+            // Merely open: completing pending closes leaves it; disposing the shell closes it once.
+            var open = new FakeOverlay();
+            shell.Vm.OpenOverlay(open);
+            shell.Vm.CompletePendingOverlayClose();
+            Assert.Same(open, shell.Vm.Overlay);
+            var inbox = shell.Vm.Sidebar.InboxCount;
+            var closing = new FakeOverlay
+            {
+                // Writes like the task dialog's save: the shell must still be listening to the store.
+                WhenClosed = () => shell.App.Store.Add(new TaskItem(0, "written on close", string.Empty, null, null, null, 0,
+                    Priority.None, null, false)),
+            };
+            shell.Vm.OpenOverlay(closing);
+            Assert.Equal(1, open.Closed);
+            closing.Close();
+            shell.Vm.Dispose();
+            Assert.Equal(1, closing.Closed);
+            Assert.Null(shell.Vm.Overlay);
+            Assert.Equal(inbox + 1, shell.Vm.Sidebar.InboxCount);
+            shell.Vm.Dispose();
+            Assert.Equal(1, closing.Closed);
         }
         finally
         {

@@ -96,6 +96,7 @@ public partial class OverlayHost : UserControl
         _closing = true;
         var vm = _vm;
         var overlay = vm.Overlay;
+        vm.MarkOverlayClosing();
         OverlayTransitions.Close(PART_Shade, PART_Panel, () =>
         {
             _closing = false;

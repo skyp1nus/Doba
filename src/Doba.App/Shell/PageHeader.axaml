@@ -39,11 +39,13 @@
                   Padding="{DynamicResource Space.Shell.Today}" Command="{Binding GoTodayCommand}" />
           <Button Name="PART_Previous" Theme="{StaticResource Button.OutlineIcon}" Command="{Binding PreviousCommand}"
                   AutomationProperties.Name="Previous">
-            <c:Icon Data="{StaticResource Icon.ChevronLeft}" Size="{DynamicResource Size.Shell.ChevronIcon}" StrokeWidth="1.8" />
+            <c:Icon Data="{StaticResource Icon.ChevronLeft}" Size="{DynamicResource Size.Shell.ChevronIcon}" StrokeWidth="1.8"
+                    Margin="{DynamicResource Space.Shell.Chevron}" />
           </Button>
           <Button Name="PART_Next" Theme="{StaticResource Button.OutlineIcon}" Command="{Binding NextCommand}"
                   AutomationProperties.Name="Next">
-            <c:Icon Data="{StaticResource Icon.ChevronRight}" Size="{DynamicResource Size.Shell.ChevronIcon}" StrokeWidth="1.8" />
+            <c:Icon Data="{StaticResource Icon.ChevronRight}" Size="{DynamicResource Size.Shell.ChevronIcon}" StrokeWidth="1.8"
+                    Margin="{DynamicResource Space.Shell.Chevron}" />
           </Button>
           <Border Classes="vsep" />
         </StackPanel>

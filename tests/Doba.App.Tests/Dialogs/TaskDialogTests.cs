@@ -207,6 +207,77 @@ public class TaskDialogTests
     }
 
     [AvaloniaFact]
+    public void Closing_the_window_during_the_exit_still_saves_and_an_open_dialog_writes_nothing()
+    {
+        using var held = new HeldOverlayTransitions();
+        var shell = ShellFixture.Open(AppView.Week);
+        try
+        {
+            var before = shell.App.Store.All.ToList();
+            var dialog = DialogKit.Open(shell, TaskDialog.NewDraft(Today, Today, Priority.None) with { Title = "Saved at close" });
+            shell.Key(Key.Enter);
+            Assert.NotNull(held.Pending);                                          // the exit is still running …
+            Assert.Equal(before, shell.App.Store.All);
+
+            shell.Window.Close();                                                  // … when the window goes away
+            Assert.Null(shell.Vm.Overlay);
+            Assert.Single(shell.App.Store.All, t => t.Title == "Saved at close");
+            held.Release();                                                        // the late exit callback: no second save
+            Assert.Equal(before.Count + 1, shell.App.Store.All.Count);
+            dialog.Vm.OnClosed();
+            Assert.Equal(before.Count + 1, shell.App.Store.All.Count);
+        }
+        finally
+        {
+            shell.Dispose();
+        }
+
+        // A dialog that is merely open (no Save) when the window closes is closed without writing anything.
+        var second = ShellFixture.Open(AppView.Week);
+        try
+        {
+            var before = second.App.Store.All.ToList();
+            DialogKit.Open(second, TaskDialog.NewDraft(Today, Today, Priority.None) with { Title = "Never saved" });
+            second.Window.Close();
+            Assert.Null(second.Vm.Overlay);
+            Assert.Equal(before, second.App.Store.All);
+        }
+        finally
+        {
+            second.Dispose();
+        }
+    }
+
+    [AvaloniaFact]
+    public void Save_keeps_a_wheel_change_that_has_not_settled_yet()
+    {
+        using var held = new HeldOverlayTransitions();
+        using var shell = ShellFixture.Open(AppView.Week);
+        var dialog = DialogKit.Open(shell, DialogKit.DemoDraft());
+        dialog.ClickPill(dialog.TimeAnchor);
+        var popover = Assert.IsType<TimePopover>(DialogKit.Dialog.OpenPopover(dialog.TimeAnchor));
+        var clock = new ManualClock();
+        popover.HourWheel.SettleClock = clock;
+        popover.MinuteWheel.SettleClock = clock;
+        var before = dialog.Vm.Draft;
+
+        Assert.True(popover.HourWheel.Focus(NavigationMethod.Tab));
+        shell.Key(Key.Down);                                                       // 14 → 15, not still for 120 ms yet
+        Assert.True(popover.HourWheel.CommitPending);
+        Assert.Equal(before, dialog.Vm.Draft);
+        dialog.Vm.CommitCommand.Execute(null);                                     // Enter / Create right away
+
+        Assert.False(dialog.TimeAnchor.IsShowing);
+        Assert.Equal(TaskDialog.WheelIndices(new TimeOnly(15, 0)).HourIndex, popover.HourWheel.SelectedIndex);
+        Assert.Equal(TaskDialog.TimePillLabel(dialog.Vm.Draft), dialog.Vm.TimeLabel);
+        Assert.Equal(TaskDialog.RangeLabel(dialog.Vm.Draft), dialog.Vm.RangeLabel);
+        held.Release();
+        var created = Assert.Single(shell.App.Store.All, t => t.Title == before.Title);
+        Assert.Equal(new TimeOnly(15, 0), created.Time);
+        Assert.Equal(TaskDialog.ToTask(TaskDialog.CommitWheel(before, hourColumn: true, 15), null) with { Id = created.Id }, created);
+    }
+
+    [AvaloniaFact]
     public void Primary_button_saves_the_same_way()
     {
         using var held = new HeldOverlayTransitions();

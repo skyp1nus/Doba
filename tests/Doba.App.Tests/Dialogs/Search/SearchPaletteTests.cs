@@ -356,19 +356,30 @@ public class SearchPaletteTests
 
         // Border.dialog's ring and shadow are drawn outside the panel: nothing between it and the window may clip them.
         var dialog = view.GetVisualDescendants().OfType<Border>().First(b => b.Classes.Contains("dialog"));
-        var ring = dialog.BoxShadow[0].Color;
+        // The ring is the 1 px spread, unblurred shadow (#26262A); Border.dialog lists it last, so Avalonia (which paints
+        // the shadows of one BoxShadows last-on-top, the reverse of CSS) draws it over the big drop shadow, as in the
+        // reference. A clipped ring would leave the shade (#090909) there; a ring under the drop shadow would be darker
+        // on the sides and missing along the bottom. All four sides are exactly the ring colour.
+        BoxShadow? found = null;
+        for (var i = 0; i < dialog.BoxShadow.Count; i++)
+        {
+            if (dialog.BoxShadow[i] is { Blur: 0, Spread: > 0, IsInset: false } shadow)
+            {
+                found = shadow;
+            }
+        }
+
+        var ring = Assert.NotNull(found).Color;
+        Assert.Equal(dialog.BoxShadow[dialog.BoxShadow.Count - 1].Color, ring);         // painted last = on top
         var frame = Pixels(shell.Window);
         int left = (int)panel.X, top = (int)panel.Y;
         int right = left + (int)view.Bounds.Width, bottom = top + (int)view.Bounds.Height;
         var midX = (left + right) / 2;
-        // A clipped ring leaves the shade there (#090909, luma 27); the ring is #26262A (luma 118). Avalonia paints the
-        // shadows of one BoxShadows last-on-top, the reverse of CSS, so with Border.dialog's CSS order the big shadow
-        // darkens the ring on the sides (#1A1A1D) and hides it along the bottom; the bottom is not checked until that
-        // order is swapped in Theme/Styles.axaml (then all four sides are exactly #26262A, as in the reference).
-        var ringLuma = Luma(ring);
-        Assert.True(Luma(frame(midX, top - 1)) > ringLuma / 2, $"ring above the panel: {frame(midX, top - 1)}");
-        Assert.True(Luma(frame(left - 1, top + 100)) > ringLuma / 2, $"ring left of the panel: {frame(left - 1, top + 100)}");
-        Assert.True(Luma(frame(right, top + 100)) > ringLuma / 2, $"ring right of the panel: {frame(right, top + 100)}");
+        var rightX = right - 20;                                                          // clear of the bottom corners
+        Assert.Equal(ring, frame(midX, top - 1));
+        Assert.Equal(ring, frame(left - 1, top + 100));
+        Assert.Equal(ring, frame(right, top + 100));
+        Assert.Equal(ring, frame(rightX, bottom));
         Assert.True(Luma(frame(midX, bottom + 12)) < Luma(frame(midX, top - 12)), "the drop shadow falls below the panel");
     }
 
