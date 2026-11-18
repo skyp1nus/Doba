@@ -322,6 +322,7 @@
   <!-- Package regions for theme-independent tokens (sizes, spacing, radii, font sizes). A work package adds tokens
        only inside its own region below; the shared tokens above are never moved or renamed. -->
   <!-- == Shell == -->
+  <x:Double x:Key="Size.Overlay.BackdropBlur">3</x:Double> <!-- modal shade: backdrop-filter blur(3px) of what is behind an overlay -->
   <x:Double x:Key="Size.Shell.Search">380</x:Double>      <!-- title-bar search: flex 0 1 380px -->
   <x:Double x:Key="Size.Shell.SearchMin">160</x:Double>   <!-- … min-width 160px -->
   <x:Double x:Key="Size.Shell.Logo">18</x:Double>         <!-- title-bar app mark tile -->

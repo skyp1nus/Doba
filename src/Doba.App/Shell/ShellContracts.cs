@@ -107,14 +107,14 @@ public sealed class NavigatedEventArgs : EventArgs
 /// only Opacity and render transforms of these, never layout properties.
 /// </summary>
 /// <param name="Content">The screen host (the main panel's body).</param>
-/// <param name="Title">The page header's title block (cross-faded together with the content).</param>
+/// <param name="Title">The page header's h1 (title + subtitle); it plays its own entrance on every navigation.</param>
 /// <param name="AppSidebar">The app sidebar, animated on <see cref="TransitionKind.SettingsOut"/>; null when absent.</param>
 /// <param name="SettingsSidebar">The settings sidebar, animated on <see cref="TransitionKind.SettingsIn"/>; null when absent.</param>
 public sealed record ContentTransitionTargets(Control Content, Control Title, Control? AppSidebar, Control? SettingsSidebar);
 
 /// <summary>
 /// Plays the motion spec's navigation transitions ("Навігаційні переходи") around a content swap. Implemented by the
-/// Motion package; <see cref="InstantContentTransitions"/> is the default and the test double.
+/// <c>Motion.ContentTransitions</c> (the default in <see cref="ShellComposition.Transitions"/>); <see cref="InstantContentTransitions"/> is the test double.
 /// </summary>
 /// <remarks>
 /// Rules every implementation keeps:
@@ -140,8 +140,8 @@ public interface IContentTransitions
     void Launch(ContentTransitionTargets targets);
 }
 
-/// <summary>No animation: <see cref="Run"/> swaps immediately, <see cref="Launch"/> does nothing. Default until the
-/// Motion package registers its implementation in <see cref="ShellComposition.Transitions"/>.</summary>
+/// <summary>No animation: <see cref="Run"/> swaps immediately, <see cref="Launch"/> does nothing. Used by tests
+/// and wherever motion must be off; the app's default is <c>Motion.ContentTransitions</c>.</summary>
 public sealed class InstantContentTransitions : IContentTransitions
 {
     /// <inheritdoc />

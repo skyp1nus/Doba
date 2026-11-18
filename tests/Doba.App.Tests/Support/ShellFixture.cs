@@ -131,7 +131,7 @@ public sealed class ShellFixture : IDisposable
             Dispatcher.UIThread.RunJobs();
             Window.UpdateLayout();
             AvaloniaHeadlessPlatform.ForceRenderTimerTick();
-            foreach (var visual in Window.GetVisualDescendants())
+            foreach (var visual in Window.GetVisualDescendants().ToList()) // completing a handle may swap screens
             {
                 Animator.Running(visual)?.Complete();
             }
