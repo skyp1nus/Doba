@@ -185,6 +185,12 @@
       <!-- == Day == -->
 
       <!-- == Dialog == -->
+      <!-- Dialog and popover shadows with the 1 px ring LAST: Avalonia paints a BoxShadows list in order (the last on
+           top) while CSS paints the first box-shadow on top, so the design's "0 0 0 1px ring, big soft shadow" written in
+           CSS order lets the soft shadow cover the ring (Border.dialog / .popover / .popover-sm in Styles.axaml do). -->
+      <BoxShadows x:Key="Shadow.Dialog">0 30 80 0 #99000000, 0 0 0 1 #26262A</BoxShadows>
+      <BoxShadows x:Key="Shadow.Popover">0 18 44 0 #8C000000, 0 0 0 1 #2A2A2F</BoxShadows>
+      <BoxShadows x:Key="Shadow.PopoverList">0 16 40 0 #80000000, 0 0 0 1 #2A2A2F</BoxShadows>
 
       <!-- == TimeWheel == -->
 
@@ -430,6 +436,70 @@
   <x:Double x:Key="LineHeight.Day.Title">18</x:Double>
 
   <!-- == Dialog == -->
+  <!-- Task dialog and its popovers (design-reference lines 648-821). Panel width/top, pill and footer paddings and the
+       popover widths are the shared Size.Dialog.* / Space.Dialog.* / Size.Popover.* tokens above. -->
+  <x:Double x:Key="Size.Dialog.Header">46</x:Double>               <!-- header row height -->
+  <x:Double x:Key="Space.Dialog.Gap">8</x:Double>                  <!-- header and footer flex gap -->
+  <x:Double x:Key="Space.Dialog.BodyGap">6</x:Double>              <!-- title ↔ notes -->
+  <x:Double x:Key="Space.Dialog.PillGap">6</x:Double>              <!-- pill row gap -->
+  <x:Double x:Key="Space.Dialog.PillContentGap">7</x:Double>       <!-- pill icon ↔ label -->
+  <x:Double x:Key="Size.Dialog.PillIcon">14</x:Double>             <!-- Icon.Date / Icon.Clock in the pills -->
+  <x:Double x:Key="Size.Dialog.Close">28</x:Double>                <!-- close button 28×28 -->
+  <x:Double x:Key="Size.Dialog.CloseIcon">14</x:Double>
+  <!-- Notes: <textarea rows="3">, 3 × 13.5 px × 1.55. -->
+  <x:Double x:Key="Size.Dialog.Notes">62.775</x:Double>
+  <Thickness x:Key="Thickness.Dialog.FooterRule">0,1,0,0</Thickness>     <!-- footer border-top 1px #1D1D20 -->
+  <CornerRadius x:Key="Radius.Dialog.Footer">0,0,12,12</CornerRadius>
+  <x:Double x:Key="Space.Dialog.KbdGap">8</x:Double>               <!-- "Create task" ↔ ↵ -->
+  <!-- Popovers: position: absolute; top: 36px; left: 0 under the pill; kept 8 px inside the window when it is small. -->
+  <x:Double x:Key="Space.Dialog.PopoverTop">36</x:Double>
+  <x:Double x:Key="Space.Dialog.PopoverEdge">8</x:Double>
+  <Thickness x:Key="Space.Dialog.Popover">10</Thickness>            <!-- Date / Time popover padding -->
+  <Thickness x:Key="Space.Dialog.PopoverList">6</Thickness>         <!-- Priority / Tag popover padding -->
+  <Thickness x:Key="Space.Dialog.PopoverRule">-10,8</Thickness>     <!-- separator: height 1, margin 8px -10px -->
+  <Thickness x:Key="Space.Dialog.TimeRule">-10,6,-10,8</Thickness>  <!-- Time popover separator: margin 6px -10px 8px -->
+  <x:Double x:Key="Size.Dialog.PopoverRow">32</x:Double>            <!-- calendar header, "Lasts" row -->
+  <Thickness x:Key="Space.Dialog.PopoverRowPad">6,0,0,0</Thickness> <!-- padding: 0 0 0 6px -->
+  <x:Double x:Key="Space.Dialog.CalHeaderGap">4</x:Double>          <!-- month ↔ Today ↔ ‹ ›: gap 4px -->
+  <x:Double x:Key="Size.Dialog.CalToday">26</x:Double>              <!-- "Today" 26 px, padding 0 8px -->
+  <Thickness x:Key="Space.Dialog.CalToday">8,0,8,2</Thickness>  <!-- padding 0 8px + the lift (Space.Dialog.Lift) -->
+  <x:Double x:Key="Size.Dialog.ChevronIcon">14</x:Double>           <!-- ‹ › 14 px, stroke 2 -->
+  <Thickness x:Key="Space.Dialog.CalGrid">0,6,0,0</Thickness>       <!-- grid margin-top 6px -->
+  <x:Double x:Key="Size.Dialog.Weekday">24</x:Double>               <!-- weekday initials row -->
+  <x:Double x:Key="Size.Dialog.Day">36</x:Double>                   <!-- day cell height (margin 1px 0) -->
+  <Thickness x:Key="Space.Dialog.Day">0,1</Thickness>
+  <x:Double x:Key="Size.Dialog.DayDot">32</x:Double>                <!-- the 32×32 r8 number square -->
+  <x:Double x:Key="Size.Dialog.TodayDot">4</x:Double>               <!-- today marker 4×4, bottom 3px -->
+  <Thickness x:Key="Space.Dialog.TodayDot">0,0,0,3</Thickness>
+  <Thickness x:Key="Thickness.Dialog.DayHover">1</Thickness>        <!-- hover: inset 0 0 0 1px #4A4A52 -->
+  <CornerRadius x:Key="Radius.Dialog.BandStart">8,0,0,8</CornerRadius>
+  <CornerRadius x:Key="Radius.Dialog.BandEnd">0,8,8,0</CornerRadius>
+  <CornerRadius x:Key="Radius.Dialog.BandNone">0</CornerRadius>
+  <x:Double x:Key="Space.Dialog.ChipGap">4</x:Double>               <!-- quick options: gap 4px -->
+  <x:Double x:Key="Space.Dialog.ChipHintGap">6</x:Double>           <!-- "Next week" ↔ "23 Nov" -->
+  <x:Double x:Key="Space.Dialog.LastsGap">8</x:Double>              <!-- "Lasts" row gap -->
+  <x:Double x:Key="Size.Dialog.StepperLabel">58</x:Double>          <!-- "1 day": min-width 58px -->
+  <x:Double x:Key="Size.Dialog.StepperIcon">12</x:Double>           <!-- − / + 12 px, stroke 2 -->
+  <!-- Wheel area margin 10px 0 4px; its 4 px bottom margin collapses into the separator's 6 px top margin in CSS. -->
+  <Thickness x:Key="Space.Dialog.Wheels">0,10,0,0</Thickness>
+  <x:Double x:Key="Space.Dialog.WheelGap">2</x:Double>              <!-- hour ↔ ":" ↔ minute -->
+  <Thickness x:Key="Space.Dialog.WheelColon">0,0,0,2</Thickness>    <!-- ":" padding-bottom 2px -->
+  <Thickness x:Key="Space.Dialog.Duration">4,0,0,0</Thickness>      <!-- "Duration" row padding-left 4px -->
+  <Thickness x:Key="Space.Dialog.Range">4,8,4,0</Thickness>         <!-- "14:00 – 15:00": margin-top 8, padding 0 4px -->
+  <Thickness x:Key="Space.Dialog.Untimed">8,18,8,10</Thickness>     <!-- "No set time …": padding 18px 8px 10px -->
+  <x:Double x:Key="LineHeight.Dialog.Untimed">18.75</x:Double>      <!-- 12.5 px × 1.5 -->
+  <Thickness x:Key="Space.Dialog.Done">0,8,0,0</Thickness>          <!-- Done row margin-top 8px -->
+  <x:Double x:Key="Space.Dialog.MenuGap">10</x:Double>              <!-- popover row: icon ↔ label ↔ tick -->
+  <x:Double x:Key="Size.Dialog.MenuIcon">14</x:Double>              <!-- icon and tick columns: width 14px -->
+  <x:Double x:Key="Size.Dialog.MenuTick">13</x:Double>              <!-- tick 13 px, stroke 2.4 -->
+  <!-- Avalonia centres these single-line labels (header, weekday initials, day numbers, "Lasts", chips, calendar "Today")
+       a pixel below where Chromium puts them in their flex rows (measured against dialog-date.png). A bottom inset on
+       the centred element lifts it; how much depends on how the half-pixel centring offset rounds (to even), so the
+       inset per element is the measured one: Lift (1 px inset) for the header, day numbers and "Lasts", Lift2 (2 px)
+       for the weekday initials, chips and the calendar "Today". -->
+  <Thickness x:Key="Space.Dialog.Lift">0,0,0,1</Thickness>
+  <Thickness x:Key="Space.Dialog.Lift2">0,0,0,2</Thickness>
+  <Thickness x:Key="Space.Dialog.Chip">10,0,10,2</Thickness>        <!-- chip padding 0 10px + the lift -->
 
   <!-- == TimeWheel == -->
   <!-- Time popover wheel (design lines 731-743). Band colour = Brush.Overlay.Edge, radius = Radius.Card,

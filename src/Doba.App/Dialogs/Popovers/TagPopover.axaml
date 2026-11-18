@@ -1,0 +1,39 @@
+<!--
+  Tag popover (design-reference lines 795-803): "– No tag" and "# name" for every tag in the store, the chosen one on
+  Overlay.Selected with the accent tick. Picking closes it. DataContext: the dialog.
+-->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:Doba.App.Controls"
+             xmlns:d="using:Doba.App.Dialogs"
+             x:Class="Doba.App.Dialogs.Popovers.TagPopover"
+             x:DataType="d:TaskDialogViewModel"
+             ClipToBounds="False">
+  <Border Name="PART_Surface"
+          Classes="popover-sm"
+          BoxShadow="{DynamicResource Shadow.PopoverList}"
+          Width="{DynamicResource Size.Popover.List}"
+          Padding="{DynamicResource Space.Dialog.PopoverList}">
+    <ItemsControl Name="PART_Items" ItemsSource="{Binding TagOptions}">
+      <ItemsControl.ItemTemplate>
+        <DataTemplate x:DataType="d:TagOptionItem">
+          <Button Theme="{StaticResource Button.Menu}"
+                  Classes.selected="{Binding IsSelected}"
+                  Command="{Binding PickCommand}"
+                  AutomationProperties.Name="{Binding Label}">
+            <Grid ColumnDefinitions="14,*,14" ColumnSpacing="{DynamicResource Space.Dialog.MenuGap}">
+              <TextBlock Classes="mono muted" Text="{Binding Symbol}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+              <TextBlock Grid.Column="1" Text="{Binding Label}" VerticalAlignment="Center" />
+              <c:Icon Grid.Column="2"
+                      Data="{StaticResource Icon.Check}"
+                      Size="{DynamicResource Size.Dialog.MenuTick}"
+                      StrokeWidth="2.4"
+                      Foreground="{DynamicResource Brush.Accent}"
+                      IsVisible="{Binding IsSelected}" />
+            </Grid>
+          </Button>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+  </Border>
+</UserControl>
