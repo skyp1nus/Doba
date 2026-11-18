@@ -96,16 +96,31 @@ public class TodayScreenTests
         var row = new TaskListRow { DataContext = rowVm };
         var window = ScreenHarness.Host(row, 700, 60);
         Settle(window);
-        Assert.Equal(0, row.StrikeBrush.Color.A); // transparent while open
+        var title = row.TitleText!;
+        Assert.False(title.Struck);
+        Assert.Equal(0, title.StrokeColor.A); // transparent while open
 
         rowVm.Update(task with { Done = true });
-        Assert.True(row.StrikeBrush.Color.A < 255); // transition started from transparent, not snapped
-        Assert.True(Pump.Until(() => row.StrikeBrush.Color.A == 255, TimeSpan.FromSeconds(2)));
-        Assert.Equal(Pixels.Resource("Color.Text.Muted"), row.StrikeBrush.Color);
+        Assert.True(title.Struck);
+        Assert.True(title.StrokeColor.A < 255); // transition started from transparent, not snapped
+        Assert.True(Pump.Until(() => title.StrokeColor.A == 255, TimeSpan.FromSeconds(2)));
+        Assert.Equal(Pixels.Resource("Color.Text.Muted"), title.StrokeColor);
 
         // Re-pointing the row at another (open) task shows its state at once.
         row.DataContext = new TaskRowViewModel(task with { Id = 999 }, harness.Actions, harness.Commands);
-        Assert.Equal(0, row.StrikeBrush.Color.A);
+        Assert.False(row.TitleText!.Struck);
+        Assert.Equal(0, row.TitleText.StrokeColor.A);
+
+        // … and at a done task too (no fade in from transparent).
+        row.DataContext = new TaskRowViewModel(task with { Id = 998, Done = true }, harness.Actions, harness.Commands);
+        Assert.True(row.TitleText!.Struck);
+        Assert.Equal(Pixels.Resource("Color.Text.Muted"), row.TitleText.StrokeColor);
+
+        // Re-pointing at a task in the same state keeps the title (no rebuild).
+        var kept = row.TitleText;
+        row.DataContext = new TaskRowViewModel(task with { Id = 997, Done = true }, harness.Actions, harness.Commands);
+        Settle(window);
+        Assert.Same(kept, row.TitleText);
         window.Close();
     }
 

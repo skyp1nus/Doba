@@ -58,6 +58,25 @@ public sealed partial class ScheduleBlockViewModel : ObservableObject
         IsCompact = ScheduleLayout.IsCompact(Height);
         Margin = new Thickness(ScheduleViewModel.BlockLeft, Top, 0, 0);
         ContentPadding = ContentPaddingFor(Height, IsCompact);
+        RangeOffset = RangeOffsetFor(Height, IsCompact);
+    }
+
+    /// <summary>Top of the time range below the top of the title (see <see cref="RangeOffsetFor"/>).</summary>
+    [ObservableProperty] public partial double RangeOffset { get; private set; }
+
+    /// <summary>
+    /// Where the mono 10.5 range line goes, relative to the title's top. In the prototype its line box (10.5 × 1.4 =
+    /// 14.7 px) sits 2 px under the 17.5 px title line (two-line block: block top + 7 + 17.5 + 2 = 26.5) or is centred
+    /// in the block (compact: (height − 14.7) / 2), and Chromium paints it at that fractional position. Our text lands
+    /// on whole pixels, so the line goes to the row nearest Chromium's glyphs: <c>round(top − 0.1)</c>, measured
+    /// against the references (26.5 → 26, 9.15 → 9 for a 33 px block, 4.65 → 5 for a 24 px one). Centring it in our
+    /// 18 px title row, or stacking it under that row, puts it 1 px low.
+    /// </summary>
+    public static double RangeOffsetFor(double height, bool compact)
+    {
+        var cssTop = compact ? (height - RangeLine) / 2 : CssPaddingTop + CompactTitleLine + LineGap;
+        var titleTop = ContentPaddingFor(height, compact).Top + Ring;
+        return Math.Round(cssTop - RangeNudge, MidpointRounding.AwayFromZero) - titleTop;
     }
 
     /// <summary>
@@ -68,11 +87,32 @@ public sealed partial class ScheduleBlockViewModel : ObservableObject
     /// </summary>
     public static Thickness ContentPaddingFor(double height, bool compact) =>
         compact
-            ? new Thickness(9, Math.Round((height - CompactTitleLine) / 2) - 1, 9, 0)
-            : new Thickness(9, 6, 9, 0);
+            ? new Thickness(CssPaddingX - Ring, Math.Round((height - CompactTitleLine) / 2) - Ring, CssPaddingX - Ring, 0)
+            : new Thickness(CssPaddingX - Ring, CssPaddingTop - Ring, CssPaddingX - Ring, 0);
+
+    /// <summary>Prototype gap between the title and the range: 2 px under the title, 10 px beside it (compact).</summary>
+    public const double LineGap = 2;
+
+    /// <inheritdoc cref="LineGap"/>
+    public const double CompactGap = 10;
 
     /// <summary>CSS line box of the block title: 12.5 px × line-height 1.4.</summary>
     private const double CompactTitleLine = 17.5;
+
+    /// <summary>CSS line box of the time range: 10.5 px × line-height 1.4.</summary>
+    private const double RangeLine = 14.7;
+
+    /// <summary>Prototype block padding: 7 px top (two-line), 10 px left and right.</summary>
+    private const double CssPaddingTop = 7;
+
+    /// <inheritdoc cref="CssPaddingTop"/>
+    private const double CssPaddingX = 10;
+
+    /// <summary>The block's ring: 1 px (an inset box-shadow in the prototype, a border here).</summary>
+    private const double Ring = 1;
+
+    /// <summary>Our range glyphs sit about 0.1 px lower in their line than Chromium's (see <see cref="RangeOffsetFor"/>).</summary>
+    private const double RangeNudge = 0.1;
 }
 
 /// <summary>

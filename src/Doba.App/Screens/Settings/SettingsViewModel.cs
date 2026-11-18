@@ -71,8 +71,9 @@ public sealed partial class SettingsViewModel : ScreenViewModel
             ],
             [SettingsTab.Windows] =
             [
+                // Only the setting is written here: AppLifecycle reconciles the Run entry on every change of it.
                 new SwitchRow("startup", "Launch at startup", "Open Doba when Windows starts.", s,
-                    x => x.LaunchAtStartup, (x, v) => x with { LaunchAtStartup = v }, ApplyAutostart),
+                    x => x.LaunchAtStartup, (x, v) => x with { LaunchAtStartup = v }),
                 new SwitchRow("tray", "Keep running in the tray", "Closing the window hides it instead of quitting.", s,
                     x => x.KeepInTray, (x, v) => x with { KeepInTray = v }),
                 new KeysRow("hotkey", "Quick add from anywhere", "Opens the New task window on top of any app.", ["Ctrl", "Alt", "N"]),
@@ -188,14 +189,8 @@ public sealed partial class SettingsViewModel : ScreenViewModel
             return false;
         }
 
-        bool wasStartup = _settings.Current.LaunchAtStartup;
         Services.App.Store.ReplaceAll(data.Tasks, data.Tags);
-        _settings.Update(_ => data.Settings);
-        if (data.Settings.LaunchAtStartup != wasStartup)
-        {
-            ApplyAutostart(data.Settings.LaunchAtStartup);
-        }
-
+        _settings.Update(_ => data.Settings); // AppLifecycle reconciles the Run entry with "Launch at startup"
         ShowTransferMessage(string.Create(CultureInfo.InvariantCulture, $"Imported {Count(data.Tasks.Count)}."), isError: false);
         return true;
     }
@@ -270,16 +265,6 @@ public sealed partial class SettingsViewModel : ScreenViewModel
     }
 
     private static string Count(int n) => n == 1 ? "1 task" : string.Create(CultureInfo.InvariantCulture, $"{n} tasks");
-
-    /// <summary>Launch at startup: the setting is always kept; the Run entry is written only where supported.</summary>
-    private void ApplyAutostart(bool enabled)
-    {
-        var autostart = Services.App.Platform.Autostart;
-        if (autostart.IsSupported)
-        {
-            autostart.SetEnabled(enabled);
-        }
-    }
 
     private void ShowTransferMessage(string message, bool isError)
     {

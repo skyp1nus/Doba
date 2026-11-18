@@ -2,7 +2,7 @@
   A task in a list (Inbox, Today; Day reuses it): the prototype's <li data-id> row. DataContext = TaskRowViewModel.
   Layout (flex, gap 12, padding Density.RowPadding = 11 4, 1 px Border.Subtle bottom border):
   checkbox 16 · priority button 18 (margin-left −4) · title (fills, ellipsis) · [#tag] meta · [→ Today].
-  The title's strike-through is always present; only its colour animates (code-behind, Motion.Strike).
+  The title's strike-through (StrikeText) is always present; only its colour animates (Motion.Strike).
   Keyboard: Space anywhere in the row completes the task (code-behind); Enter activates the focused button.
 -->
 <UserControl xmlns="https://github.com/avaloniaui"
@@ -54,6 +54,8 @@
               AutomationProperties.Name="{Binding PriorityLabel}">
         <c:PriorityIcon Priority="{Binding Priority}" />
       </Button>
+      <!-- Content is the row view-model (set in code-behind) so a recycled row can rebuild its title: see
+           TaskListRow.ShowRow. The strike is StrikeText's crisp 1 px line (Text.Muted), always present. -->
       <Button Name="PART_Title"
               Grid.Column="2"
               Theme="{StaticResource Button.Title}"
@@ -61,10 +63,15 @@
               HorizontalAlignment="Stretch"
               Command="{Binding OpenCommand}"
               AutomationProperties.Name="{Binding Title}">
-        <TextBlock Name="PART_TitleText"
-                   Text="{Binding Title}"
-                   TextTrimming="CharacterEllipsis"
-                   LineHeight="{Binding $self.FontSize, Converter={x:Static c:TaskListRow.CssLineHeight}}" />
+        <Button.ContentTemplate>
+          <DataTemplate x:DataType="vm:TaskRowViewModel">
+            <c:StrikeText Text="{Binding Title}"
+                          Struck="{Binding Done}"
+                          StrikeColor="{DynamicResource Color.Text.Muted}"
+                          TextTrimming="CharacterEllipsis"
+                          LineHeight="{Binding $self.FontSize, Converter={x:Static c:TaskListRow.CssLineHeight}}" />
+          </DataTemplate>
+        </Button.ContentTemplate>
       </Button>
       <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="12" Margin="12,0,0,0">
         <TextBlock Name="PART_Tag" Classes="meta" Text="{Binding TagLabel}" IsVisible="{Binding HasTag}" VerticalAlignment="Center" />

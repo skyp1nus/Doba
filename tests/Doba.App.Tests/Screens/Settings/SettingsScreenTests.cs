@@ -191,7 +191,7 @@ public sealed class SettingsScreenTests
     }
 
     [AvaloniaFact]
-    public void Clicking_toggles_writes_settings_and_launch_at_startup_calls_autostart()
+    public void Clicking_toggles_writes_settings_and_leaves_the_run_entry_to_the_lifecycle()
     {
         using var f = new Fixture(autostartSupported: true);
         var window = f.Show(SettingsTab.Windows);
@@ -202,11 +202,38 @@ public sealed class SettingsScreenTests
 
         Click(window, switches[0]);
         Assert.False(f.App.Settings.Current.LaunchAtStartup);
-        Assert.Equal([false], f.Autostart.Calls);
+        Assert.False(switches[0].IsChecked);
 
         Click(window, switches[1]);
         Assert.False(f.App.Settings.Current.KeepInTray);
-        Assert.Equal([false], f.Autostart.Calls); // only the startup row touches the Run entry
+
+        Click(window, switches[0]);
+        Assert.True(f.App.Settings.Current.LaunchAtStartup);
+        Assert.True(switches[0].IsChecked);
+
+        // AppLifecycle is the single writer of the Run entry (it reconciles on every LaunchAtStartup change).
+        Assert.Empty(f.Autostart.Calls);
+        window.Close();
+    }
+
+    [AvaloniaFact]
+    public async Task Import_stores_launch_at_startup_and_the_row_shows_it_without_touching_the_run_entry()
+    {
+        using var f = new Fixture(autostartSupported: true);
+        var window = f.Show(SettingsTab.Windows);
+        f.App.Settings.Update(s => s with { LaunchAtStartup = false });
+        using var exported = new MemoryStream();
+        await f.Vm.ExportToAsync(exported);
+        f.App.Settings.Update(s => s with { LaunchAtStartup = true });
+        var startup = (SwitchRow)f.Vm.RowsOf(SettingsTab.Windows)[0];
+        Assert.True(startup.IsOn);
+
+        exported.Position = 0;
+        Assert.True(await f.Vm.ImportFromAsync(exported));
+
+        Assert.False(f.App.Settings.Current.LaunchAtStartup);
+        Assert.False(startup.IsOn);
+        Assert.Empty(f.Autostart.Calls);
         window.Close();
     }
 

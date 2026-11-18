@@ -71,16 +71,14 @@ public sealed partial class SwitchRow : SettingsRow
     private readonly ISettingsService _settings;
     private readonly Func<AppSettings, bool> _get;
     private readonly Func<AppSettings, bool, AppSettings> _set;
-    private readonly Action<bool>? _onUserChange;
 
     public SwitchRow(string key, string label, string description, ISettingsService settings,
-        Func<AppSettings, bool> get, Func<AppSettings, bool, AppSettings> set, Action<bool>? onUserChange = null)
+        Func<AppSettings, bool> get, Func<AppSettings, bool, AppSettings> set)
         : base(key, label, description)
     {
         _settings = settings;
         _get = get;
         _set = set;
-        _onUserChange = onUserChange;
         Sync(settings.Current);
     }
 
@@ -96,7 +94,6 @@ public sealed partial class SwitchRow : SettingsRow
         }
 
         _settings.Update(s => _set(s, value));
-        _onUserChange?.Invoke(value);
     }
 }
 

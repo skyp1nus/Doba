@@ -1,6 +1,4 @@
-using System.ComponentModel;
 using Avalonia;
-using Avalonia.Animation;
 using Avalonia.Controls;
 using Avalonia.Data.Converters;
 using Avalonia.Input;
@@ -20,7 +18,8 @@ namespace Doba.App.Controls;
 /// </summary>
 /// <remarks>
 /// <para><b>Motion.</b> Done: the checkbox fills (TaskCheckBox), the title colour goes Text.Primary → Text.Muted and the
-/// strike-through — always present — changes colour from transparent to Text.Muted (both <see cref="M.Strike"/>, ease).
+/// <see cref="StrikeText"/> strike-through — always present, a crisp 1 px line — changes colour from transparent to
+/// Text.Muted (both <see cref="M.Strike"/>, ease).
 /// Dimmed (tag filter): opacity → <c>Opacity.Dimmed</c> (<see cref="M.Dim"/>). When the row appears for the task in
 /// <see cref="TaskActions.PendingEntranceId"/> (just created / moved "→ Today") it plays the new-row entrance
 /// (opacity 0→1, translateY −8→0, <see cref="M.NewRow"/>, ease-out) — the task actions are found through the inherited
@@ -42,8 +41,6 @@ public partial class TaskListRow : UserControl
     public static readonly AttachedProperty<TaskActions?> EntrancesProperty =
         AvaloniaProperty.RegisterAttached<TaskListRow, Control, TaskActions?>("Entrances", inherits: true);
 
-    private readonly SolidColorBrush _strike = new();
-    private readonly Transitions _strikeTransitions;
     private TaskRowViewModel? _row;
 
     /// <summary>Space is down and has already toggled the task (key repeat does not toggle again).</summary>
@@ -55,15 +52,6 @@ public partial class TaskListRow : UserControl
         // Tunnel: a Button marks Space handled on its own KeyDown, so a bubbling handler would never see it.
         AddHandler(KeyDownEvent, OnPreviewKeyDown, RoutingStrategies.Tunnel);
         AddHandler(KeyUpEvent, OnPreviewKeyUp, RoutingStrategies.Tunnel);
-        _strikeTransitions =
-        [
-            new ColorTransition { Property = SolidColorBrush.ColorProperty, Duration = M.Ms(M.Strike), Easing = M.EaseStd },
-        ];
-        PART_TitleText.TextDecorations =
-        [
-            new TextDecoration { Location = TextDecorationLocation.Strikethrough, Stroke = _strike },
-        ];
-        ActualThemeVariantChanged += (_, _) => ApplyStrike(animate: false);
     }
 
     /// <summary><c>FontSize × 1.4</c> (CSS <c>line-height: 1.4</c>) for single-line titles.</summary>
@@ -88,25 +76,15 @@ public partial class TaskListRow : UserControl
         element.SetValue(EntrancesProperty, value);
     }
 
-    /// <summary>The strike-through brush (its colour animates; exposed for tests).</summary>
-    internal SolidColorBrush StrikeBrush => _strike;
+    /// <summary>The title text with its strike (null until the title button is templated; for tests).</summary>
+    internal StrikeText? TitleText => PART_Title.Presenter?.Child as StrikeText;
 
     protected override void OnDataContextChanged(EventArgs e)
     {
         base.OnDataContextChanged(e);
-        if (_row is not null)
-        {
-            _row.PropertyChanged -= OnRowPropertyChanged;
-        }
-
         _row = DataContext as TaskRowViewModel;
-        if (_row is not null)
-        {
-            _row.PropertyChanged += OnRowPropertyChanged;
-        }
-
+        ShowRow(_row);
         _spaceDown = false;
-        ApplyStrike(animate: false);
         if (IsLoaded)
         {
             TryEntrance();
@@ -116,7 +94,6 @@ public partial class TaskListRow : UserControl
     protected override void OnLoaded(RoutedEventArgs e)
     {
         base.OnLoaded(e);
-        ApplyStrike(animate: false);
         TryEntrance();
     }
 
@@ -158,24 +135,20 @@ public partial class TaskListRow : UserControl
     private bool IsFromCheckBox(object? source) =>
         source is Visual v && (ReferenceEquals(v, PART_Check) || PART_Check.IsVisualAncestorOf(v));
 
-    private void OnRowPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    /// <summary>
+    /// Points the title at <paramref name="row"/>. The title's <see cref="StrikeText"/> animates every change of its
+    /// strike colour, which is right while the same task is completed or reopened; a row re-pointed at a task in the
+    /// other done state (virtualised container recycling) must show that state at once, so the title is rebuilt
+    /// (content cleared first, so the presenter does not reuse the old StrikeText). Same state: reused as is.
+    /// </summary>
+    private void ShowRow(TaskRowViewModel? row)
     {
-        if (e.PropertyName == nameof(TaskRowViewModel.Done))
+        if (TitleText is { } title && row is not null && title.Struck != row.Done)
         {
-            ApplyStrike(animate: true);
+            PART_Title.Content = null;
         }
-    }
 
-    /// <summary>Strike colour: Text.Muted when done, the same colour fully transparent otherwise (so the fade never
-    /// passes through a darker colour).</summary>
-    private void ApplyStrike(bool animate)
-    {
-        var muted = this.TryFindResource("Color.Text.Muted", ActualThemeVariant, out var value) && value is Color c ? c : default;
-        var target = _row is { Done: true } ? muted : new Color(0, muted.R, muted.G, muted.B);
-        // Without the transitions attached the colour snaps (recycled container, first show, theme change).
-        _strike.Transitions = animate ? _strikeTransitions : null;
-        _strike.Color = target;
-        _strike.Transitions = _strikeTransitions;
+        PART_Title.Content = row;
     }
 
     private void TryEntrance()
