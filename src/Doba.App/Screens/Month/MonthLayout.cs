@@ -30,7 +30,20 @@ public static class MonthLayout
     /// <summary>Vertical space one item takes in the list.</summary>
     public const double ItemPitch = ChipHeight + ChipGap;
 
-    /// <summary>Metrics for a month body of <paramref name="availableHeight"/> px (weekday header included).</summary>
-    public static MonthMetrics Metrics(double availableHeight) =>
-        new(availableHeight, HeaderHeight, DayNumberHeight, LaneHeight, ItemPitch);
+    /// <summary>
+    /// What the prototype's row formula loses against the real body: monthData computes
+    /// <c>H = floor((832 − 26) / weeks)</c> with a hard-coded 832, while its month body (main padding 16 / 20) is 836 px
+    /// at 1600 × 1000, so the reference rows are 134 px, not 135. The measured body minus this keeps that geometry.
+    /// </summary>
+    public const double PrototypeBodySlack = 4;
+
+    /// <summary>Space the "+N more" line needs below the lanes: list padding-top 4 + one 22 px chip slot.</summary>
+    public const double MinListRoom = 4 + ChipHeight;
+
+    /// <summary>
+    /// Metrics for a month body of <paramref name="bodyHeight"/> px as laid out (weekday header included); the
+    /// projection divides <paramref name="bodyHeight"/> − <see cref="PrototypeBodySlack"/> into week rows.
+    /// </summary>
+    public static MonthMetrics Metrics(double bodyHeight) =>
+        new(bodyHeight - PrototypeBodySlack, HeaderHeight, DayNumberHeight, LaneHeight, ItemPitch);
 }

@@ -12,11 +12,14 @@
              x:DataType="local:DayViewModel"
              c:TaskListRow.Entrances="{Binding Entrances}">
   <Grid ColumnDefinitions="*,Auto">
-    <ScrollViewer Name="PART_Scroll" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Padding="0,0,32,0">
+    <ScrollViewer Name="PART_Scroll" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Padding="{StaticResource Space.Day.Scroll}">
       <Grid>
+        <!-- max-width 680, left-aligned. The list column takes (nearly) all the width up to its maximum and the second
+             column the rest; with a lone capped star column (and an empty Auto one) the Grid laid the list out 681 px
+             wide. -->
         <Grid.ColumnDefinitions>
-          <ColumnDefinition Width="*" MaxWidth="{StaticResource Size.Day.MaxWidth}" />
-          <ColumnDefinition Width="Auto" />
+          <ColumnDefinition Width="1000*" MaxWidth="{StaticResource Size.Day.MaxWidth}" />
+          <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
         <StackPanel Name="PART_List" Spacing="{StaticResource Space.Day.ListGap}" Margin="{StaticResource Space.Day.List}">
           <Grid Name="PART_Header" ColumnDefinitions="*,Auto" Margin="{StaticResource Space.Day.Header}">
@@ -74,7 +77,7 @@
             Grid.Column="1"
             BorderBrush="{DynamicResource Brush.Border.Subtle}"
             BorderThickness="1,0,0,0"
-            Padding="24,0,0,0">
+            Padding="{StaticResource Space.Day.Aside}">
       <c:ScheduleTimeline Name="PART_Schedule" Width="{DynamicResource Size.Schedule.Width}" DataContext="{Binding Schedule}" />
     </Border>
   </Grid>

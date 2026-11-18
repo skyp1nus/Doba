@@ -25,6 +25,12 @@ public static class WeekLayout
     /// <summary>Gap between card meta items; the priority button is 18 px wide.</summary>
     public const double MetaGap = 8, PriorityButton = 18;
 
+    /// <summary>
+    /// Narrowest title a card keeps its tag for (the design has no rule: at 1100 px the tag and time left titles about
+    /// 40 px, i.e. three letters). Below it the tag is dropped; priority and time stay.
+    /// </summary>
+    public const double MinTitleWidth = 80;
+
     /// <summary>Card checkbox (16 px).</summary>
     public const double CheckSize = 16;
 

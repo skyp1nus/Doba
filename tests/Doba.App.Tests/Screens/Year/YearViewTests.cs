@@ -22,13 +22,13 @@ public class YearViewTests
 
     private sealed class Scene : IDisposable
     {
-        public Scene(string? filter = null)
+        public Scene(string? filter = null, double height = ScreenHarness.ContentHeight)
         {
             Harness = new ScreenHarness { FilterTag = filter };
             ViewModel = new YearViewModel(Harness.Services);
             ViewModel.Show(new NavState(AppView.Year, DemoToday));
             View = new YearView { DataContext = ViewModel };
-            Window = ScreenHarness.Host(View);
+            Window = ScreenHarness.Host(View, ScreenHarness.ContentWidth, height);
         }
 
         public ScreenHarness Harness { get; }
@@ -125,9 +125,24 @@ public class YearViewTests
             Assert.Equal(row * height + (row == 0 ? 6 : 1 + 18), origin.Y, 1.0);
             var right = col * width + width - (col == 3 ? 0 : 22);
             Assert.Equal(right, origin.X + header.Bounds.Width, 1.0);
-            Assert.Equal(new Thickness(col == 0 ? 0 : 1, row == 0 ? 0 : 1, 0, 0), m.CellBorder);
-            Assert.Equal(new Thickness(col == 0 ? 0 : 22, row == 0 ? 6 : 18, col == 3 ? 0 : 22, 12), m.CellPadding);
+            var cell = header.GetVisualAncestors().OfType<Border>().First(b => b.Classes.Contains("cell"));
+            Assert.Equal(new Thickness(col == 0 ? 0 : 1, row == 0 ? 0 : 1, 0, 0), cell.BorderThickness);
+            Assert.Equal(new Thickness(col == 0 ? 0 : 22, row == 0 ? 6 : 18, col == 3 ? 0 : 22, 12), cell.Padding);
         }
+    }
+
+    [AvaloniaFact]
+    public void Track_edges_snap_like_the_reference_render()
+    {
+        // 1315 × 836 (the content area at 1600 × 1000): column edges round(i × 328.75) → 329, 658 (657.5 rounds up),
+        // 986; row edges floor(j × 278.67) → 278, 557. A uniform grid would put the fourth column at 987.
+        using var s = new Scene(height: 836);
+        double[] xs = [.. Enumerable.Range(0, 4).Select(c => s.Header(c + 1).GetVisualAncestors().OfType<Border>()
+            .First(b => b.Classes.Contains("cell")).TranslatePoint(default, s.View)!.Value.X)];
+        double[] ys = [.. Enumerable.Range(0, 3).Select(r => s.Header((r * 4) + 1).GetVisualAncestors().OfType<Border>()
+            .First(b => b.Classes.Contains("cell")).TranslatePoint(default, s.View)!.Value.Y)];
+        Assert.Equal([0, 329, 658, 986], xs);
+        Assert.Equal([0, 278, 557], ys);
     }
 
     [AvaloniaFact]
@@ -208,8 +223,49 @@ public class YearViewTests
         Assert.Equal(3, s.Harness.Commands.Zooms.Count);
         var last = s.Harness.Commands.Zooms[2];
         Assert.Equal((AppView.Month, DemoToday), (last.View, last.Anchor));
-        Assert.InRange(last.Origin!.Value.X, 0, 1);
-        Assert.InRange(last.Origin!.Value.Y, 0, 1);
+        var moreCentre = more.TranslatePoint(new Point(more.Bounds.Width / 2, more.Bounds.Height / 2), s.View)!.Value;
+        Assert.Equal(moreCentre.X / s.View.Bounds.Width, last.Origin!.Value.X, 3);
+        Assert.Equal(moreCentre.Y / s.View.Bounds.Height, last.Origin!.Value.Y, 3);
+    }
+
+    [AvaloniaFact]
+    public void Keyboard_activation_zooms_without_an_origin()
+    {
+        using var s = new Scene();
+        var header = s.Header(11);
+        header.Focus(NavigationMethod.Tab);
+        s.Window.KeyPress(Key.Enter, RawInputModifiers.None, PhysicalKey.Enter, null);
+        s.Window.KeyRelease(Key.Enter, RawInputModifiers.None, PhysicalKey.Enter, null);
+        var zoom = Assert.Single(s.Harness.Commands.Zooms);
+        Assert.Equal((AppView.Month, DemoToday, (Point?)null), zoom);
+
+        // A pointer press that did not end in a click does not make the next keyboard activation look like one.
+        var march = s.Header(3);
+        var centre = march.TranslatePoint(new Point(march.Bounds.Width / 2, march.Bounds.Height / 2), s.Window)!.Value;
+        s.Window.MouseDown(centre, MouseButton.Left);
+        s.Window.MouseMove(new Point(2, 2));
+        s.Window.MouseUp(new Point(2, 2), MouseButton.Left);
+        march.Focus(NavigationMethod.Tab);
+        s.Window.KeyPress(Key.Space, RawInputModifiers.None, PhysicalKey.Space, " ");
+        s.Window.KeyRelease(Key.Space, RawInputModifiers.None, PhysicalKey.Space, " ");
+        Assert.Equal(2, s.Harness.Commands.Zooms.Count);
+        Assert.Null(s.Harness.Commands.Zooms[1].Origin);
+    }
+
+    [AvaloniaFact]
+    public void Completing_a_key_item_keeps_its_strike_and_fades_it_in()
+    {
+        using var s = new Scene();
+        var span = s.ViewModel.Months[10].Rows.First(r => r is { IsMultiDay: true, Done: false }); // stays listed when done
+        var button = s.ItemButton(span.Id);
+        var title = button.GetVisualDescendants().OfType<Doba.App.Controls.StrikeText>().Single();
+        Assert.False(title.Struck);
+        Assert.Equal(0, title.StrokeColor.A);                 // present, transparent
+
+        s.Click(button);
+        Assert.True(title.Struck);
+        Assert.Same(title, button.GetVisualDescendants().OfType<Doba.App.Controls.StrikeText>().Single());
+        Assert.Contains(title.TextDecorations!, d => d.Location == TextDecorationLocation.Strikethrough);
     }
 
     [AvaloniaFact]

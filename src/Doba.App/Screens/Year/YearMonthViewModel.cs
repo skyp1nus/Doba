@@ -40,13 +40,17 @@ public sealed partial class YearMonthViewModel : ObservableObject
     public int GridRow => (Month - 1) / Columns;
 
     /// <summary>
-    /// The prototype's per-position cell style (yearData <c>cell</c>): a 1 px Border.Subtle rule on the left except in
-    /// column 0 and on top except in row 0.
+    /// The prototype's per-position cell style (yearData <c>cell</c>) is picked by the view from these: no left rule
+    /// and no left padding in the first column, no right padding in the last, no top rule and a smaller top padding in
+    /// the first row (Space.Year.Cell* / Year.CellRule* tokens).
     /// </summary>
-    public Thickness CellBorder => new(Column == 0 ? 0 : 1, GridRow == 0 ? 0 : 1, 0, 0);
+    public bool IsFirstColumn => Column == 0;
 
-    /// <summary>yearData <c>cell</c> padding: top 6 (row 0) / 18, right 0 (column 3) / 22, bottom 12, left 0 (column 0) / 22.</summary>
-    public Thickness CellPadding => new(Column == 0 ? 0 : 22, GridRow == 0 ? 6 : 18, Column == Columns - 1 ? 0 : 22, 12);
+    /// <inheritdoc cref="IsFirstColumn"/>
+    public bool IsLastColumn => Column == Columns - 1;
+
+    /// <inheritdoc cref="IsFirstColumn"/>
+    public bool IsFirstRow => GridRow == 0;
 
     [ObservableProperty] public partial string Name { get; private set; } = string.Empty;
 

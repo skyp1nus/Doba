@@ -17,12 +17,13 @@ public sealed partial class MonthDayViewModel : ObservableObject
     private readonly Func<TaskRow, TaskRowViewModel> _createRow;
     private readonly Action<TaskRowViewModel, TaskRow> _updateRow = static (vm, r) => vm.Update(r);
 
-    public MonthDayViewModel(int column, MonthDayCell cell, int laneCount, Func<TaskRow, TaskRowViewModel> createRow)
+    public MonthDayViewModel(int column, MonthDayCell cell, int laneCount, Func<TaskRow, TaskRowViewModel> createRow,
+        double rowHeight = double.PositiveInfinity)
     {
         ArgumentNullException.ThrowIfNull(cell);
         Column = column;
         _createRow = createRow;
-        Update(cell, laneCount);
+        Update(cell, laneCount, rowHeight);
     }
 
     /// <summary>0-based column in the week (row key).</summary>
@@ -61,7 +62,17 @@ public sealed partial class MonthDayViewModel : ObservableObject
     /// <summary>The model last pushed in.</summary>
     public MonthDayCell Model { get; private set; } = null!;
 
-    public void Update(MonthDayCell cell, int laneCount)
+    /// <summary>
+    /// The row is too short for a list line below the lanes (short windows: six weeks with two lanes), so the cell
+    /// hides its list and shows every task as "+N more" in the day-number row instead of clipping it away.
+    /// </summary>
+    [ObservableProperty] public partial bool MoreInHeader { get; private set; }
+
+    /// <summary>"+5 more" for <see cref="MoreInHeader"/>: the shown items and the hidden ones.</summary>
+    [ObservableProperty] public partial string HeaderMoreLabel { get; private set; } = string.Empty;
+
+    /// <param name="rowHeight">The week row's height (the list gets what the day number and the lanes leave).</param>
+    public void Update(MonthDayCell cell, int laneCount, double rowHeight = double.PositiveInfinity)
     {
         ArgumentNullException.ThrowIfNull(cell);
         Model = cell;
@@ -84,6 +95,14 @@ public sealed partial class MonthDayViewModel : ObservableObject
 
         KeyedSync.Apply(Items, cell.Items, static r => r.Id, static vm => vm.Id, _createRow, _updateRow);
         HasItems = Items.Count > 0;
+
+        var total = cell.Items.Count + cell.MoreCount;
+        var room = rowHeight - MonthLayout.DayNumberHeight - (laneCount * MonthLayout.LaneHeight);
+        MoreInHeader = total > 0 && room < MonthLayout.MinListRoom;
+        if (MoreInHeader)
+        {
+            HeaderMoreLabel = string.Concat("+", total.ToString(CultureInfo.InvariantCulture), " more");
+        }
     }
 
     /// <summary>At least one item is shown (an empty list takes no space, so "+N more" sits at the top of the list).</summary>

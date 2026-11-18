@@ -40,7 +40,7 @@
       <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{StaticResource Space.Day.RowGap}">
         <c:TaskCheckBox Name="PART_Check"
                         VerticalAlignment="Top"
-                        Margin="0,1,0,0"
+                        Margin="{StaticResource Space.Day.Check}"
                         IsChecked="{Binding Done, Mode=OneWay}"
                         Command="{Binding ToggleCommand}"
                         AutomationProperties.Name="{Binding ToggleLabel}" />
@@ -84,7 +84,6 @@
                 FontSize="{DynamicResource FontSize.11}"
                 IsVisible="{Binding HasPriority}"
                 Command="{Binding CyclePriorityCommand}"
-                ToolTip.Tip="{Binding PriorityTitle}"
                 AutomationProperties.Name="{Binding PriorityLabel}">
           <StackPanel Orientation="Horizontal" Spacing="{StaticResource Space.Day.PriorityGap}">
             <c:PriorityIcon Priority="{Binding Priority}" VerticalAlignment="Center" />

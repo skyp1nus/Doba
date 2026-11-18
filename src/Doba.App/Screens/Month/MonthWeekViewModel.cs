@@ -28,8 +28,8 @@ public sealed partial class MonthWeekViewModel : ObservableObject
         _createRow = createRow;
         _createSpan = s => new MonthSpanViewModel(s, _createRow(s.Row));
         _columnOf = c => c.Date.DayNumber - WeekStart.DayNumber;
-        _createDay = c => new MonthDayViewModel(_columnOf(c), c, LaneCount, _createRow);
-        _updateDay = (vm, c) => vm.Update(c, LaneCount);
+        _createDay = c => new MonthDayViewModel(_columnOf(c), c, LaneCount, _createRow, RowHeight);
+        _updateDay = (vm, c) => vm.Update(c, LaneCount, RowHeight);
         Update(week);
     }
 

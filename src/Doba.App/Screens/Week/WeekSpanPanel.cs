@@ -5,7 +5,7 @@ using Avalonia.Layout;
 namespace Doba.App.Screens.Week;
 
 /// <summary>
-/// Lays out the multi-day bars of a week row: four equal columns, lanes of <see cref="LaneHeight"/> starting at
+/// Lays out the multi-day bars of a week row: four equal columns (edges as in <see cref="TrackGrid"/>), lanes of <see cref="LaneHeight"/> starting at
 /// <see cref="Top"/> (below the day headers) — the prototype's <c>grid-column: c / span n; grid-row: lane + 2</c>.
 /// Children carry <see cref="ColumnProperty"/>, <see cref="ColumnSpanProperty"/> and <see cref="LaneProperty"/>.
 /// </summary>
@@ -83,11 +83,13 @@ public sealed class WeekSpanPanel : Panel
 
     protected override Size ArrangeOverride(Size finalSize)
     {
-        var column = finalSize.Width / Columns;
+        // Column edges as in TrackGrid, so bars line up with the day columns under them.
         foreach (var child in Children)
         {
-            var x = column * Math.Clamp(GetColumn(child), 0, Columns - 1);
-            child.Arrange(new Rect(x, Top + (GetLane(child) * LaneHeight), column * Span(child), LaneHeight));
+            var c = Math.Clamp(GetColumn(child), 0, Columns - 1);
+            var x0 = TrackGrid.ColumnEdge(c, Columns, finalSize.Width);
+            var x1 = TrackGrid.ColumnEdge(c + Span(child), Columns, finalSize.Width);
+            child.Arrange(new Rect(x0, Top + (GetLane(child) * LaneHeight), x1 - x0, LaneHeight));
         }
 
         return finalSize;

@@ -24,9 +24,12 @@ public class MonthViewTests
 {
     private static readonly DateOnly DemoToday = new(2026, 11, 15);
 
+    /// <summary>The month body in the 1600 × 1000 shell (main padding 16 / 20); the prototype's row formula uses 832.</summary>
+    private const double BodyHeight = 836;
+
     private sealed class Scene : IDisposable
     {
-        public Scene(AppSettings? settings = null, double height = ScreenHarness.ContentHeight, DateOnly? anchor = null,
+        public Scene(AppSettings? settings = null, double height = BodyHeight, DateOnly? anchor = null,
             Action<ScreenHarness>? seed = null)
         {
             Harness = new ScreenHarness(settings);
@@ -129,7 +132,7 @@ public class MonthViewTests
     {
         using var s = new Scene();
         Assert.True(s.ViewModel.IsMeasured);
-        Assert.Equal(ScreenHarness.ContentHeight, s.ViewModel.Metrics.AvailableHeight, 0.5);
+        Assert.Equal(832, s.ViewModel.Metrics.AvailableHeight, 0.5); // the body minus PrototypeBodySlack, as in monthData
 
         var expected = s.Expected();
         var weeks = s.Weeks();
@@ -307,8 +310,8 @@ public class MonthViewTests
         }
 
         using var small = new Scene(height: 600);
-        Assert.Equal(600, small.ViewModel.Metrics.AvailableHeight, 0.5);
-        Assert.All(small.Weeks(), w => Assert.Equal(95, w.Bounds.Height, 0.5)); // floor((600 − 26) / 6)
+        Assert.Equal(596, small.ViewModel.Metrics.AvailableHeight, 0.5);
+        Assert.All(small.Weeks(), w => Assert.Equal(95, w.Bounds.Height, 0.5)); // floor((600 − 4 − 26) / 6)
         var smallMore = small.ViewModel.Model!.Weeks.SelectMany(w => w.Days).Sum(d => d.MoreCount);
         var smallShown = small.Cells().Sum(c => Scene.Chips(c).Count);
         Assert.True(smallMore > fullMore, $"more {smallMore} vs {fullMore}");
@@ -328,6 +331,42 @@ public class MonthViewTests
     }
 
     [AvaloniaFact]
+    public void Short_rows_still_show_more_in_the_day_number_row()
+    {
+        // The minimum window (1100 × 700) leaves about 532 px: six 81 px weeks; W46's two lanes leave no list line.
+        using var s = new Scene(height: 532);
+        var w46 = s.Weeks()[2];
+        Assert.Equal(2, s.ViewModel.Weeks[2].LaneCount);
+        foreach (var cell in Scene.Cells(w46))
+        {
+            var day = (MonthDayViewModel)cell.DataContext!;
+            var total = day.Items.Count + day.MoreCount;
+            Assert.True(total > 0);
+            Assert.True(day.MoreInHeader);
+            Assert.Empty(Scene.Chips(cell));
+            var more = Scene.More(cell);
+            Assert.NotNull(more);
+            Assert.Equal("+" + total + " more", more.Text);
+
+            // Inside the cell, in the day-number row.
+            var y = more.TranslatePoint(default, w46)!.Value.Y;
+            Assert.InRange(y, 0, MonthLayout.DayNumberHeight - more.Bounds.Height);
+        }
+
+        // A week without lanes keeps its list.
+        Assert.All(s.ViewModel.Weeks[0].Days, d => Assert.False(d.MoreInHeader));
+    }
+
+    [AvaloniaFact]
+    public void Day_columns_snap_like_the_reference_render()
+    {
+        // 1275 px of days: edges at round(i × 182.14) → 182, 364, 546, 729, 911, 1093 (a uniform grid: 728, 910, 1092).
+        using var s = new Scene();
+        var xs = Scene.Cells(s.Weeks()[0]).Select(c => c.TranslatePoint(default, s.View)!.Value.X - MonthLayout.WeekLabelWidth).ToList();
+        Assert.Equal([0, 182, 364, 546, 729, 911, 1093], xs);
+    }
+
+    [AvaloniaFact]
     public void Resizing_the_window_changes_more_in_place()
     {
         using var s = new Scene();
@@ -340,7 +379,7 @@ public class MonthViewTests
 
         Assert.Same(week, s.ViewModel.Weeks[4]);
         Assert.Same(cell, s.ViewModel.Weeks[4].Days[0]);
-        Assert.Equal(600, s.ViewModel.Metrics.AvailableHeight, 0.5);
+        Assert.Equal(596, s.ViewModel.Metrics.AvailableHeight, 0.5);
         Assert.NotEqual(labels, s.Cells().Select(c => Scene.More(c)?.Text).ToList());
         Assert.All(s.Weeks(), w => Assert.Equal(95, w.Bounds.Height, 0.5));
     }

@@ -35,6 +35,44 @@
     <Style Selector="ItemsControl.preview c|TaskCard">
       <Setter Property="Faded" Value="True" />
     </Style>
+
+    <!-- Card and bar states, declared once per row rather than inside every TaskCard / SpanBarButton. -->
+    <!-- Done title: Text.Muted (the Button.Title template fades the colour over Motion.Strike). -->
+    <Style Selector="c|TaskCard Button.title.done">
+      <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Muted}" />
+    </Style>
+    <!-- Tag filter (Opacity.Dimmed), next-week preview (Opacity.Week.Preview; PreviewDimmed when also filtered out). -->
+    <Style Selector="c|TaskCard c|Card.dimmed">
+      <Setter Property="Opacity" Value="{DynamicResource Opacity.Dimmed}" />
+    </Style>
+    <Style Selector="c|TaskCard c|Card.faded">
+      <Setter Property="Opacity" Value="{DynamicResource Opacity.Week.Preview}" />
+    </Style>
+    <Style Selector="c|TaskCard c|Card.faded.dimmed">
+      <Setter Property="Opacity" Value="{DynamicResource Opacity.Week.PreviewDimmed}" />
+    </Style>
+    <Style Selector="c|SpanBarButton Button.bar.done">
+      <Setter Property="Background" Value="{DynamicResource Brush.Bg.SpanDone}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource Brush.Bg.Track}" />
+    </Style>
+    <Style Selector="c|SpanBarButton Button.bar.dimmed">
+      <Setter Property="Opacity" Value="{DynamicResource Opacity.Dimmed}" />
+    </Style>
+    <!-- StrikeText is styled as TextBlock. -->
+    <Style Selector="c|SpanBarButton TextBlock.done">
+      <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Muted}" />
+    </Style>
+    <!-- Tab order inside the row (TabNavigation Local on the row): the day headers, then the multi-day bars, then the
+         cards and "+N more" — the prototype's DOM order (headers, span buttons, card lists). -->
+    <Style Selector="Button.day-header">
+      <Setter Property="KeyboardNavigation.TabIndex" Value="1" />
+    </Style>
+    <Style Selector="ItemsControl#SpansHost Button">
+      <Setter Property="KeyboardNavigation.TabIndex" Value="2" />
+    </Style>
+    <Style Selector="Border.list Button, Border.list CheckBox">
+      <Setter Property="KeyboardNavigation.TabIndex" Value="3" />
+    </Style>
     <!-- Item containers are logical children of the ItemsControl. -->
     <Style Selector="ItemsControl#SpansHost > ContentPresenter" x:DataType="w:WeekSpanViewModel">
       <Setter Property="w:WeekSpanPanel.Column" Value="{Binding Column}" />
@@ -43,12 +81,12 @@
     </Style>
   </UserControl.Styles>
 
-  <Panel>
+  <Panel KeyboardNavigation.TabNavigation="Local">
     <!-- Day columns -->
     <ItemsControl Name="CellsHost" ItemsSource="{Binding Cells}">
       <ItemsControl.ItemsPanel>
         <ItemsPanelTemplate>
-          <UniformGrid Columns="4" Rows="1" />
+          <w:TrackGrid Columns="4" />
         </ItemsPanelTemplate>
       </ItemsControl.ItemsPanel>
       <ItemsControl.ItemTemplate>
@@ -91,7 +129,7 @@
                                VerticalAlignment="Bottom"
                                Margin="-1,0,0,2" />
                   </StackPanel>
-                  <c:ProgressLine Value="{Binding Progress}" Margin="0,14,0,0" />
+                  <w:DayProgressLine Value="{Binding Progress}" Date="{Binding Date}" Margin="0,14,0,0" />
                 </StackPanel>
               </Button>
 
@@ -99,7 +137,7 @@
               <Border Grid.Row="1" Height="{Binding LaneCount, Converter={x:Static w:WeekView.LanesHeight}}" />
 
               <!-- Cards: padding 10 8 0, gap 6; "Nothing here"; "+N more". -->
-              <Border Grid.Row="2" ClipToBounds="True" Padding="8,10,8,0">
+              <Border Grid.Row="2" Classes="list" ClipToBounds="True" Padding="8,10,8,0">
                 <StackPanel VerticalAlignment="Top">
                   <TextBlock Classes="muted"
                              Text="Nothing here"

@@ -5,13 +5,22 @@ using Avalonia.Data.Converters;
 namespace Doba.App.Screens.Week;
 
 /// <summary>
-/// The Week screen. DataContext: <see cref="WeekViewModel"/>. After every layout pass it reports the two rows' content
-/// sizes to <see cref="WeekViewModel.ReportLayout"/> (which ignores unchanged sizes, so the card changes it causes
-/// cannot loop: card lists never change the row sizes).
+/// The Week screen. DataContext: <see cref="WeekViewModel"/>. Each measure pass reports the rows' size to
+/// <see cref="WeekViewModel.ReportLayout"/> before the rows are measured (both rows get
+/// <see cref="WeekRowsPanel.RowHeight"/>), so the first projection already fits the real space and the cards are in
+/// place for the first frame (no second pass mid-transition). <see cref="WeekViewModel.ReportLayout"/> ignores
+/// unchanged sizes, and card changes never change the row sizes, so this cannot loop. After layout the rows' actual
+/// bounds are reported as well (a no-op unless something sized them differently).
 /// </summary>
 public partial class WeekView : UserControl
 {
-    public WeekView() => InitializeComponent();
+    private readonly ZoomOrigin _origin;
+
+    public WeekView()
+    {
+        InitializeComponent();
+        _origin = new ZoomOrigin(this);
+    }
 
     /// <summary>Lane count → height of the lane rows under the day header (36 px each).</summary>
     public static IValueConverter LanesHeight { get; } =
@@ -29,27 +38,29 @@ public partial class WeekView : UserControl
         base.OnDetachedFromVisualTree(e);
     }
 
-    /// <summary>Zoom into <paramref name="cell"/>'s day from <paramref name="source"/>'s centre.</summary>
+    protected override Size MeasureOverride(Size availableSize)
+    {
+        if (DataContext is WeekViewModel vm && !double.IsInfinity(availableSize.Height) && !double.IsInfinity(availableSize.Width))
+        {
+            var inner = availableSize.Deflate(Padding);
+            var row = WeekRowsPanel.RowHeight(inner.Height, RowsPanel.RuleHeight());
+            vm.ReportLayout(row, row, inner.Width);
+        }
+
+        return base.MeasureOverride(availableSize);
+    }
+
+    /// <summary>Zoom into <paramref name="cell"/>'s day from <paramref name="source"/>'s centre (keyboard: no origin).</summary>
     internal void OpenDay(WeekCellViewModel cell, Control source)
     {
         if (DataContext is WeekViewModel vm)
         {
-            vm.OpenDay(cell.Date, OriginOf(source));
+            vm.OpenDay(cell.Date, _origin.For(source));
         }
     }
 
     /// <summary>Centre of <paramref name="source"/> relative to this view's bounds, as fractions (0..1).</summary>
-    internal Point? OriginOf(Control source)
-    {
-        var size = Bounds.Size;
-        if (size.Width <= 0 || size.Height <= 0
-            || source.TranslatePoint(new Point(source.Bounds.Width / 2, source.Bounds.Height / 2), this) is not { } centre)
-        {
-            return null;
-        }
-
-        return new Point(Math.Clamp(centre.X / size.Width, 0, 1), Math.Clamp(centre.Y / size.Height, 0, 1));
-    }
+    internal Point? OriginOf(Control source) => ZoomOrigin.Of(this, source);
 
     private void OnLayoutUpdated(object? sender, EventArgs e)
     {

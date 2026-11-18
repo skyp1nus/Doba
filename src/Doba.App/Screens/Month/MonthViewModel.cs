@@ -60,7 +60,7 @@ public sealed partial class MonthViewModel : ScreenViewModel
     /// <summary>True once the view has reported its height; before that the design height (832) is used.</summary>
     public bool IsMeasured => !double.IsNaN(_height);
 
-    /// <summary>The metrics the last projection used.</summary>
+    /// <summary>The metrics the last projection used (before the first report: the prototype's 832).</summary>
     public MonthMetrics Metrics => IsMeasured ? MonthLayout.Metrics(_height) : new MonthMetrics();
 
     /// <summary>

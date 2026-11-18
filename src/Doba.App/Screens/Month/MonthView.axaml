@@ -56,7 +56,7 @@
     <Style Selector="Border.chip">
       <Setter Property="Height" Value="{x:Static s:MonthLayout.ChipHeight}" />
       <Setter Property="Padding" Value="{DynamicResource Space.Month.Chip}" />
-      <Setter Property="CornerRadius" Value="{DynamicResource Radius.KeyCap}" />
+      <Setter Property="CornerRadius" Value="{DynamicResource Radius.Month.Chip}" />
       <Setter Property="Background" Value="{DynamicResource Brush.Bg.Card}" />
     </Style>
 
@@ -122,7 +122,7 @@
       <ItemsControl Grid.Column="1" Name="WeekdayHeader" ItemsSource="{Binding WeekdayLabels}">
         <ItemsControl.ItemsPanel>
           <ItemsPanelTemplate>
-            <UniformGrid Columns="7" Rows="1" />
+            <w:TrackGrid Columns="7" />
           </ItemsPanelTemplate>
         </ItemsControl.ItemsPanel>
         <ItemsControl.ItemTemplate>
@@ -149,7 +149,7 @@
               <ItemsControl Classes="days" ItemsSource="{Binding Days}">
                 <ItemsControl.ItemsPanel>
                   <ItemsPanelTemplate>
-                    <UniformGrid Columns="7" Rows="1" />
+                    <w:TrackGrid Columns="7" />
                   </ItemsPanelTemplate>
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
@@ -163,19 +163,27 @@
                       <Grid RowDefinitions="Auto,Auto,*" IsHitTestVisible="False">
                         <!-- 34 px row, padding 8 10 0, number (and today's dot) centred in what is left. -->
                         <Border Height="{x:Static s:MonthLayout.DayNumberHeight}" Padding="{DynamicResource Space.Month.DayNumber}">
-                          <StackPanel Orientation="Horizontal"
-                                      VerticalAlignment="Center"
-                                      Spacing="{DynamicResource Month.InlineGap}">
-                            <TextBlock Classes="day-num"
-                                       Classes.outside="{Binding IsOutside}"
-                                       Classes.today="{Binding IsToday}"
-                                       Text="{Binding DayNumber}" />
-                            <Ellipse Width="{DynamicResource Size.Month.Dot}"
-                                     Height="{DynamicResource Size.Month.Dot}"
-                                     Fill="{DynamicResource Brush.Accent}"
-                                     VerticalAlignment="Center"
-                                     IsVisible="{Binding IsToday}" />
-                          </StackPanel>
+                          <Grid ColumnDefinitions="*,Auto">
+                            <StackPanel Orientation="Horizontal"
+                                        VerticalAlignment="Center"
+                                        Spacing="{DynamicResource Month.InlineGap}">
+                              <TextBlock Classes="day-num"
+                                         Classes.outside="{Binding IsOutside}"
+                                         Classes.today="{Binding IsToday}"
+                                         Text="{Binding DayNumber}" />
+                              <Ellipse Width="{DynamicResource Size.Month.Dot}"
+                                       Height="{DynamicResource Size.Month.Dot}"
+                                       Fill="{DynamicResource Brush.Accent}"
+                                       VerticalAlignment="Center"
+                                       IsVisible="{Binding IsToday}" />
+                            </StackPanel>
+                            <!-- Short rows (no room for a list line below the lanes): every task as "+N more" here. -->
+                            <TextBlock Grid.Column="1"
+                                       Classes="meta-sm more"
+                                       VerticalAlignment="Center"
+                                       Text="{Binding HeaderMoreLabel}"
+                                       IsVisible="{Binding MoreInHeader}" />
+                          </Grid>
                         </Border>
 
                         <!-- Room for the week's multi-day lanes. -->
@@ -185,7 +193,8 @@
                                     Margin="{DynamicResource Space.Month.List}"
                                     Spacing="{x:Static s:MonthLayout.ChipGap}"
                                     VerticalAlignment="Top"
-                                    ClipToBounds="True">
+                                    ClipToBounds="True"
+                                    IsVisible="{Binding !MoreInHeader}">
                           <ItemsControl Classes="items" ItemsSource="{Binding Items}" IsVisible="{Binding HasItems}">
                             <ItemsControl.ItemsPanel>
                               <ItemsPanelTemplate>

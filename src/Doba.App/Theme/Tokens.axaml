@@ -399,6 +399,7 @@
   <CornerRadius x:Key="Radius.Month.Bar.ClipStart">0,5,5,0</CornerRadius>
   <CornerRadius x:Key="Radius.Month.Bar.ClipEnd">5,0,0,5</CornerRadius>
   <CornerRadius x:Key="Radius.Month.Bar.ClipBoth">0</CornerRadius>
+  <CornerRadius x:Key="Radius.Month.Chip">5</CornerRadius>         <!-- item chip: border-radius 5px -->
   <x:Double x:Key="Month.InlineGap">6</x:Double>                   <!-- number ↔ today dot; checkbox ↔ title -->
   <x:Double x:Key="Size.Month.Dot">6</x:Double>                    <!-- today dot -->
 
@@ -408,7 +409,14 @@
   <Thickness x:Key="Space.Day.Span">11,0</Thickness>         <!-- span padding 0 12, minus the 1 px ring Button.Bar draws inside -->
   <x:Double x:Key="Space.Day.ListGap">8</x:Double>           <!-- gap between header, spans, cards, empty state, Add task -->
   <Thickness x:Key="Space.Day.List">0,4,0,0</Thickness>      <!-- list padding-top 4 -->
-  <Thickness x:Key="Space.Day.Header">0,0,0,4</Thickness>    <!-- "TASKS · N / M done" margin-bottom 4 -->
+  <!-- "TASKS · N / M done" margin-bottom 4. The row is 16.8 px in CSS (12 px × 1.4) and starts at a fractional y in the
+       reference (its content area is 0.4 px above ours), so Chromium puts the first card at y 176; whole-pixel layout
+       rounds the row up to 17 and drew every card 1 px low. 3 lands the cards (and keeps the header text) where the
+       reference has them. -->
+  <Thickness x:Key="Space.Day.Header">0,0,0,3</Thickness>
+  <Thickness x:Key="Space.Day.Scroll">0,0,32,0</Thickness>   <!-- list column padding-right 32 -->
+  <Thickness x:Key="Space.Day.Aside">24,0,0,0</Thickness>    <!-- Schedule aside padding-left 24 -->
+  <Thickness x:Key="Space.Day.Check">0,1,0,0</Thickness>     <!-- card checkbox margin-top 1 -->
   <x:Double x:Key="Space.Day.RowGap">10</x:Double>           <!-- checkbox ↔ title (cards and spans) -->
   <Thickness x:Key="Space.Day.Meta">26,0,0,0</Thickness>     <!-- card meta row indent: checkbox 16 + gap 10 -->
   <x:Double x:Key="Space.Day.MetaGap">12</x:Double>          <!-- priority · #tag · time -->
@@ -445,4 +453,43 @@
 
 
   <!-- == Calendar (Week / Year) == -->
+  <!-- Week: the next-week preview cell's cards (opacity 0.55; 0.2 when a tag filter also dims them). -->
+  <x:Double x:Key="Opacity.Week.Preview">0.55</x:Double>
+  <x:Double x:Key="Opacity.Week.PreviewDimmed">0.2</x:Double>
+  <!-- Week card title: Avalonia puts the 18 px line's extra leading above the glyphs (CSS splits it), which drew the
+       titles 2 px low; this moves 2 px from above the title to below it (same block height). -->
+  <Thickness x:Key="Space.Week.CardTitle">0,-2,0,2</Thickness>
+  <!-- Week grid: 12 px under row 1, a 1 px rule, 14 px above row 2 (rows: flex 1 1 0 after the padding). -->
+  <Thickness x:Key="Space.Week.RowRule">0,12,0,14</Thickness>
+
+  <!-- Year (design-reference lines 425–454, yearData `cell`): cell padding top 6 (first row) / 18, right 22 (0 in the
+       last column), bottom 12, left 22 (0 in the first column); a 1 px Border.Subtle rule left / on top except at the
+       grid's outer edges. -->
+  <Thickness x:Key="Space.Year.Cell">22,18,22,12</Thickness>
+  <Thickness x:Key="Space.Year.Cell.First">0,18,22,12</Thickness>
+  <Thickness x:Key="Space.Year.Cell.Last">22,18,0,12</Thickness>
+  <Thickness x:Key="Space.Year.Cell.Top">22,6,22,12</Thickness>
+  <Thickness x:Key="Space.Year.Cell.TopFirst">0,6,22,12</Thickness>
+  <Thickness x:Key="Space.Year.Cell.TopLast">22,6,0,12</Thickness>
+  <Thickness x:Key="Year.CellRule">1,1,0,0</Thickness>
+  <Thickness x:Key="Year.CellRule.First">0,1,0,0</Thickness>
+  <Thickness x:Key="Year.CellRule.Top">1,0,0,0</Thickness>
+  <Thickness x:Key="Year.CellRule.TopFirst">0</Thickness>
+  <x:Double x:Key="Year.Gap">6</x:Double>                 <!-- flex gap: header, items, "+N more" -->
+  <Thickness x:Key="Space.Year.Header">0,0,0,8</Thickness> <!-- header margin-bottom 8 -->
+  <!-- Stat row: 11 px × 1.4 = 15.4 (glyphs keep their natural top: CSS's +0.4 px half-leading rounds away). -->
+  <x:Double x:Key="Year.StatLineHeight">15.4</x:Double>
+  <!-- Month name: margin-top 6, 24 px × line-height 1.1 = 26.4, i.e. CSS pulls Geist's natural 32 px line in by 2.8 px
+       top and bottom. Avalonia never applies a negative half-leading, so the margin does it (6 − 2.8 on top, −2.8 below);
+       the top is 1 px less again (2.2) because whole-pixel layout rounded the fractional stack 1 px low against the
+       reference (name ink 22 px below the stat ink there, progress line 59 px below the cell's content top). -->
+  <Thickness x:Key="Space.Year.Name">0,2.2,0,-2.8</Thickness>
+  <Thickness x:Key="Space.Year.Progress">0,12,0,0</Thickness>
+  <x:Double x:Key="Size.Year.Dot">6</x:Double>            <!-- "● NOW" dot -->
+  <x:Double x:Key="Year.NowGap">6</x:Double>              <!-- dot ↔ "NOW": gap 6 -->
+  <x:Double x:Key="Year.ItemHeight">28</x:Double>         <!-- key item row -->
+  <Thickness x:Key="Space.Year.Item">8,0</Thickness>      <!-- padding 0 9, minus the 1 px ring drawn as a border here -->
+  <x:Double x:Key="Year.ItemGap">8</x:Double>             <!-- checkbox ↔ title ↔ meta -->
+  <x:Double x:Key="Size.Year.Check">12</x:Double>
+  <Thickness x:Key="Space.Year.More">9,2</Thickness>      <!-- "+N more": padding 2px 9px -->
 </ResourceDictionary>

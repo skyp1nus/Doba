@@ -1,6 +1,9 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Interactivity;
+using Doba.App.Motion;
 using Doba.App.ViewModels;
+using M = Doba.App.Motion.Motion;
 
 namespace Doba.App.Controls;
 
@@ -55,6 +58,16 @@ public partial class SpanBarButton : UserControl
 
     /// <summary>The inner button (for tests).</summary>
     internal Button Bar => PART_Bar;
+
+    /// <summary>A just-created (or moved) multi-day task's bar plays the new-row entrance once, as cards and rows do.</summary>
+    protected override void OnLoaded(RoutedEventArgs e)
+    {
+        base.OnLoaded(e);
+        if (DataContext is TaskRowViewModel row && TaskListRow.GetEntrances(this) is { } actions && actions.ConsumeEntrance(row.Id))
+        {
+            Animator.SlideFrom(this, 0, M.NewRowY, M.NewRow);
+        }
+    }
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {

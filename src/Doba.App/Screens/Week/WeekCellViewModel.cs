@@ -8,7 +8,10 @@ using Doba.Core.Time;
 
 namespace Doba.App.Screens.Week;
 
-/// <summary>One day column of a week row (keyed by date): header, progress and the cards that fit.</summary>
+/// <summary>
+/// One day column of a week row (keyed by its column, so it lives across week changes): header, progress and the
+/// cards that fit.
+/// </summary>
 public sealed partial class WeekCellViewModel : ObservableObject
 {
     private readonly Func<TaskRow, TaskRowViewModel> _createRow;
@@ -18,22 +21,21 @@ public sealed partial class WeekCellViewModel : ObservableObject
     {
         ArgumentNullException.ThrowIfNull(cell);
         _createRow = createRow;
-        Date = cell.Date;
-        DayNumber = cell.DayNumber.ToString(CultureInfo.InvariantCulture);
+        Column = cell.Column;
         Update(cell, laneCount);
     }
 
-    /// <summary>The day (row key).</summary>
-    public DateOnly Date { get; }
-
-    /// <summary>"9".</summary>
-    public string DayNumber { get; }
+    /// <summary>0-based column (0..3; the row key).</summary>
+    public int Column { get; }
 
     /// <summary>The cards that fit, in display order; updated in place by task id.</summary>
     public ObservableCollection<TaskRowViewModel> Tasks { get; } = [];
 
-    /// <summary>0-based column (0..3).</summary>
-    [ObservableProperty] public partial int Column { get; private set; }
+    /// <summary>The day shown.</summary>
+    [ObservableProperty] public partial DateOnly Date { get; private set; }
+
+    /// <summary>"9".</summary>
+    [ObservableProperty] public partial string DayNumber { get; private set; } = string.Empty;
 
     /// <summary>"MON" (the prototype upper-cases the weekday with CSS).</summary>
     [ObservableProperty] public partial string Weekday { get; private set; } = string.Empty;
@@ -74,7 +76,6 @@ public sealed partial class WeekCellViewModel : ObservableObject
     public void Update(WeekDayCell cell, int laneCount)
     {
         ArgumentNullException.ThrowIfNull(cell);
-        Column = cell.Column;
         if (!string.Equals(_weekdaySource, cell.Weekday, StringComparison.Ordinal))
         {
             _weekdaySource = cell.Weekday;
@@ -83,26 +84,33 @@ public sealed partial class WeekCellViewModel : ObservableObject
 
         Month = cell.MonthShort;
         IsToday = cell.IsToday;
-        IsPreview = cell.IsPreview;
-        Progress = cell.Progress;
         Empty = cell.Empty;
         LaneCount = laneCount;
+
+        // Progress before Date: the header's progress line jumps (no 500 ms sweep) when its day changes.
+        Progress = cell.Progress;
+        var dayChanged = Date != cell.Date || DayNumber.Length == 0;
+        if (dayChanged)
+        {
+            Date = cell.Date;
+            DayNumber = cell.DayNumber.ToString(CultureInfo.InvariantCulture);
+        }
+
+        if (dayChanged || IsPreview != cell.IsPreview)
+        {
+            IsPreview = cell.IsPreview;
+            OpenLabel = string.Concat(IsPreview ? "Open next " : "Open ", DateMath.WeekdayLong(Date.DayOfWeek), " ",
+                DayNumber, " ", DateMath.MonthNames[Date.Month - 1]);
+        }
+
         if (MoreCount != cell.MoreCount || MoreLabel.Length == 0)
         {
             MoreCount = cell.MoreCount;
             MoreLabel = string.Concat("+", cell.MoreCount.ToString(CultureInfo.InvariantCulture), " more");
         }
 
-        if (OpenLabel.Length == 0 || IsPreview != OpenLabel.StartsWith("Open next", StringComparison.Ordinal))
-        {
-            OpenLabel = string.Concat(IsPreview ? "Open next " : "Open ", DateMath.WeekdayLong(Date.DayOfWeek), " ",
-                DayNumber, " ", DateMath.MonthNames[Date.Month - 1]);
-        }
-
         KeyedSync.Apply(Tasks, cell.Tasks, r => r.Id, vm => vm.Id, _createRow, (vm, r) => vm.Update(r));
     }
-
-    partial void OnColumnChanged(int value) => OnPropertyChanged(nameof(HasSeparator));
 
     partial void OnMoreCountChanged(int value) => OnPropertyChanged(nameof(HasMore));
 

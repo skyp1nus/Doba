@@ -234,7 +234,8 @@ public class DayScreenTests
         var before = store.Get(open.Id)!.Priority;
         card.PriorityButton.Command!.Execute(null);
         Settle(window);
-        Assert.NotEqual(before, store.Get(open.Id)!.Priority);
+        Assert.Equal(before.Next(), store.Get(open.Id)!.Priority);
+        Assert.Null(ToolTip.GetTip(card.PriorityButton)); // the design has no tooltip on the Day priority button
 
         card.TitleButton.Command!.Execute(null);
         Assert.Equal([open.Id], harness.Commands.Edits);
@@ -370,6 +371,30 @@ public class DayScreenTests
         Assert.Equal(Doba.App.Motion.Motion.NewRowY, Animator.Running(card)!.From.Y);
         Assert.All(existing, r => Assert.Contains(r, vm.Items)); // the others stay
         Assert.All(existing, r => Assert.False(Animator.IsAnimating(CardOf(view, r))));
+        window.Close();
+    }
+
+    [AvaloniaFact]
+    public void A_long_title_wraps_inside_the_680_px_list()
+    {
+        using var harness = new ScreenHarness();
+        var title = string.Join(' ', Enumerable.Repeat("Prepare the quarterly report draft", 4));
+        var task = harness.App.Store.Add(NewTask(s_emptyDay, title));
+        var (vm, view) = Open(harness, s_emptyDay);
+        var window = Host(view);
+
+        // max-width 680, left-aligned: exactly 680 px in the 1315 px content area.
+        var list = view.GetVisualDescendants().OfType<StackPanel>().Single(p => p.Name == "PART_List");
+        Assert.Equal(680, list.Bounds.Width);
+        Assert.Equal(680, view.AddTask.Bounds.Width);
+
+        var card = CardOf(view, vm.Items.Single(r => r.Id == task.Id));
+        var text = card.GetVisualDescendants().OfType<StrikeText>().Single();
+        Assert.True(text.TextLayout.TextLines.Count >= 2, $"{text.TextLayout.TextLines.Count} line(s)");
+        Assert.Equal(title, text.Text);                       // wrapped, never trimmed
+        var lines = text.TextLayout.TextLines.Count;
+        Assert.Equal(22 + (lines * 18), card.Bounds.Height); // padding 11 + 11, one 18 px line each (no meta row)
+        Assert.True(card.Bounds.Width <= 680);
         window.Close();
     }
 

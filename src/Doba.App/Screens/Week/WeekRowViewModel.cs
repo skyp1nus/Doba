@@ -7,8 +7,9 @@ using Doba.Core.Projections;
 namespace Doba.App.Screens.Week;
 
 /// <summary>
-/// One of the two week rows: four day cells (keyed by date) and the multi-day bars in lanes under the headers
-/// (keyed by task id). Lives as long as the screen; <see cref="Update"/> reconciles in place.
+/// One of the two week rows: four day cells (keyed by column, so moving to another week updates the same cells) and
+/// the multi-day bars in lanes under the headers (keyed by task id). Lives as long as the screen; <see cref="Update"/>
+/// reconciles in place.
 /// </summary>
 public sealed partial class WeekRowViewModel : ObservableObject
 {
@@ -40,6 +41,6 @@ public sealed partial class WeekRowViewModel : ObservableObject
         Model = row;
         LaneCount = row.LaneCount;
         KeyedSync.Apply(Spans, row.Spans, s => s.Row.Id, vm => vm.Id, _createSpan, (vm, s) => vm.Update(s));
-        KeyedSync.Apply(Cells, row.Cells, c => c.Date, vm => vm.Date, _createCell, _updateCell);
+        KeyedSync.Apply(Cells, row.Cells, static c => c.Column, static vm => vm.Column, _createCell, _updateCell);
     }
 }
