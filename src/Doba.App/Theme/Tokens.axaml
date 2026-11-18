@@ -185,12 +185,6 @@
       <!-- == Day == -->
 
       <!-- == Dialog == -->
-      <!-- Dialog and popover shadows with the 1 px ring LAST: Avalonia paints a BoxShadows list in order (the last on
-           top) while CSS paints the first box-shadow on top, so the design's "0 0 0 1px ring, big soft shadow" written in
-           CSS order lets the soft shadow cover the ring (Border.dialog / .popover / .popover-sm in Styles.axaml do). -->
-      <BoxShadows x:Key="Shadow.Dialog">0 30 80 0 #99000000, 0 0 0 1 #26262A</BoxShadows>
-      <BoxShadows x:Key="Shadow.Popover">0 18 44 0 #8C000000, 0 0 0 1 #2A2A2F</BoxShadows>
-      <BoxShadows x:Key="Shadow.PopoverList">0 16 40 0 #80000000, 0 0 0 1 #2A2A2F</BoxShadows>
 
       <!-- == TimeWheel == -->
 

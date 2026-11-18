@@ -28,7 +28,6 @@
 
   <Border Name="PART_Surface"
           Classes="popover"
-          BoxShadow="{DynamicResource Shadow.Popover}"
           Width="{DynamicResource Size.Popover.Date}"
           Padding="{DynamicResource Space.Dialog.Popover}">
     <StackPanel>

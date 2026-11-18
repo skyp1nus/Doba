@@ -11,7 +11,6 @@
              ClipToBounds="False">
   <Border Name="PART_Surface"
           Classes="popover-sm"
-          BoxShadow="{DynamicResource Shadow.PopoverList}"
           Width="{DynamicResource Size.Popover.List}"
           Padding="{DynamicResource Space.Dialog.PopoverList}">
     <ItemsControl Name="PART_Items" ItemsSource="{Binding TagOptions}">

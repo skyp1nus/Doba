@@ -112,19 +112,19 @@
   <Style Selector="Border.popover">
     <Setter Property="Background" Value="{DynamicResource Brush.Bg.Popover}" />
     <Setter Property="CornerRadius" Value="{DynamicResource Radius.Dialog}" />
-    <Setter Property="BoxShadow" Value="0 0 0 1 #2A2A2F, 0 18 44 0 #8C000000" />
+    <Setter Property="BoxShadow" Value="0 18 44 0 #8C000000, 0 0 0 1 #2A2A2F" />
   </Style>
   <!-- Priority / Tag popover: r10, ring + 0 16 40 rgba(0,0,0,0.5). Padding 6. -->
   <Style Selector="Border.popover-sm">
     <Setter Property="Background" Value="{DynamicResource Brush.Bg.Popover}" />
     <Setter Property="CornerRadius" Value="{DynamicResource Radius.Panel}" />
-    <Setter Property="BoxShadow" Value="0 0 0 1 #2A2A2F, 0 16 40 0 #80000000" />
+    <Setter Property="BoxShadow" Value="0 16 40 0 #80000000, 0 0 0 1 #2A2A2F" />
   </Style>
   <!-- Task dialog: 640 wide, Bg.Dialog, r12, ring 1 px Border.Default + 0 30 80 rgba(0,0,0,0.6). -->
   <Style Selector="Border.dialog">
     <Setter Property="Background" Value="{DynamicResource Brush.Bg.Dialog}" />
     <Setter Property="CornerRadius" Value="{DynamicResource Radius.Dialog}" />
-    <Setter Property="BoxShadow" Value="0 0 0 1 #26262A, 0 30 80 0 #99000000" />
+    <Setter Property="BoxShadow" Value="0 30 80 0 #99000000, 0 0 0 1 #26262A" />
   </Style>
   <!-- 1 px rules: list/row dividers (Border.Subtle) and popover separators (Border.Default). -->
   <Style Selector="Border.divider">

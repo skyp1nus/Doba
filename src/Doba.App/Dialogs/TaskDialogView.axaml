@@ -15,7 +15,7 @@
              x:Class="Doba.App.Dialogs.TaskDialogView"
              x:DataType="d:TaskDialogViewModel"
              ClipToBounds="False">
-  <Border Name="PART_Dialog" Classes="dialog" BoxShadow="{DynamicResource Shadow.Dialog}">
+  <Border Name="PART_Dialog" Classes="dialog">
     <Grid RowDefinitions="Auto,Auto,Auto,Auto">
 
       <!-- Header: mono 11, gap 8, padding 0 10 0 20. -->

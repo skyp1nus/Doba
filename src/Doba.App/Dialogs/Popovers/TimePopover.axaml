@@ -13,7 +13,6 @@
              ClipToBounds="False">
   <Border Name="PART_Surface"
           Classes="popover"
-          BoxShadow="{DynamicResource Shadow.Popover}"
           Width="{DynamicResource Size.Popover.Time}"
           Padding="{DynamicResource Space.Dialog.Popover}">
     <StackPanel>
