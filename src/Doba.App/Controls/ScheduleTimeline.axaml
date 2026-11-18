@@ -95,7 +95,13 @@
                               FontSize="{DynamicResource FontSize.12.5}"
                               FontWeight="Medium"
                               TextTrimming="CharacterEllipsis"
-                              LineHeight="{Binding $self.FontSize, Converter={x:Static c:TaskListRow.CssLineHeight}}" />
+                              LineHeight="{Binding $self.FontSize, Converter={x:Static c:TaskListRow.CssLineHeight}}">
+                  <c:StrikeText.Transitions>
+                    <Transitions>
+                      <BrushTransition Property="Foreground" Duration="{x:Static m:MotionTimes.Strike}" Easing="{x:Static m:Motion.EaseStd}" />
+                    </Transitions>
+                  </c:StrikeText.Transitions>
+                </c:StrikeText>
                 <TextBlock Name="PART_Range"
                            Classes="meta-sm tertiary"
                            Text="{Binding Range}"

@@ -1,6 +1,7 @@
 <!--
   In-window overlay layer (task dialog, search palette): covers the whole window including the title bar with the
-  shade (Brush.Bg.Shade; the prototype's 3 px backdrop blur is not reproduced) and hosts the overlay view at
+  shade (Brush.Bg.Shade over the window content, which OverlayHost blurs while an overlay is open: the prototype's
+  backdrop-filter: blur(3px)) and hosts the overlay view at
   Size.Dialog.Top, Size.Dialog.Width wide, centred. Never an Avalonia Popup. DataContext: MainViewModel.
 -->
 <UserControl xmlns="https://github.com/avaloniaui"

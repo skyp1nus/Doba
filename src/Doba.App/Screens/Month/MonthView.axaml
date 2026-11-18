@@ -270,7 +270,13 @@
                                     Classes.done="{Binding Row.Done}"
                                     Text="{Binding Row.Title}"
                                     Struck="{Binding Row.Done}"
-                                    StrikeColor="{DynamicResource Color.Text.Muted}" />
+                                    StrikeColor="{DynamicResource Color.Text.Muted}">
+                        <c:StrikeText.Transitions>
+                          <Transitions>
+                            <BrushTransition Property="Foreground" Duration="{x:Static m:MotionTimes.Strike}" Easing="{x:Static m:Motion.EaseStd}" />
+                          </Transitions>
+                        </c:StrikeText.Transitions>
+                      </c:StrikeText>
                     </Border>
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>

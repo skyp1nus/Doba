@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using Avalonia;
+using Avalonia.Animation.Easings;
 using Avalonia.Media;
 using Avalonia.Threading;
 using Doba.Core.Model;
@@ -136,13 +137,32 @@ public sealed class ThemeService
         tween.Start();
     }
 
+    /// <summary>The cross-fade running on the brush <paramref name="key"/> (null when none runs); for tests.</summary>
+    internal ColorTween? Running(string key) => _tweens.GetValueOrDefault(key);
+
     /// <summary>A UI-thread colour cross-fade on a resource brush (resource brushes are not in the visual tree, so
     /// Avalonia transitions do not run on them).</summary>
-    private sealed class ColorTween(SolidColorBrush brush, Color from, Color to, TimeSpan duration, Action onDone)
+    internal sealed class ColorTween(SolidColorBrush brush, Color from, Color to, TimeSpan duration, Action onDone)
     {
         private static readonly TimeSpan s_frame = TimeSpan.FromSeconds(1.0 / 60);
         private readonly long _start = Stopwatch.GetTimestamp();
         private DispatcherTimer? _timer;
+
+        public Color From => from;
+
+        public Color To => to;
+
+        public TimeSpan Duration => duration;
+
+        /// <summary>Motion.EaseStd (`ease`), as the prototype's <c>transition: background-color 0.3s ease</c>.</summary>
+        public Easing Easing { get; } = M.EaseStd;
+
+        /// <summary>The colour shown at <paramref name="progress"/> (0..1 of <see cref="Duration"/>).</summary>
+        public Color ColorAt(double progress)
+        {
+            var e = Easing.Ease(Math.Clamp(progress, 0, 1));
+            return Color.FromArgb(Lerp(from.A, to.A, e), Lerp(from.R, to.R, e), Lerp(from.G, to.G, e), Lerp(from.B, to.B, e));
+        }
 
         public void Start()
         {
@@ -159,8 +179,7 @@ public sealed class ThemeService
         private void Tick()
         {
             var t = Math.Clamp(Stopwatch.GetElapsedTime(_start) / duration, 0, 1);
-            var e = M.EaseStd.Ease(t);
-            brush.Color = Color.FromArgb(Lerp(from.A, to.A, e), Lerp(from.R, to.R, e), Lerp(from.G, to.G, e), Lerp(from.B, to.B, e));
+            brush.Color = ColorAt(t);
             if (t >= 1)
             {
                 Stop();
