@@ -11,15 +11,12 @@
              x:Class="Doba.App.Controls.ScheduleTimeline"
              x:DataType="c:ScheduleViewModel">
   <UserControl.Styles>
+    <!-- Padding comes from ScheduleBlockViewModel.ContentPadding (design 7 10 0 / compact 0 10 centred, less the 1 px
+         ring that Button.Bar draws as a border where the design uses an inset box-shadow). -->
     <Style Selector="Button.block">
       <Setter Property="CornerRadius" Value="{DynamicResource Radius.Control}" />
-      <Setter Property="Padding" Value="10,7,10,0" />
       <Setter Property="VerticalAlignment" Value="Top" />
       <Setter Property="VerticalContentAlignment" Value="Top" />
-    </Style>
-    <Style Selector="Button.block.compact">
-      <Setter Property="Padding" Value="10,0" />
-      <Setter Property="VerticalContentAlignment" Value="Center" />
     </Style>
     <Style Selector="Button.block.done">
       <Setter Property="Background" Value="{DynamicResource Brush.Bg.BlockDone}" />
@@ -66,9 +63,11 @@
         </ItemsControl.ItemsPanel>
         <ItemsControl.ItemTemplate>
           <DataTemplate x:DataType="c:ScheduleHour">
+            <!-- The 1 px line is centred on the hour's top (top − 0.5 … top + 0.5), which Chromium paints on the
+                 pixel row above the top: row offset 7, not the 7.5 → 8 that centring would round to. -->
             <Grid Margin="{Binding Margin}" Height="16" VerticalAlignment="Top" ColumnDefinitions="40,*" ColumnSpacing="12">
               <TextBlock Classes="meta" Text="{Binding Label}" VerticalAlignment="Center" />
-              <Border Grid.Column="1" Classes="divider" VerticalAlignment="Center" />
+              <Border Grid.Column="1" Classes="divider" VerticalAlignment="Top" Margin="0,7,0,0" />
             </Grid>
           </DataTemplate>
         </ItemsControl.ItemTemplate>
@@ -88,6 +87,7 @@
                     Classes.done="{Binding Row.Done}"
                     Classes.dimmed="{Binding Row.Dimmed}"
                     Margin="{Binding Margin}"
+                    Padding="{Binding ContentPadding}"
                     Height="{Binding Height}"
                     Command="{Binding Row.ToggleCommand}"
                     AutomationProperties.Name="{Binding Row.ToggleLabel}">
@@ -127,7 +127,7 @@
           <TextBlock Classes="meta accent" Text="{Binding NowLabel}" LineHeight="16" VerticalAlignment="Center" />
         </Border>
         <Ellipse Grid.Column="1" Width="7" Height="7" Margin="4,0,0,0" Fill="{DynamicResource Brush.Accent}" VerticalAlignment="Center" />
-        <Border Grid.Column="2" Height="1" Background="{DynamicResource Brush.Accent}" VerticalAlignment="Center" />
+        <Border Grid.Column="2" Height="1" Background="{DynamicResource Brush.Accent}" VerticalAlignment="Top" Margin="0,7,0,0" />
       </Grid>
     </Panel>
   </StackPanel>

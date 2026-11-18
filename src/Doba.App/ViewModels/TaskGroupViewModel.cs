@@ -1,13 +1,13 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
 using Doba.App.Services;
 using Doba.App.Shell;
 using Doba.Core.Projections;
 
 namespace Doba.App.ViewModels;
 
-/// <summary>A labelled section of rows (Inbox, Today). Rows are reconciled by task id.</summary>
+/// <summary>A labelled section of rows (Inbox, Today). Rows are reconciled by task id. A click on the label link
+/// (<see cref="Link"/>) is handled by the view (<c>TaskGroupList.FollowRequested</c>), which knows the click origin.</summary>
 public sealed partial class TaskGroupViewModel : ObservableObject
 {
     private readonly TaskActions _actions;
@@ -35,9 +35,6 @@ public sealed partial class TaskGroupViewModel : ObservableObject
 
     public ObservableCollection<TaskRowViewModel> Items { get; } = [];
 
-    /// <summary>Rows created by the last update (for the new-row entrance).</summary>
-    public int Created { get; private set; }
-
     public void Update(TaskGroup group)
     {
         ArgumentNullException.ThrowIfNull(group);
@@ -46,9 +43,38 @@ public sealed partial class TaskGroupViewModel : ObservableObject
         Tone = group.Tone;
         Link = group.Link;
         OnPropertyChanged(nameof(HasLink));
-        Created = KeyedSync.Apply(Items, group.Items, r => r.Id, vm => vm.Id, r => new TaskRowViewModel(r, _actions, _commands), (vm, r) => vm.Update(r));
+        if (HasSameRows(group.Items))
+        {
+            // The common refresh (tag filter, settings, a title edit): same rows in the same order — update in place
+            // without KeyedSync's per-call lookup tables.
+            for (var i = 0; i < Items.Count; i++)
+            {
+                Items[i].Update(group.Items[i]);
+            }
+
+            return;
+        }
+
+        KeyedSync.Apply(Items, group.Items, r => r.Id, vm => vm.Id, r => new TaskRowViewModel(r, _actions, _commands), (vm, r) => vm.Update(r));
     }
 
-    /// <summary>Group label click (zoom to the linked day / month).</summary>
-    [RelayCommand] private void Follow() { if (Link is { } l) _commands.ZoomTo(l.View, l.Anchor); }
+    /// <summary>True when <see cref="Items"/> holds exactly <paramref name="rows"/>' tasks in the same order.</summary>
+    public bool HasSameRows(IReadOnlyList<TaskRow> rows)
+    {
+        ArgumentNullException.ThrowIfNull(rows);
+        if (rows.Count != Items.Count)
+        {
+            return false;
+        }
+
+        for (var i = 0; i < rows.Count; i++)
+        {
+            if (rows[i].Id != Items[i].Id)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
 }

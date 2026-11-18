@@ -23,9 +23,16 @@ public sealed partial class SettingsViewModel : ScreenViewModel
     private ThemeMode _theme;
 
     public SettingsViewModel(ScreenServices services)
+        : this(services, (services ?? throw new ArgumentNullException(nameof(services))).App.Settings)
+    {
+    }
+
+    /// <summary>Rows read and write <paramref name="settings"/> (tests pass a recording wrapper of the app's service).</summary>
+    internal SettingsViewModel(ScreenServices services, ISettingsService settings)
         : base(services)
     {
-        _settings = services.App.Settings;
+        ArgumentNullException.ThrowIfNull(settings);
+        _settings = settings;
         var app = services.App;
         var s = _settings;
 

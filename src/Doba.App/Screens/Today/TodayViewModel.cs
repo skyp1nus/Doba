@@ -16,10 +16,16 @@ namespace Doba.App.Screens.Today;
 /// </summary>
 public sealed partial class TodayViewModel : ScreenViewModel
 {
+    private readonly EntranceExpiry _entranceExpiry;
     private DateOnly _projectedDay;
+    private bool _projected;
 
     public TodayViewModel(ScreenServices services)
-        : base(services) => Schedule = new ScheduleViewModel(services.Actions, services.Commands);
+        : base(services)
+    {
+        Schedule = new ScheduleViewModel(services.Actions, services.Commands);
+        _entranceExpiry = new EntranceExpiry(services.App.Store, services.Actions);
+    }
 
     public ObservableCollection<TaskGroupViewModel> Groups { get; } = [];
 
@@ -40,12 +46,20 @@ public sealed partial class TodayViewModel : ScreenViewModel
     protected override void Refresh()
     {
         Refreshes++;
+        if (!_projected)
+        {
+            // First projection: no row here is new, whatever another screen left pending.
+            _projected = true;
+            _entranceExpiry.ExpireNow();
+        }
+
         var ctx = Context;
         _projectedDay = ctx.Today;
         var model = Projector.Today(Store, ctx);
         TaskGroupSync.Apply([(Groups, model.Groups)], Services.Actions, Services.Commands);
         Summary = model.Summary;
-        Progress = model.Progress;
+        // The prototype's bar width is a whole percent (Math.round(done / n · 100) + '%'): 4 of 6 → 67 %, not 66.7 %.
+        Progress = Math.Round(model.Progress * 100, MidpointRounding.AwayFromZero) / 100;
         Schedule.Update(model.Schedule);
     }
 
@@ -65,6 +79,12 @@ public sealed partial class TodayViewModel : ScreenViewModel
         }
 
         Schedule.SetNow(DateMath.Minutes(clock.Now));
+    }
+
+    public override void Dispose()
+    {
+        _entranceExpiry.Dispose();
+        base.Dispose();
     }
 
     /// <summary>"Add task" row: New task dated today.</summary>

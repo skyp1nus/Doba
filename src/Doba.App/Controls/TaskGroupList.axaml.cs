@@ -25,9 +25,9 @@ public sealed class FollowRequestedEventArgs(TaskGroupViewModel group, Control s
 /// <see cref="VirtualizingStackPanel"/>. DataContext is a <see cref="TaskGroupViewModel"/>.
 /// </summary>
 /// <remarks>
-/// A label link raises the bubbling <see cref="FollowRequestedEvent"/> instead of executing
-/// <see cref="TaskGroupViewModel.FollowCommand"/>, so the screen can pass the click origin (the clicked element's centre
-/// relative to the content area) to <c>IAppCommands.ZoomTo</c>.
+/// A label link raises the bubbling <see cref="FollowRequestedEvent"/> (the only path for group-link clicks), so the
+/// screen can pass the click origin (the clicked element's centre relative to the content area) to
+/// <c>IAppCommands.ZoomTo</c>.
 /// </remarks>
 public partial class TaskGroupList : UserControl
 {

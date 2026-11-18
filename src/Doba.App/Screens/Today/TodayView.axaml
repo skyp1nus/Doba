@@ -13,10 +13,12 @@
              c:TaskListRow.Entrances="{Binding Entrances}">
   <Grid ColumnDefinitions="*,Auto">
     <ScrollViewer Name="PART_Scroll" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Padding="0,0,32,0">
+      <!-- max-width 760: a star column capped at 760 and a near-zero star column for the rest (with an Auto column the
+           Grid's layout rounding hands the capped column 1 px of slack: 761 px). -->
       <Grid>
         <Grid.ColumnDefinitions>
-          <ColumnDefinition Width="*" MaxWidth="{StaticResource Size.Today.MaxWidth}" />
-          <ColumnDefinition Width="Auto" />
+          <ColumnDefinition Width="1000*" MaxWidth="{StaticResource Size.Today.MaxWidth}" />
+          <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
         <StackPanel Name="PART_List" Spacing="28" Margin="0,6,0,24">
           <StackPanel>
@@ -40,12 +42,16 @@
       </Grid>
     </ScrollViewer>
 
+    <!-- The design's aside does not scroll (the 812 px timeline fits at 1600×1000); below that height it scrolls on its
+         own (gap-fill, DECISIONS), and the first show brings the now-line into view. -->
     <Border Name="PART_Aside"
             Grid.Column="1"
             BorderBrush="{DynamicResource Brush.Border.Subtle}"
             BorderThickness="1,0,0,0"
             Padding="24,0,0,0">
-      <c:ScheduleTimeline Name="PART_Schedule" Width="{DynamicResource Size.Schedule.Width}" DataContext="{Binding Schedule}" />
+      <ScrollViewer Name="PART_ScheduleScroll" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+        <c:ScheduleTimeline Name="PART_Schedule" Width="{DynamicResource Size.Schedule.Width}" DataContext="{Binding Schedule}" />
+      </ScrollViewer>
     </Border>
   </Grid>
 </UserControl>

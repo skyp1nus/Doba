@@ -1,3 +1,4 @@
+using Avalonia;
 using Avalonia.Media;
 using Avalonia.Media.Immutable;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -247,9 +248,22 @@ public sealed partial class RangeRow : SettingsRow
     }
 }
 
+/// <summary>
+/// One row of a density card's mini preview, in whole pixels: <see cref="Margin"/> (top) and <see cref="Height"/> inside
+/// the 76 px preview, the 8 px check box and 4 px bar offsets inside the row, and the bar width.
+/// </summary>
+public sealed record DensityPreviewRow(Thickness Margin, double Height, Thickness CheckMargin, Thickness BarMargin, double BarWidth);
+
 /// <summary>One density option card (Comfortable / Compact) with its mini preview.</summary>
 public sealed partial class DensityOption : ObservableObject
 {
+    /// <summary>Preview height (prototype: 76 px), row inner width (150 − 2·10 padding − 2·6 row padding) and the bar's
+    /// left edge in a row (padding 6 + box 8 + gap 6).</summary>
+    private const double PreviewHeight = 76, RowInnerWidth = 118, BarLeft = 20, CheckSize = 8, BarHeight = 4;
+
+    /// <summary>Bar widths of the four preview rows, as fractions of the row's inner width (prototype: 70/52/64/46 %).</summary>
+    private static readonly double[] s_barShares = [0.70, 0.52, 0.64, 0.46];
+
     private readonly Action<Density> _pick;
 
     public DensityOption(Density density, string label, double rowHeight, double rowGap, Action<Density> pick)
@@ -259,6 +273,7 @@ public sealed partial class DensityOption : ObservableObject
         RowHeight = rowHeight;
         RowGap = rowGap;
         _pick = pick;
+        PreviewRows = LayOutPreview(rowHeight, rowGap);
     }
 
     public Density Density { get; }
@@ -271,7 +286,39 @@ public sealed partial class DensityOption : ObservableObject
     /// <summary>Gap between preview rows: 6 (Comfortable) or 3 (Compact).</summary>
     public double RowGap { get; }
 
+    /// <summary>The four preview rows, snapped to whole pixels.</summary>
+    public IReadOnlyList<DensityPreviewRow> PreviewRows { get; }
+
     [ObservableProperty] public partial bool IsSelected { get; set; }
+
+    /// <summary>
+    /// The prototype's flex column (rows <paramref name="rowHeight"/> tall, <paramref name="gap"/> apart, shrunk to fit
+    /// and centred in 76 px; box and bar centred in each row), with every edge snapped to a whole pixel the way the
+    /// reference render paints it (an edge on a half pixel snaps to the pixel above). Laid out fractionally, the 14.5 px rows and the 9.5 px centring
+    /// offset would be drawn with blurred edges.
+    /// </summary>
+    private static DensityPreviewRow[] LayOutPreview(double rowHeight, double gap)
+    {
+        var count = s_barShares.Length;
+        var height = Math.Min(rowHeight, (PreviewHeight - ((count - 1) * gap)) / count);
+        var offset = (PreviewHeight - ((count * height) + ((count - 1) * gap))) / 2;
+        var rows = new DensityPreviewRow[count];
+        for (var i = 0; i < count; i++)
+        {
+            var top = offset + (i * (height + gap));
+            var snappedTop = Snap(top);
+            rows[i] = new DensityPreviewRow(
+                new Thickness(0, snappedTop, 0, 0),
+                Snap(top + height) - snappedTop,
+                new Thickness(6, Snap(top + ((height - CheckSize) / 2)) - snappedTop, 0, 0),
+                new Thickness(BarLeft, Snap(top + ((height - BarHeight) / 2)) - snappedTop, 0, 0),
+                Math.Round(s_barShares[i] * RowInnerWidth));
+        }
+
+        return rows;
+
+        static double Snap(double v) => Math.Ceiling(v - 0.5);
+    }
 
     [RelayCommand]
     private void Pick() => _pick(Density);

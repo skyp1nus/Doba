@@ -12,6 +12,8 @@ namespace Doba.App.Controls;
 /// <see cref="TaskGroupViewModel.Update"/> — and, in addition, a row that changes group (an Inbox task completed moves
 /// from "ASAP" to "Done", a Today task from "Anytime" to "Done", "→ Today" moves it out of "Overdue") keeps its
 /// <see cref="TaskRowViewModel"/> instance: it is moved into the new group before that group is updated.
+/// When nothing changed shape (same groups, same rows, same order) the rows are just updated in place, with no
+/// allocation proportional to the store.
 /// </summary>
 public static class TaskGroupSync
 {
@@ -24,6 +26,21 @@ public static class TaskGroupSync
         IAppCommands commands)
     {
         ArgumentNullException.ThrowIfNull(lists);
+
+        // 0. The common refresh (tag filter, settings, priority/title edits that keep the order): the same groups with
+        //    the same rows in the same order. Update in place without building any lookup table.
+        if (IsSameShape(lists))
+        {
+            foreach (var (target, source) in lists)
+            {
+                for (var i = 0; i < source.Count; i++)
+                {
+                    target[i].Update(source[i]);
+                }
+            }
+
+            return;
+        }
 
         // 1. Where every existing row view-model lives now.
         var owner = new Dictionary<long, (TaskGroupViewModel Group, TaskRowViewModel Row)>();
@@ -66,5 +83,28 @@ public static class TaskGroupSync
                 group.Update(source[i]);
             }
         }
+    }
+
+    /// <summary>Every bound collection has the projected groups (by key, in order), each with the same row ids in order.</summary>
+    private static bool IsSameShape(
+        IReadOnlyList<(ObservableCollection<TaskGroupViewModel> Target, IReadOnlyList<TaskGroup> Source)> lists)
+    {
+        foreach (var (target, source) in lists)
+        {
+            if (target.Count != source.Count)
+            {
+                return false;
+            }
+
+            for (var i = 0; i < source.Count; i++)
+            {
+                if (!string.Equals(target[i].Key, source[i].Key, StringComparison.Ordinal) || !target[i].HasSameRows(source[i].Items))
+                {
+                    return false;
+                }
+            }
+        }
+
+        return true;
     }
 }

@@ -14,9 +14,14 @@ namespace Doba.App.Screens.Inbox;
 /// "Scheduled" (Overdue, Today, Tomorrow, the next 14 days, Later). Everything comes from <see cref="Projector.Inbox"/>;
 /// rows are reconciled in place (<see cref="TaskGroupSync"/>).
 /// </summary>
-public sealed partial class InboxViewModel(ScreenServices services) : ScreenViewModel(services)
+public sealed partial class InboxViewModel : ScreenViewModel
 {
+    private readonly EntranceExpiry _entranceExpiry;
     private DateOnly _projectedDay;
+    private bool _projected;
+
+    public InboxViewModel(ScreenServices services)
+        : base(services) => _entranceExpiry = new EntranceExpiry(services.App.Store, services.Actions);
 
     public ObservableCollection<TaskGroupViewModel> Left { get; } = [];
 
@@ -45,6 +50,13 @@ public sealed partial class InboxViewModel(ScreenServices services) : ScreenView
     protected override void Refresh()
     {
         Refreshes++;
+        if (!_projected)
+        {
+            // First projection: no row here is new, whatever another screen left pending.
+            _projected = true;
+            _entranceExpiry.ExpireNow();
+        }
+
         var ctx = Context;
         _projectedDay = ctx.Today;
         var model = Projector.Inbox(Store, ctx);
@@ -59,6 +71,12 @@ public sealed partial class InboxViewModel(ScreenServices services) : ScreenView
         {
             RefreshIfActive();
         }
+    }
+
+    public override void Dispose()
+    {
+        _entranceExpiry.Dispose();
+        base.Dispose();
     }
 
     /// <summary>"Add task" row: New task without a date.</summary>

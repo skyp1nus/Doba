@@ -284,12 +284,40 @@ public sealed class SettingsScreenTests
     [AvaloniaFact]
     public void Sync_does_not_write_back()
     {
+        // Counts Update calls, not Changed events: SettingsService ignores an update to the same values, so a row that
+        // wrote the synced values back would go unnoticed by an event count.
         using var f = new Fixture();
-        int changes = 0;
-        f.App.Settings.Changed += (_, _) => changes++;
-        var window = f.Show(SettingsTab.Appearance);
-        f.App.Settings.Update(s => s with { WindowTransparency = 55 });
-        Assert.Equal(1, changes);
+        var settings = new RecordingSettings(f.App.Settings);
+        using var vm = new SettingsViewModel(f.Services, settings);
+        var view = new SettingsView { DataContext = vm };
+        (SettingsTab Tab, Func<AppSettings, AppSettings> Change)[] steps =
+        [
+            (SettingsTab.Appearance, s => s with { Accent = Accent.Gray, WindowTransparency = 55, Theme = ThemeMode.System, Density = Density.Compact }),
+            (SettingsTab.Calendar, s => s with { WeekStart = DayOfWeek.Sunday, LaunchView = LaunchView.Inbox }),
+            (SettingsTab.Tasks, s => s with { DefaultPriority = Priority.High, CarryOver = !s.CarryOver, CompletionSound = !s.CompletionSound }),
+            (SettingsTab.Windows, s => s with { KeepInTray = !s.KeepInTray }),
+            (SettingsTab.Data, s => s with { DailyBackup = !s.DailyBackup }),
+        ];
+
+        vm.Show(new NavState(AppView.Settings, f.App.DayClock.Today, SettingsTab.Appearance));
+        var window = ScreenHarness.Host(view);
+        foreach (var (tab, change) in steps)
+        {
+            vm.Show(new NavState(AppView.Settings, f.App.DayClock.Today, tab));
+            window.UpdateLayout();
+            var before = settings.Updates;
+            var expected = change(settings.Current);
+            Assert.NotEqual(settings.Current, expected);
+
+            settings.Update(_ => expected); // the test's own update: the shown controls follow …
+            window.UpdateLayout();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            window.UpdateLayout();
+
+            Assert.Equal(before + 1, settings.Updates); // … without one more Update from a row
+            Assert.Equal(expected, settings.Current);
+        }
+
         window.Close();
     }
 
@@ -465,12 +493,15 @@ public sealed class SettingsScreenTests
             Shell = new RecordingShell();
             App = AppServices.CreateDemo(platform: PlatformServices.NoOp() with { Autostart = Autostart, Shell = Shell });
             var actions = new TaskActions(App.Store, App.Settings, App.Platform.Shell, App.Clock);
-            Vm = new SettingsViewModel(new ScreenServices(App, actions, new RecordingCommands(), () => null));
+            Services = new ScreenServices(App, actions, new RecordingCommands(), () => null);
+            Vm = new SettingsViewModel(Services);
             View = new SettingsView { DataContext = Vm };
             new ThemeService(Application.Current!).Apply(App.Settings.Current);
         }
 
         public AppServices App { get; }
+
+        public ScreenServices Services { get; }
 
         public RecordingAutostart Autostart { get; }
 
@@ -490,6 +521,26 @@ public sealed class SettingsScreenTests
         {
             Vm.Dispose();
             App.DisposeAsync().AsTask().GetAwaiter().GetResult();
+        }
+    }
+
+    /// <summary>The app's settings service, counting every <see cref="Update"/> call (even ones that change nothing).</summary>
+    private sealed class RecordingSettings(ISettingsService inner) : ISettingsService
+    {
+        public int Updates { get; private set; }
+
+        public AppSettings Current => inner.Current;
+
+        public event EventHandler<AppSettings>? Changed
+        {
+            add => inner.Changed += value;
+            remove => inner.Changed -= value;
+        }
+
+        public void Update(Func<AppSettings, AppSettings> change)
+        {
+            Updates++;
+            inner.Update(change);
         }
     }
 

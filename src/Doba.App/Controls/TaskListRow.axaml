@@ -3,6 +3,7 @@
   Layout (flex, gap 12, padding Density.RowPadding = 11 4, 1 px Border.Subtle bottom border):
   checkbox 16 · priority button 18 (margin-left −4) · title (fills, ellipsis) · [#tag] meta · [→ Today].
   The title's strike-through is always present; only its colour animates (code-behind, Motion.Strike).
+  Keyboard: Space anywhere in the row completes the task (code-behind); Enter activates the focused button.
 -->
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -34,7 +35,11 @@
           BorderThickness="0,0,0,1"
           Padding="{DynamicResource Density.RowPadding}">
     <Grid ColumnDefinitions="Auto,Auto,*,Auto">
+      <!-- Centred with a 1 px bottom margin: the title line (18.9 px) measures 19 px here, and centring the 16 px box
+           in it would land on +1.5 → +2, while Chromium centres it in 18.9 px and paints it at +1. With the margin it
+           lands on +1 in a 19 px row and still on +4 in a 24 px row (with "→ Today"), as in the design. -->
       <c:TaskCheckBox Name="PART_Check"
+                      Margin="0,0,0,1"
                       IsChecked="{Binding Done, Mode=OneWay}"
                       Command="{Binding ToggleCommand}"
                       AutomationProperties.Name="{Binding ToggleLabel}" />

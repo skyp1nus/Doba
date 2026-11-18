@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless;
+using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
@@ -47,4 +48,35 @@ internal static class ListScreenKit
         Rows(root).Single(r => ReferenceEquals(r.DataContext, vm));
 
     public static FixedTimeProvider Clock(Support.ScreenHarness harness) => (FixedTimeProvider)harness.App.Clock;
+
+    /// <summary>Groups (key, label, tone, count) and their row ids, as text, for comparing with a projection.</summary>
+    public static string Shape(IEnumerable<Doba.Core.Projections.TaskGroup> groups) =>
+        string.Join("\n", groups.Select(g => $"{g.Key}|{g.Label}|{g.Tone}|{g.Count}|{string.Join(",", g.Items.Select(r => r.Id))}"));
+
+    public static string Shape(IEnumerable<TaskGroupViewModel> groups) =>
+        string.Join("\n", groups.Select(g => $"{g.Key}|{g.Label}|{g.Tone}|{g.Count}|{string.Join(",", g.Items.Select(r => r.Id))}"));
+
+    /// <summary>The named part (PART_Title, PART_Priority …) of a row.</summary>
+    public static T Part<T>(Visual row, string name)
+        where T : Control =>
+        row.GetVisualDescendants().OfType<T>().First(c => c.Name == name);
+
+    /// <summary>A left click at the centre of <paramref name="target"/>.</summary>
+    public static void Click(Window window, Control target)
+    {
+        window.UpdateLayout();
+        var centre = target.TranslatePoint(new Point(target.Bounds.Width / 2, target.Bounds.Height / 2), window);
+        Xunit.Assert.NotNull(centre);
+        window.MouseDown(centre.Value, MouseButton.Left);
+        window.MouseUp(centre.Value, MouseButton.Left);
+        Settle(window);
+    }
+
+    /// <summary>Presses and releases Space on the focused element.</summary>
+    public static void PressSpace(Window window)
+    {
+        window.KeyPress(Key.Space, RawInputModifiers.None, PhysicalKey.Space, " ");
+        window.KeyRelease(Key.Space, RawInputModifiers.None, PhysicalKey.Space, " ");
+        Settle(window);
+    }
 }

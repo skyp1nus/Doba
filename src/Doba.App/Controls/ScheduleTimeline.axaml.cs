@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Avalonia.VisualTree;
 
 namespace Doba.App.Controls;
 
@@ -11,9 +12,13 @@ public partial class ScheduleTimeline : UserControl
 {
     public ScheduleTimeline() => InitializeComponent();
 
-    /// <summary>The now-line row (tests).</summary>
+    /// <summary>The now-line row (tests; Today scrolls it into view).</summary>
     internal Control NowLine => PART_Now;
 
     /// <summary>The blocks list (tests).</summary>
     internal ItemsControl BlockList => PART_Blocks;
+
+    /// <summary>The earliest block's button, or null when the day has no timed task.</summary>
+    internal Button? FirstBlock =>
+        PART_Blocks.GetVisualDescendants().OfType<Button>().MinBy(b => b.Bounds.Y);
 }

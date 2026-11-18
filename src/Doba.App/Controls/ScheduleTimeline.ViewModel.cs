@@ -45,6 +45,9 @@ public sealed partial class ScheduleBlockViewModel : ObservableObject
     /// <summary>Position inside the grid: left 54 (hour label 40 + gap 12 + 2), top.</summary>
     [ObservableProperty] public partial Thickness Margin { get; private set; }
 
+    /// <summary>Content padding inside the block's 1 px ring (see <see cref="ContentPaddingFor"/>).</summary>
+    [ObservableProperty] public partial Thickness ContentPadding { get; private set; }
+
     public void Update(ScheduleBlock block)
     {
         ArgumentNullException.ThrowIfNull(block);
@@ -54,7 +57,22 @@ public sealed partial class ScheduleBlockViewModel : ObservableObject
         Height = ScheduleLayout.BlockHeight(block.DurationMinutes, ScheduleViewModel.HourHeight);
         IsCompact = ScheduleLayout.IsCompact(Height);
         Margin = new Thickness(ScheduleViewModel.BlockLeft, Top, 0, 0);
+        ContentPadding = ContentPaddingFor(Height, IsCompact);
     }
+
+    /// <summary>
+    /// The prototype pads a block 7 10 0 (compact: 0 10, the line centred) inside its edge, and draws the ring as an
+    /// inset box-shadow; Button.Bar's ring is a 1 px border, so 1 px comes off every side. A compact block centres its
+    /// 17.5 px title line (12.5 × 1.4) in the full block height, rounded to a whole pixel as Chromium paints it —
+    /// centring the 18 px line our layout measures inside the border lands up to 1 px higher.
+    /// </summary>
+    public static Thickness ContentPaddingFor(double height, bool compact) =>
+        compact
+            ? new Thickness(9, Math.Round((height - CompactTitleLine) / 2) - 1, 9, 0)
+            : new Thickness(9, 6, 9, 0);
+
+    /// <summary>CSS line box of the block title: 12.5 px × line-height 1.4.</summary>
+    private const double CompactTitleLine = 17.5;
 }
 
 /// <summary>
@@ -112,11 +130,17 @@ public sealed partial class ScheduleViewModel : ObservableObject
         SetNow(model.NowMinutes);
     }
 
-    /// <summary>Moves the now-line (null hides it). Blocks are untouched.</summary>
+    /// <summary>True when <paramref name="minutes"/> (since midnight) falls on the 07:00–23:00 grid, ends included.</summary>
+    public static bool IsOnGrid(int minutes) =>
+        minutes >= ScheduleModel.FirstHour * 60 && minutes <= ScheduleModel.LastHour * 60;
+
+    /// <summary>Moves the now-line. Null, or a time off the 07–23 grid (overnight), hides it: the prototype only ever
+    /// showed 22:26 and would draw the line over the header before 07:00 and under the grid after 23:00. Blocks are
+    /// untouched.</summary>
     public void SetNow(int? nowMinutes)
     {
-        HasNow = nowMinutes is not null;
-        if (nowMinutes is not { } minutes)
+        HasNow = nowMinutes is { } m && IsOnGrid(m);
+        if (!HasNow || nowMinutes is not { } minutes)
         {
             return;
         }

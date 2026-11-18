@@ -111,56 +111,53 @@
                     HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"
                     Command="{Binding PickCommand}"
                     AutomationProperties.Name="{Binding Label}">
-              <!-- Layout rounding is off on the 1.5 px rings (card, mini checkboxes): it would round them to 2 px. -->
-              <Border Classes="density-card" Classes.selected="{Binding IsSelected}"
-                      Background="{DynamicResource Brush.Bg.Dialog}"
-                      CornerRadius="{DynamicResource Radius.Panel}"
-                      BorderThickness="1.5" Padding="8.5" UseLayoutRounding="False">
-                <Border.Transitions>
-                  <Transitions>
-                    <BrushTransition Property="BorderBrush" Duration="{x:Static m:MotionTimes.Color}" Easing="{x:Static m:Motion.EaseStd}" />
-                  </Transitions>
-                </Border.Transitions>
-                <StackPanel Spacing="8">
-                  <!-- Mini preview: four rows (checkbox + bar), 76 px tall, centred. -->
-                  <Panel Height="76">
-                    <StackPanel VerticalAlignment="Center" Spacing="{Binding RowGap}">
-                      <Border Height="{Binding RowHeight}" Padding="6,0" CornerRadius="{DynamicResource Radius.Check}" Background="{DynamicResource Brush.Bg.CardHover}">
-                        <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                          <Border Width="8" Height="8" UseLayoutRounding="False" CornerRadius="{DynamicResource Radius.Bar}" BorderThickness="1.5" BorderBrush="{DynamicResource Brush.Border.Check}" />
-                          <Border Width="82.6" Height="4" CornerRadius="{DynamicResource Radius.Bar}" Background="{DynamicResource Brush.Border.Emphasis}" />
-                        </StackPanel>
-                      </Border>
-                      <Border Height="{Binding RowHeight}" Padding="6,0" CornerRadius="{DynamicResource Radius.Check}" Background="{DynamicResource Brush.Bg.CardHover}">
-                        <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                          <Border Width="8" Height="8" UseLayoutRounding="False" CornerRadius="{DynamicResource Radius.Bar}" BorderThickness="1.5" BorderBrush="{DynamicResource Brush.Border.Check}" />
-                          <Border Width="61.4" Height="4" CornerRadius="{DynamicResource Radius.Bar}" Background="{DynamicResource Brush.Border.Emphasis}" />
-                        </StackPanel>
-                      </Border>
-                      <Border Height="{Binding RowHeight}" Padding="6,0" CornerRadius="{DynamicResource Radius.Check}" Background="{DynamicResource Brush.Bg.CardHover}">
-                        <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                          <Border Width="8" Height="8" UseLayoutRounding="False" CornerRadius="{DynamicResource Radius.Bar}" BorderThickness="1.5" BorderBrush="{DynamicResource Brush.Border.Check}" />
-                          <Border Width="75.5" Height="4" CornerRadius="{DynamicResource Radius.Bar}" Background="{DynamicResource Brush.Border.Emphasis}" />
-                        </StackPanel>
-                      </Border>
-                      <Border Height="{Binding RowHeight}" Padding="6,0" CornerRadius="{DynamicResource Radius.Check}" Background="{DynamicResource Brush.Bg.CardHover}">
-                        <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                          <Border Width="8" Height="8" UseLayoutRounding="False" CornerRadius="{DynamicResource Radius.Bar}" BorderThickness="1.5" BorderBrush="{DynamicResource Brush.Border.Check}" />
-                          <Border Width="54.3" Height="4" CornerRadius="{DynamicResource Radius.Bar}" Background="{DynamicResource Brush.Border.Emphasis}" />
-                        </StackPanel>
-                      </Border>
-                    </StackPanel>
-                  </Panel>
-                  <TextBlock Classes="density-label" Classes.selected="{Binding IsSelected}"
-                             FontSize="{DynamicResource FontSize.12.5}" FontWeight="Medium" Text="{Binding Label}">
-                    <TextBlock.Transitions>
-                      <Transitions>
-                        <BrushTransition Property="Foreground" Duration="{x:Static m:MotionTimes.Color}" Easing="{x:Static m:Motion.EaseStd}" />
-                      </Transitions>
-                    </TextBlock.Transitions>
-                  </TextBlock>
-                </StackPanel>
-              </Border>
+              <Panel>
+                <Border Background="{DynamicResource Brush.Bg.Dialog}" CornerRadius="{DynamicResource Radius.Panel}" Padding="10">
+                  <StackPanel Spacing="8">
+                    <!-- Mini preview: four rows (checkbox + bar) in 76 px, placed on whole pixels (DensityOption). The
+                         8 px boxes have a 1 px ring: the prototype's 1.5 px border, as Chromium paints it. -->
+                    <ItemsControl Height="76" ItemsSource="{Binding PreviewRows}">
+                      <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                          <Panel />
+                        </ItemsPanelTemplate>
+                      </ItemsControl.ItemsPanel>
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="vm:DensityPreviewRow">
+                          <Border Margin="{Binding Margin}" Height="{Binding Height}" VerticalAlignment="Top"
+                                  CornerRadius="{DynamicResource Radius.Check}" Background="{DynamicResource Brush.Bg.CardHover}">
+                            <Panel>
+                              <Border Width="8" Height="8" Margin="{Binding CheckMargin}" HorizontalAlignment="Left" VerticalAlignment="Top"
+                                      CornerRadius="{DynamicResource Radius.Bar}" BorderThickness="1" BorderBrush="{DynamicResource Brush.Border.Check}" />
+                              <Border Width="{Binding BarWidth}" Height="4" Margin="{Binding BarMargin}" HorizontalAlignment="Left" VerticalAlignment="Top"
+                                      CornerRadius="{DynamicResource Radius.Bar}" Background="{DynamicResource Brush.Border.Emphasis}" />
+                            </Panel>
+                          </Border>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <TextBlock Classes="density-label" Classes.selected="{Binding IsSelected}"
+                               FontSize="{DynamicResource FontSize.12.5}" FontWeight="Medium" Text="{Binding Label}">
+                      <TextBlock.Transitions>
+                        <Transitions>
+                          <BrushTransition Property="Foreground" Duration="{x:Static m:MotionTimes.Color}" Easing="{x:Static m:Motion.EaseStd}" />
+                        </Transitions>
+                      </TextBlock.Transitions>
+                    </TextBlock>
+                  </StackPanel>
+                </Border>
+                <!-- The ring (inset box-shadow 1.5 px): drawn over the card, so it takes no layout space and the
+                     content keeps whole-pixel positions; layout rounding off so it stays 1.5 px (not 2). -->
+                <Border Classes="density-card" Classes.selected="{Binding IsSelected}"
+                        CornerRadius="{DynamicResource Radius.Panel}"
+                        BorderThickness="1.5" UseLayoutRounding="False" IsHitTestVisible="False">
+                  <Border.Transitions>
+                    <Transitions>
+                      <BrushTransition Property="BorderBrush" Duration="{x:Static m:MotionTimes.Color}" Easing="{x:Static m:Motion.EaseStd}" />
+                    </Transitions>
+                  </Border.Transitions>
+                </Border>
+              </Panel>
             </Button>
           </DataTemplate>
         </ItemsControl.ItemTemplate>
@@ -199,9 +196,12 @@
   </UserControl.DataTemplates>
 
   <ScrollViewer Name="Scroller" Padding="0,0,12,0" HorizontalScrollBarVisibility="Disabled">
+    <!-- max-width 780: a star column capped at 780, with a near-zero star column taking the rest. With a single star
+         column the Grid's layout rounding hands the column the 1 px of rounding slack (781 px). -->
     <Grid Margin="0,2,0,32" VerticalAlignment="Top">
       <Grid.ColumnDefinitions>
-        <ColumnDefinition Width="*" MaxWidth="{StaticResource Size.Settings.MaxWidth}" />
+        <ColumnDefinition Width="1000*" MaxWidth="{StaticResource Size.Settings.MaxWidth}" />
+        <ColumnDefinition Width="*" />
       </Grid.ColumnDefinitions>
       <StackPanel>
         <Border Classes="divider" />

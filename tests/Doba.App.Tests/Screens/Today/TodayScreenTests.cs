@@ -1,3 +1,5 @@
+using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
 using Avalonia.VisualTree;
 using Doba.App.Controls;
@@ -35,7 +37,8 @@ public class TodayScreenTests
         Assert.Equal(model.Groups.Select(g => g.Key), vm.Groups.Select(g => g.Key));
         Assert.Equal(model.Groups.Select(g => g.Items.Count), vm.Groups.Select(g => g.Items.Count));
         Assert.Equal(model.Summary, vm.Summary);
-        Assert.Equal(model.Progress, vm.Progress);
+        Assert.Equal(Math.Round(model.Progress * 100, MidpointRounding.AwayFromZero) / 100, vm.Progress); // whole percent, as the prototype
+        Assert.Equal(0.67, vm.Progress);
         Assert.Equal(model.Schedule.Blocks.Select(b => b.Row.Id), vm.Schedule.Blocks.Select(b => b.Id));
 
         // The whole list fits: one row control per row, one section per group, one button per block.
@@ -188,6 +191,156 @@ public class TodayScreenTests
         Assert.Contains(blockButtons, b => b.Classes.Contains("dimmed"));
         Assert.Contains(blockButtons, b => !b.Classes.Contains("dimmed"));
         window.Close();
+    }
+
+    [AvaloniaFact]
+    public void Clicking_a_title_opens_the_task_and_the_priority_icon_cycles_it_in_place()
+    {
+        using var harness = new ScreenHarness();
+        var (vm, view) = Open(harness);
+        var window = Host(view);
+        var group = vm.Groups.Single(g => g.Key == "any");
+        var row = group.Items[0];
+        var before = row.Priority;
+
+        Click(window, Part<Avalonia.Controls.Button>(RowOf(view, row), "PART_Title"));
+        Assert.Equal([row.Id], harness.Commands.Edits);
+
+        Click(window, Part<Avalonia.Controls.Button>(RowOf(view, row), "PART_Priority"));
+        var after = harness.App.Store.Get(row.Id)!.Priority;
+        Assert.NotEqual(before, after);
+        Assert.Equal(after, row.Priority);
+        Assert.Same(row, vm.Groups.Single(g => g.Key == "any").Items.Single(r => r.Id == row.Id)); // same view-model
+        Assert.Equal([row.Id], harness.Commands.Edits); // the priority click opened nothing
+        Assert.False(row.Done);
+        window.Close();
+    }
+
+    [AvaloniaFact]
+    public void Space_on_a_focused_title_completes_the_task()
+    {
+        using var harness = new ScreenHarness();
+        var (vm, view) = Open(harness);
+        var window = Host(view);
+        var row = vm.Groups.Single(g => g.Key == "any").Items[0];
+
+        Assert.True(Part<Avalonia.Controls.Button>(RowOf(view, row), "PART_Title").Focus(Avalonia.Input.NavigationMethod.Tab));
+        PressSpace(window);
+
+        Assert.True(harness.App.Store.Get(row.Id)!.Done);
+        Assert.Contains(row, vm.Groups.Single(g => g.Key == "done").Items);
+        Assert.Empty(harness.Commands.Edits);
+        window.Close();
+    }
+
+    [AvaloniaFact]
+    public void Midnight_while_open_shows_the_new_day()
+    {
+        using var harness = new ScreenHarness();
+        var (vm, view) = Open(harness);
+        var window = Host(view);
+        var openAnytime = vm.Groups.Single(g => g.Key == "any").Items.ToList();
+
+        Clock(harness).Advance(TimeSpan.FromHours(2)); // 22:26 → 00:26 the next day
+        harness.App.DayClock.Check();
+        Settle(window);
+
+        var model = Project(harness);
+        Assert.Equal(Shape(model.Groups), Shape(vm.Groups));
+        Assert.Equal(model.Summary, vm.Summary);
+        Assert.Equal(model.Schedule.Blocks.Select(b => b.Row.Id), vm.Schedule.Blocks.Select(b => b.Id));
+        Assert.All(openAnytime, r => Assert.Contains(r, vm.Groups.Single(g => g.Key == "over").Items)); // yesterday's open task is overdue
+        Assert.False(vm.Schedule.HasNow); // 00:26 is off the 07–23 grid
+        Assert.False(view.Schedule.NowLine.IsVisible);
+        window.Close();
+    }
+
+    [AvaloniaFact]
+    public void A_store_change_while_hidden_shows_on_the_next_show()
+    {
+        using var harness = new ScreenHarness();
+        var (vm, view) = Open(harness);
+        var window = Host(view);
+        var refreshes = vm.Refreshes;
+
+        vm.Hide();
+        var row = vm.Groups.Single(g => g.Key == "any").Items[0];
+        harness.App.Store.ToggleDone(row.Id);
+        Assert.Equal(refreshes, vm.Refreshes);
+        Assert.False(row.Done); // not re-projected while hidden
+
+        vm.Show(new NavState(AppView.Today, harness.App.DayClock.Today));
+        Settle(window);
+
+        var model = Project(harness);
+        Assert.Equal(Shape(model.Groups), Shape(vm.Groups));
+        Assert.Equal(model.Summary, vm.Summary);
+        Assert.True(row.Done);
+        Assert.Contains(Rows(view), r => ReferenceEquals(r.DataContext, row) && r.Classes.Contains("done"));
+        window.Close();
+    }
+
+    [AvaloniaFact]
+    public void The_now_line_hides_off_the_07_to_23_grid()
+    {
+        using var harness = new ScreenHarness();
+        var (vm, view) = Open(harness);
+        var window = Host(view);
+        Assert.True(vm.Schedule.HasNow);
+
+        Clock(harness).Advance(TimeSpan.FromMinutes(64)); // 22:26 → 23:30, same day: the minute tick path
+        harness.App.DayClock.Check();
+        Settle(window);
+        Assert.False(vm.Schedule.HasNow);
+        Assert.False(view.Schedule.NowLine.IsVisible);
+
+        // The rule itself: 07:00 and 23:00 are on the grid, 02:00 and 23:30 are not.
+        var schedule = new ScheduleViewModel(harness.Actions, harness.Commands);
+        schedule.SetNow(7 * 60);
+        Assert.True(schedule.HasNow);
+        Assert.Equal(0, schedule.NowTop);
+        schedule.SetNow(23 * 60);
+        Assert.True(schedule.HasNow);
+        schedule.SetNow(2 * 60);
+        Assert.False(schedule.HasNow);
+        schedule.SetNow((23 * 60) + 30);
+        Assert.False(schedule.HasNow);
+        window.Close();
+    }
+
+    [AvaloniaFact]
+    public void At_1100x700_the_schedule_scrolls_and_opens_on_the_now_line()
+    {
+        using var harness = new ScreenHarness();
+        var (vm, view) = Open(harness);
+        // Content area of a 1100×700 window (the 1600×1000 one is 1315×832).
+        var window = ScreenHarness.Host(view, ScreenHarness.ContentWidth - 500, ScreenHarness.ContentHeight - 300);
+        Settle(window);
+        Assert.True(Pump.Until(() => view.ScheduleScroller.Offset.Y > 0, TimeSpan.FromSeconds(2)));
+
+        var scroller = view.ScheduleScroller;
+        Assert.True(scroller.Extent.Height > scroller.Viewport.Height);
+        Assert.True(InView(scroller, view.Schedule.NowLine)); // opened on the now-line (22:26)
+
+        // Every block can be reached: scroll to the top, then bring the 22:00 block back.
+        scroller.Offset = default;
+        Settle(window);
+        var plan = view.Schedule.BlockList.GetVisualDescendants().OfType<Avalonia.Controls.Button>()
+            .Single(b => b.DataContext is ScheduleBlockViewModel { Range: "22:00 – 22:45" });
+        Assert.False(InView(scroller, plan));
+        plan.BringIntoView();
+        Settle(window);
+        Assert.True(InView(scroller, plan));
+        Click(window, plan);
+        Assert.True(harness.App.Store.Get(((ScheduleBlockViewModel)plan.DataContext!).Id)!.Done);
+        Assert.Equal(vm.Schedule.Blocks.Count, view.Schedule.BlockList.GetVisualDescendants().OfType<Avalonia.Controls.Button>().Count());
+        window.Close();
+
+        static bool InView(Avalonia.Controls.ScrollViewer scroller, Avalonia.Controls.Control element)
+        {
+            var top = element.TranslatePoint(default, scroller)!.Value.Y;
+            return top >= 0 && top + element.Bounds.Height <= scroller.Viewport.Height;
+        }
     }
 
     [AvaloniaFact]

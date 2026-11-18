@@ -3,8 +3,10 @@ using Avalonia;
 using Avalonia.Animation;
 using Avalonia.Controls;
 using Avalonia.Data.Converters;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
+using Avalonia.VisualTree;
 using Doba.App.Motion;
 using Doba.App.Services;
 using Doba.App.ViewModels;
@@ -44,9 +46,15 @@ public partial class TaskListRow : UserControl
     private readonly Transitions _strikeTransitions;
     private TaskRowViewModel? _row;
 
+    /// <summary>Space is down and has already toggled the task (key repeat does not toggle again).</summary>
+    private bool _spaceDown;
+
     public TaskListRow()
     {
         InitializeComponent();
+        // Tunnel: a Button marks Space handled on its own KeyDown, so a bubbling handler would never see it.
+        AddHandler(KeyDownEvent, OnPreviewKeyDown, RoutingStrategies.Tunnel);
+        AddHandler(KeyUpEvent, OnPreviewKeyUp, RoutingStrategies.Tunnel);
         _strikeTransitions =
         [
             new ColorTransition { Property = SolidColorBrush.ColorProperty, Duration = M.Ms(M.Strike), Easing = M.EaseStd },
@@ -97,6 +105,7 @@ public partial class TaskListRow : UserControl
             _row.PropertyChanged += OnRowPropertyChanged;
         }
 
+        _spaceDown = false;
         ApplyStrike(animate: false);
         if (IsLoaded)
         {
@@ -110,6 +119,44 @@ public partial class TaskListRow : UserControl
         ApplyStrike(animate: false);
         TryEntrance();
     }
+
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnDetachedFromVisualTree(e);
+        _spaceDown = false;
+    }
+
+    /// <summary>
+    /// KICKOFF §6: Space completes the task whose row has focus — from the title, the priority icon or "→ Today" too,
+    /// whose buttons would otherwise click on Space (open the edit dialog, cycle the priority, move the task). The
+    /// checkbox keeps its own Space handling (same effect). Enter still activates the focused button.
+    /// </summary>
+    private void OnPreviewKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Space || e.KeyModifiers != KeyModifiers.None || _row is null || IsFromCheckBox(e.Source))
+        {
+            return;
+        }
+
+        e.Handled = true;
+        if (!_spaceDown)
+        {
+            _spaceDown = true;
+            _row.ToggleCommand.Execute(null);
+        }
+    }
+
+    private void OnPreviewKeyUp(object? sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Space && _spaceDown)
+        {
+            _spaceDown = false;
+            e.Handled = true;
+        }
+    }
+
+    private bool IsFromCheckBox(object? source) =>
+        source is Visual v && (ReferenceEquals(v, PART_Check) || PART_Check.IsVisualAncestorOf(v));
 
     private void OnRowPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
