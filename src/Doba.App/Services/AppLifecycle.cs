@@ -194,8 +194,12 @@ public sealed class AppLifecycle : IAsyncDisposable
     /// Windows session end (log off / shut down; <see cref="IClassicDesktopStyleApplicationLifetime.ShutdownRequested"/>):
     /// the process may be ended without an Exit, so pending writes are flushed here, synchronously and bounded.
     /// </summary>
-    public void OnShutdownRequested(object? sender, ShutdownRequestedEventArgs e) =>
+    public void OnShutdownRequested(object? sender, ShutdownRequestedEventArgs e)
+    {
+        // A save still inside the dialog's exit animation must reach the store before the flush.
+        _window.ViewModel?.CompletePendingOverlayClose();
         _ = _app.FlushAsync().Wait(SessionEndFlushTimeoutMs);
+    }
 
     /// <summary>Desktop Exit: stops everything, waits for a running backup, flushes and closes the database (once).</summary>
     public async ValueTask DisposeAsync()
