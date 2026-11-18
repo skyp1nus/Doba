@@ -40,4 +40,38 @@ One line per decision, newest last. Format: **topic** — decision (reason).
 - **Screenshot writing is opt-in** — tests write PNGs to git-ignored `artifacts/screenshots/` unless `DOBA_SCREENSHOTS=1`, which refreshes `docs/screenshots/` (parallel worktrees would otherwise rewrite tracked binaries on every test run).
 - **Sidebar collapsed state** is kept in memory only (the prototype does not persist it either).
 - **Search hits** always open the task's edit dialog; the palette never navigates.
+- **Content swap** — `MainViewModel` raises `Navigated`, then hands the swap to `ContentSwapper`, which the window points at `ShellComposition.Transitions.Run`; screen, header and sidebar all change inside the swap, so on section transitions the title changes with the content (as in the prototype).
+- **Screen views are cached** — a screen's view is created on first visit and then kept in the tree with `IsVisible=false`, so a transition never rebuilds a visual tree.
+- **Overlays** — opening an overlay while one is open replaces it at once (search hit → edit dialog); clicking the shade does nothing (the prototype's shade has no handler); focus moves into the overlay after its first layout and returns to the element that had it, or to New task if that is gone.
+- **Shell keys** — N only when no overlay is open, no text box has focus and New task is visible; Ctrl K ignored while an overlay is open.
+- **Caption buttons** carry Avalonia's window-decoration element roles and also plain click handlers; maximise keeps one glyph (the design has no restore glyph).
+- **Backdrop glows** — the design's three blurred blobs are painted as radial falloffs calibrated against the reference pixels; nothing is blurred at run time.
+- **Header title** — title and subtitle are two text blocks (Avalonia applies letter-spacing per block); offsets were measured against the reference and stored as `Space.Shell.*` tokens.
+- **Add-tag row in the rail** — collapsing the sidebar while the tag input is open creates a non-empty name (same as losing focus); in the rail "+" is disabled.
+- **Many tags** — the tag list scrolls so Collapse/Settings stay pinned at the bottom (the prototype clips).
+- **Sidebar counts** are always shown, including 0, and never dimmed by the tag filter.
+- **Settings tab label** — the sidebar says "Shortcuts", the page title says "Keyboard shortcuts" (both as in the prototype).
+- **Month cells** are reconciled by week position and column, not by date, so changing month updates ~42 cells in place.
+- **Month "+N more", chips and bars** are not interactive on their own; the click goes to the day cell (prototype: `pointer-events: none`).
+- **Month geometry** used by both the projection and the view (26 header, 40 W-column, 34 day number, 24 lane) lives in `Screens/Month/MonthLayout.cs`.
+- **Day rows** — Day span rows and cards are their own controls (`DaySpanRow`, `DayCard`): the Day design's sizes and two-row card differ from the week bar and card.
+- **Day "Add task"** passes the shown day and is labelled just "Add task" (the prototype's `addLabel` is unused in its markup).
+- **Time wheel emphasis** — the selected number is laid out at 19 px once per commit and the 15→19 growth is a render-transform scale, so nothing is re-laid out per frame; emphasis follows the committed value, not the row passing under the band.
+- **Time wheel commit** — fires after 120 ms of stillness following a user move, even if the index ends up unchanged (in the prototype any scroll switches on "Set time"); the 120 ms wait is not an animation and stays when OS animations are off; a pending commit is flushed if the wheel is removed (quick "Done"). Smooth scrolling uses `Motion.Slide`; no fling momentum.
+- **Reference PNG vs prototype source** — where a reference image shows an artefact of how the prototype was rendered (Month span bars drawn as loose text under the row, Week column separators and the next-week hatch missing, no scrollbars in headless Chromium), the prototype source wins.
+- **Text rendering** — every window draws text with grayscale antialiasing and no hinting, like the prototype (`-webkit-font-smoothing: antialiased`). Glyph boxes match the references to the pixel; our stems still carry a little more ink (Skia's text gamma, not configurable in Avalonia 12.1.6). Font weights are not altered to compensate.
+- **Whole-pixel layout** — Avalonia rounds each measured size up where Chromium carries fractions, so a few stacks land 1 px off the reference (Inbox/Today section rhythm, 4th Day card onward, settings rows 71 vs 70.7 px, key caps 19 vs 18.3 px). Accepted rather than fudged with per-element offsets.
+- **Checkbox ring** — the CSS 1.5 px ring is snapped down to whole device pixels (1 px at 100 %), as Chromium paints it.
+- **Strike-through** — `StrikeText` paints its own always-present 1-device-px line on a whole pixel row and only animates its colour (replaces the earlier "toggle the decoration" decision wherever `StrikeText` is used).
+- **Glyph centring** — icons and the priority glyph round half-pixel centring offsets up, as Chromium does.
+- **Calendar track edges** — column edges at `round(i·W/n)`, row edges at `floor(j·H/m)`, reproducing the reference's snapping.
+- **Month rows** use the measured body height − 4 px (the prototype hard-codes 832 inside an 836 px body); when a week row leaves under 26 px below its lanes, the cell shows "+N more" for all its tasks in the day-number row.
+- **Week cards** — titles break only between words; when tag + time would leave the title under 80 px the tag is hidden (priority and time stay) and "+N more" fitting uses the same rule. The screen builds no cards before its first measure pass. Cells are reused across week changes.
+- **Space** completes the focused task from any button of a list row or week card (the checkbox keeps its native Space); Enter keeps the focused button's own action; key repeat does not toggle again.
+- **Today schedule aside** scrolls on its own when the content area is shorter than the 812 px timeline, first centred on the now-line; at 1600×1000 it does not scroll.
+- **Now-line** is shown only between 07:00 and 23:00; outside the grid it is hidden, not clamped.
+- **New-row entrance** is short-lived: the pending id lasts one `Motion.NewRow` after the store change; a row realised later appears without the slide.
+- **Today progress** uses a whole percent, as the prototype does.
+- **Calendar zooms from the keyboard** pass no origin (the transition's default 50 % 40 %).
+- **Inbox scrollbar** — kept as the prototype's CSS defines it (8 px, inside the 12 px right padding); the reference image has none only because headless Chromium hides scrollbars.
 - **Local runs never touch the real machine state** — tests and `--demo` use no-op platform services; the app is launched locally only with `--demo`, `--data <folder>` or `--selfcheck`.
