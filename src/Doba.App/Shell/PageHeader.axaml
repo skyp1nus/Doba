@@ -12,19 +12,21 @@
              xmlns:t="using:Doba.App.Theme"
              x:Class="Doba.App.Shell.PageHeader"
              x:DataType="sh:PageHeaderViewModel">
-  <Border BorderBrush="{DynamicResource Brush.Border.Subtle}" BorderThickness="0,0,0,1"
+  <Border BorderBrush="{DynamicResource Brush.Border.Subtle}" BorderThickness="{DynamicResource Thickness.Shell.HeaderRule}"
           Padding="{DynamicResource Space.PageHeader}">
     <DockPanel>
       <Button Name="PART_SidebarToggle" DockPanel.Dock="Left" Theme="{StaticResource Button.OutlineIcon}"
               Margin="{DynamicResource Space.Shell.SidebarToggle}" VerticalAlignment="Bottom"
               IsVisible="{Binding ShowSidebarToggle}" Command="{Binding ToggleSidebarCommand}"
               AutomationProperties.Name="{Binding SidebarToggleLabel}" ToolTip.Tip="{Binding SidebarToggleLabel}">
-        <c:Icon Data="{StaticResource Icon.Sidebar}" Size="16" StrokeWidth="1.7" />
+        <c:Icon Data="{StaticResource Icon.Sidebar}" Size="{DynamicResource Size.Icon}" StrokeWidth="1.7" />
       </Button>
 
-      <StackPanel Name="PART_Actions" DockPanel.Dock="Right" Orientation="Horizontal" Spacing="6"
-                  VerticalAlignment="Bottom" Margin="12,0,0,0">
-        <StackPanel Name="PART_CalendarActions" Orientation="Horizontal" Spacing="6" IsVisible="{Binding IsCalendar}">
+      <StackPanel Name="PART_Actions" DockPanel.Dock="Right" Orientation="Horizontal"
+                  Spacing="{DynamicResource Space.Shell.ActionGap}"
+                  VerticalAlignment="Bottom" Margin="{DynamicResource Space.Shell.Actions}">
+        <StackPanel Name="PART_CalendarActions" Orientation="Horizontal" Spacing="{DynamicResource Space.Shell.ActionGap}"
+                    IsVisible="{Binding IsCalendar}">
           <c:SegmentedSwitch Name="PART_Zoom" SelectedIndex="{Binding ZoomIndex, Mode=TwoWay}"
                              AutomationProperties.Name="Zoom level">
             <ListBoxItem Content="Year" />
@@ -34,42 +36,43 @@
           </c:SegmentedSwitch>
           <Border Classes="vsep" />
           <Button Name="PART_Today" Theme="{StaticResource Button.Outline}" Content="Today"
-                  Command="{Binding GoTodayCommand}" />
+                  Padding="{DynamicResource Space.Shell.Today}" Command="{Binding GoTodayCommand}" />
           <Button Name="PART_Previous" Theme="{StaticResource Button.OutlineIcon}" Command="{Binding PreviousCommand}"
                   AutomationProperties.Name="Previous">
-            <c:Icon Data="{StaticResource Icon.ChevronLeft}" Size="15" StrokeWidth="1.8" />
+            <c:Icon Data="{StaticResource Icon.ChevronLeft}" Size="{DynamicResource Size.Shell.ChevronIcon}" StrokeWidth="1.8" />
           </Button>
           <Button Name="PART_Next" Theme="{StaticResource Button.OutlineIcon}" Command="{Binding NextCommand}"
                   AutomationProperties.Name="Next">
-            <c:Icon Data="{StaticResource Icon.ChevronRight}" Size="15" StrokeWidth="1.8" />
+            <c:Icon Data="{StaticResource Icon.ChevronRight}" Size="{DynamicResource Size.Shell.ChevronIcon}" StrokeWidth="1.8" />
           </Button>
           <Border Classes="vsep" />
         </StackPanel>
         <Button Name="PART_NewTask" Theme="{StaticResource Button.Primary}" IsVisible="{Binding ShowNewTask}"
                 Command="{Binding NewTaskCommand}">
-          <StackPanel Orientation="Horizontal" Spacing="8">
+          <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space.Shell.NewTaskGap}">
             <TextBlock Text="New task" VerticalAlignment="Center" />
-            <c:Kbd Classes="onPrimary" Content="N" />
+            <c:Kbd Name="PART_NewTaskKey" Classes="onPrimary" Content="N" Padding="{DynamicResource Space.Shell.NewTaskKbd}" />
           </StackPanel>
         </Button>
       </StackPanel>
 
       <StackPanel Name="PART_Title" VerticalAlignment="Bottom">
-        <ItemsControl Name="PART_Crumbs" ItemsSource="{Binding Crumbs}" Height="16"
+        <ItemsControl Name="PART_Crumbs" ItemsSource="{Binding Crumbs}" Height="{DynamicResource Size.Shell.Crumbs}"
                       AutomationProperties.Name="Breadcrumb">
           <ItemsControl.ItemsPanel>
             <ItemsPanelTemplate>
-              <StackPanel Orientation="Horizontal" Spacing="4" />
+              <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space.Shell.CrumbGap}" />
             </ItemsPanelTemplate>
           </ItemsControl.ItemsPanel>
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="sh:CrumbViewModel">
-              <StackPanel Orientation="Horizontal" Spacing="4">
+              <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space.Shell.CrumbGap}">
                 <TextBlock Classes="label faint" Text="/" VerticalAlignment="Center" IsVisible="{Binding HasSeparator}" />
                 <Button Classes="crumb" Theme="{StaticResource Button.Crumb}" IsVisible="{Binding IsLink}"
                         Command="{Binding OpenCommand}"
                         Content="{Binding Label, Converter={x:Static t:ThemeConverters.Upper}}" />
-                <TextBlock Classes="label" Padding="2,0" VerticalAlignment="Center" IsVisible="{Binding IsPlain}"
+                <TextBlock Classes="label" Padding="{DynamicResource Space.Shell.Crumb}" VerticalAlignment="Center"
+                           IsVisible="{Binding IsPlain}"
                            Text="{Binding Label, Converter={x:Static t:ThemeConverters.Upper}}" />
               </StackPanel>
             </DataTemplate>

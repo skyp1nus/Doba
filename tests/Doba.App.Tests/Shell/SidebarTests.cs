@@ -6,6 +6,7 @@ using Avalonia.Headless.XUnit;
 using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.VisualTree;
+using Doba.App.Controls;
 using Doba.App.Shell;
 using Doba.App.Tests.DesignSystem;
 using Doba.App.Tests.Support;
@@ -309,6 +310,31 @@ public class SidebarTests
         Assert.Equal("Expand sidebar", ToolTip.GetTip(s.Named<SidebarItem>("CollapseItem")));
     }
 
+    [AvaloniaFact]
+    public void Keyboard_focus_on_a_row_draws_the_focus_ring_and_a_click_does_not()
+    {
+        using var s = new Scene();
+        FocusRing Ring() => Assert.Single(s.Window.GetVisualDescendants().OfType<FocusRing>());
+
+        // Tab focus (the design's :focus-visible): the 1 px Border.Focus ring over the row.
+        foreach (var row in new[] { s.Named<SidebarItem>("TodayItem"), s.TagRow("work"), s.Named<SidebarItem>("SettingsItem") })
+        {
+            Assert.True(row.Focus(NavigationMethod.Tab));
+            s.Settle();
+            var ring = Ring();
+            Assert.Equal(Pixels.Resource("Brush.Border.Focus"), Assert.IsAssignableFrom<ISolidColorBrush>(ring.Stroke).Color);
+            var ringTop = ring.TranslatePoint(default, s.View)!.Value;
+            Assert.Equal(row.TranslatePoint(default, s.View)!.Value, ringTop);
+            Assert.Equal(row.Bounds.Size, ring.Bounds.Size);
+        }
+
+        // A click focuses the row without the ring.
+        s.Shell.Apply = false;
+        s.Click(s.Named<SidebarItem>("InboxItem"));
+        Assert.True(s.Named<SidebarItem>("InboxItem").IsFocused);
+        Assert.Empty(s.Window.GetVisualDescendants().OfType<FocusRing>());
+    }
+
     // ---------- Tags ----------
 
     [AvaloniaFact]
@@ -397,6 +423,52 @@ public class SidebarTests
         s.Settle();
         Assert.Equal(["errands"], s.Shell.AddedTags);
         Assert.False(s.ViewModel.IsAddingTag);
+    }
+
+    [AvaloniaFact]
+    public void Closing_the_input_returns_focus_to_plus_the_way_it_was_opened()
+    {
+        using var s = new Scene();
+        var plus = s.Named<Button>("AddTagButton");
+        var input = s.Named<TextBox>("TagInput");
+        bool HasRing() => s.Window.GetVisualDescendants().OfType<FocusRing>().Any();
+
+        // Mouse: no keyboard focus ring on "+" after Esc or Enter.
+        s.Click(plus);
+        Assert.True(Settles(() => input.IsFocused));
+        s.Key(Key.Escape);
+        Assert.True(plus.IsFocused);
+        Assert.False(HasRing());
+        s.Click(plus);
+        Assert.True(Settles(() => input.IsFocused));
+        s.Key(Key.Enter);
+        Assert.True(plus.IsFocused);
+        Assert.False(HasRing());
+
+        // Keyboard: Tab to "+" (from another row), Enter opens the input; Esc puts the visible focus back on "+".
+        Assert.True(s.Named<SidebarItem>("CalendarItem").Focus(NavigationMethod.Pointer));
+        Assert.True(plus.Focus(NavigationMethod.Tab));
+        s.Settle();
+        Assert.True(HasRing());
+        s.Key(Key.Enter);
+        Assert.True(s.ViewModel.IsAddingTag);
+        Assert.True(Settles(() => input.IsFocused));
+        s.Key(Key.Escape);
+        Assert.True(plus.IsFocused);
+        Assert.True(HasRing());
+    }
+
+    [Theory]
+    [InlineData("work", "W")]
+    [InlineData("éclair", "É")]
+    [InlineData("\U0001D49Cmath", "\U0001D49C")]   // outside the BMP: a surrogate pair, kept whole
+    [InlineData("😀fun", "😀")]
+    [InlineData("étude", "É")]           // e + combining acute: one text element
+    [InlineData("", "")]
+    public void Rail_initial_is_the_first_text_element(string name, string initial)
+    {
+        var vm = new TagItemViewModel(new TagEntry(name, 0, false), _ => { });
+        Assert.Equal(initial, vm.Initial);
     }
 
     // ---------- Rail ----------

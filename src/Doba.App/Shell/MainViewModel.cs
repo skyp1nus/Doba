@@ -320,6 +320,7 @@ public sealed partial class MainViewModel : ObservableObject, IAppCommands, IShe
         App.Settings.Changed -= OnSettingsChanged;
         App.DayClock.DayChanged -= OnDayChanged;
         App.DayClock.MinuteTick -= OnMinuteTick;
+        Sidebar.Dispose(); // it subscribes to the store, the day clock and this shell itself
         foreach (var screen in _screens.Values)
         {
             screen.Dispose();

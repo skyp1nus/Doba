@@ -146,6 +146,37 @@
       <!-- Package regions for palette colours and brushes (Dark). A work package adds tokens only inside its own
            region below; the shared tokens above are never moved or renamed. -->
       <!-- == Shell == -->
+      <!-- Backdrop glows (CSS blur(110-120px) on a solid disc): Glow.A / B / C as a radial gradient whose alpha follows
+           the blur's falloff, so drawing them needs no offscreen layer (an OpacityMask would). The RGB of every stop is
+           the glow colour (keep in step with Color.Glow.*); the alpha profile was calibrated against the sidebar and
+           title-bar pixels of docs/design/screens/*.png, with the design's 0.7-0.8 element opacity folded in. -->
+      <RadialGradientBrush x:Key="Brush.Shell.GlowA">
+        <GradientStop Offset="0" Color="#E63A3A3E" />
+        <GradientStop Offset="0.2" Color="#BF3A3A3E" />
+        <GradientStop Offset="0.4" Color="#8C3A3A3E" />
+        <GradientStop Offset="0.55" Color="#4D3A3A3E" />
+        <GradientStop Offset="0.7" Color="#243A3A3E" />
+        <GradientStop Offset="0.85" Color="#0D3A3A3E" />
+        <GradientStop Offset="1" Color="#003A3A3E" />
+      </RadialGradientBrush>
+      <RadialGradientBrush x:Key="Brush.Shell.GlowB">
+        <GradientStop Offset="0" Color="#E62A2A2E" />
+        <GradientStop Offset="0.2" Color="#BF2A2A2E" />
+        <GradientStop Offset="0.4" Color="#8C2A2A2E" />
+        <GradientStop Offset="0.55" Color="#4D2A2A2E" />
+        <GradientStop Offset="0.7" Color="#242A2A2E" />
+        <GradientStop Offset="0.85" Color="#0D2A2A2E" />
+        <GradientStop Offset="1" Color="#002A2A2E" />
+      </RadialGradientBrush>
+      <RadialGradientBrush x:Key="Brush.Shell.GlowC">
+        <GradientStop Offset="0" Color="#E6303034" />
+        <GradientStop Offset="0.2" Color="#BF303034" />
+        <GradientStop Offset="0.4" Color="#8C303034" />
+        <GradientStop Offset="0.55" Color="#4D303034" />
+        <GradientStop Offset="0.7" Color="#24303034" />
+        <GradientStop Offset="0.85" Color="#0D303034" />
+        <GradientStop Offset="1" Color="#00303034" />
+      </RadialGradientBrush>
 
       <!-- == Sidebar == -->
 
@@ -301,18 +332,34 @@
        title 2 px low: 2 px move from the top margin to the bottom (same block height, glyphs where the design has them). -->
   <Thickness x:Key="Space.Shell.Title">0,2,0,2</Thickness>
   <Thickness x:Key="Space.Shell.Subtitle">-1,0,0,-1</Thickness>  <!-- subtitle on the title's baseline (measured against week.png) -->
-  <!-- Falloff of the backdrop glows (CSS blur(110-120px) on a solid disc), as a radial opacity mask over the solid
-       Glow.A/B/C fill: alpha only, the colour comes from the fill. Calibrated against the reference renders (sidebar and
-       title-bar pixels of docs/design/screens/*.png), so the design's 0.7-0.8 element opacity is folded in. -->
-  <RadialGradientBrush x:Key="Brush.Shell.GlowFalloff">
-    <GradientStop Offset="0" Color="#E6000000" />
-    <GradientStop Offset="0.2" Color="#BF000000" />
-    <GradientStop Offset="0.4" Color="#8C000000" />
-    <GradientStop Offset="0.55" Color="#4D000000" />
-    <GradientStop Offset="0.7" Color="#24000000" />
-    <GradientStop Offset="0.85" Color="#0D000000" />
-    <GradientStop Offset="1" Color="#00000000" />
-  </RadialGradientBrush>
+  <x:Double x:Key="Size.Shell.SearchIcon">14</x:Double>   <!-- search magnifier 14×14 -->
+  <x:Double x:Key="Size.Shell.CaptionGlyph">10</x:Double> <!-- minimise / maximise / close glyphs 10×10 -->
+  <x:Double x:Key="Space.Shell.TitleBarGap">12</x:Double> <!-- header gap 12px between brand, search, captions -->
+  <x:Double x:Key="Space.Shell.BrandGap">8</x:Double>     <!-- app mark ↔ "Doba" gap 8px -->
+  <x:Double x:Key="Space.Shell.SearchGap">8</x:Double>    <!-- search icon ↔ label ↔ Ctrl K gap 8px -->
+  <!-- Window: the reference frame is 1600×1000; below 1100×700 the calendar screens stop fitting. -->
+  <x:Double x:Key="Size.Shell.WindowWidth">1600</x:Double>
+  <x:Double x:Key="Size.Shell.WindowHeight">1000</x:Double>
+  <x:Double x:Key="Size.Shell.WindowMinWidth">1100</x:Double>
+  <x:Double x:Key="Size.Shell.WindowMinHeight">700</x:Double>
+  <Thickness x:Key="Thickness.Shell.MainEdge">1,1,0,0</Thickness>  <!-- main panel border-top / border-left 1px -->
+  <!-- Page header (markup 148-195). -->
+  <Thickness x:Key="Thickness.Shell.HeaderRule">0,0,0,1</Thickness> <!-- border-bottom 1px solid #1D1D20 -->
+  <x:Double x:Key="Size.Shell.Crumbs">16</x:Double>         <!-- breadcrumb nav height 16px -->
+  <x:Double x:Key="Space.Shell.CrumbGap">4</x:Double>       <!-- breadcrumb gap 4px -->
+  <Thickness x:Key="Space.Shell.Crumb">2,0</Thickness>      <!-- plain crumb padding 0 2px -->
+  <x:Double x:Key="Space.Shell.ActionGap">6</x:Double>      <!-- right-hand group and calendar group gap 6px -->
+  <Thickness x:Key="Space.Shell.Actions">12,0,0,0</Thickness> <!-- the header's 12px gap before the right-hand group -->
+  <x:Double x:Key="Size.Shell.ChevronIcon">15</x:Double>    <!-- ‹ › icons 15×15 -->
+  <x:Double x:Key="Space.Shell.NewTaskGap">8</x:Double>     <!-- "New task" ↔ N key cap gap 8px -->
+  <!-- Avalonia's layout rounding rounds a text block's width up to whole pixels (Chromium keeps 34.x px for "Today",
+       6.3 px for the mono "N"), which made Today and the N key cap 1 px wider than the design and pushed the right-aligned
+       group 2 px left. The extra pixel is taken from the leading padding, where Chromium's fractional left edge puts the
+       glyphs (measured: Today 60 px with its ink at x 1332, key cap 16 px with N at x 1559 in week.png). Today's 1 px
+       bottom padding centres its odd-height label line in 27 px instead of 28: the half-pixel offset inside the 1 px border
+       was rounded the other way than in the borderless New task and drew "Today" 1 px below the other header labels. -->
+  <Thickness x:Key="Space.Shell.Today">11,0,12,1</Thickness>
+  <Thickness x:Key="Space.Shell.NewTaskKbd">4,0,5,0</Thickness>
 
   <!-- == Sidebar == -->
   <!-- App / settings sidebar (design-reference.dc.html lines 80-143). The nav's flex gap, the TAGS header row, the new-tag
@@ -324,6 +371,7 @@
   <x:Double x:Key="Sidebar.AddTagButton">24</x:Double>                <!-- "+" New tag: 24×24, icon 13 / 2 -->
   <x:Double x:Key="Sidebar.AddTagIcon">13</x:Double>
   <Thickness x:Key="Sidebar.AddTagRow">9,0</Thickness>               <!-- padding 0 10 inside the 1 px Border.Emphasis ring -->
+  <Thickness x:Key="Sidebar.AddTagBorder">1</Thickness>              <!-- that ring: border 1px solid #3A3A40 -->
   <Thickness x:Key="Sidebar.Hint">10,4,10,0</Thickness>              <!-- "↵ create · Esc cancel" -->
   <Thickness x:Key="Sidebar.Bottom">0,16,0,0</Thickness>             <!-- Collapse + Settings group: padding-top 16 -->
   <Thickness x:Key="Sidebar.SettingsLabel">10,18,10,6</Thickness>    <!-- SETTINGS small caps -->

@@ -117,7 +117,7 @@
                 CornerRadius="{DynamicResource Radius.Item}"
                 Background="{DynamicResource Brush.Overlay.Selected}"
                 BorderBrush="{DynamicResource Brush.Border.Emphasis}"
-                BorderThickness="1"
+                BorderThickness="{DynamicResource Sidebar.AddTagBorder}"
                 Padding="{DynamicResource Sidebar.AddTagRow}">
           <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Sidebar.ItemGap}">
             <TextBlock Width="{DynamicResource Size.Icon}"

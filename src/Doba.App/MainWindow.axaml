@@ -11,8 +11,8 @@
         x:Class="Doba.App.MainWindow"
         x:DataType="sh:MainViewModel"
         Title="Doba"
-        Width="1600" Height="1000"
-        MinWidth="1100" MinHeight="700"
+        Width="{DynamicResource Size.Shell.WindowWidth}" Height="{DynamicResource Size.Shell.WindowHeight}"
+        MinWidth="{DynamicResource Size.Shell.WindowMinWidth}" MinHeight="{DynamicResource Size.Shell.WindowMinHeight}"
         ExtendClientAreaToDecorationsHint="True"
         ExtendClientAreaTitleBarHeightHint="{DynamicResource Size.TitleBar}">
   <Window.Styles>
@@ -46,7 +46,7 @@
         <Border Name="PART_Main" Grid.Column="1"
                 Background="{DynamicResource Brush.Bg.Main}"
                 BorderBrush="{DynamicResource Brush.Overlay.Edge}"
-                BorderThickness="1,1,0,0"
+                BorderThickness="{DynamicResource Thickness.Shell.MainEdge}"
                 CornerRadius="{DynamicResource Radius.MainPanel}"
                 ClipToBounds="True">
           <DockPanel>

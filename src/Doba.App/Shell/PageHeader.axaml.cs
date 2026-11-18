@@ -29,6 +29,8 @@ public partial class PageHeader : UserControl
 
     internal Button NextButton => PART_Next;
 
+    internal Kbd NewTaskKey => PART_NewTaskKey;
+
     internal Control Heading => PART_Heading;
 
     internal TextBlock HeadingTitle => PART_HeadingTitle;

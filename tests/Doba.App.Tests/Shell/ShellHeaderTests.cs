@@ -4,6 +4,7 @@ using Avalonia.Headless.XUnit;
 using Avalonia.Media;
 using Avalonia.VisualTree;
 using Doba.App.Screens.Today;
+using Doba.App.Shell;
 using Doba.App.Tests.Support;
 using Doba.App.Theme;
 using Doba.Core.Demo;
@@ -103,13 +104,22 @@ public class ShellHeaderTests
     [AvaloniaFact]
     public void Setting_the_same_zoom_index_does_not_navigate()
     {
-        using var shell = ShellFixture.Open(AppView.Week);
-        var count = 0;
-        shell.Vm.Navigated += (_, _) => count++;
-        shell.Vm.Header.ZoomIndex = 2;
-        shell.Vm.Shift(1);
-        Assert.Equal(1, count);
-        Assert.Equal(2, shell.Vm.Header.ZoomIndex);
+        // A recording shell that never calls Update back, so the switch can hold an index the header's state does not
+        // show: only the "level == the shown view" guard keeps the second write from zooming.
+        using var harness = new ScreenHarness();
+        var shell = new FakeShellNavigation(harness.App.Store, Today);
+        var header = new PageHeaderViewModel(shell, new RecordingCommands());
+        header.Update(new NavState(AppView.Week, Today), Today, DayOfWeek.Monday);
+        header.Update(new NavState(AppView.Month, Today), Today, DayOfWeek.Monday);
+        Assert.Equal(1, header.ZoomIndex);
+        Assert.Empty(shell.Calls); // the shell's own updates move the switch without zooming
+
+        header.ZoomIndex = 3;      // the switch picks Day: zoom
+        Assert.Equal(["SetZoomLevel(Day)"], shell.Calls);
+        header.ZoomIndex = 1;      // back to the segment of the view the header shows (Month): no navigation
+        Assert.Equal(["SetZoomLevel(Day)"], shell.Calls);
+        header.ZoomIndex = -1;     // cleared selection: nothing
+        Assert.Equal(["SetZoomLevel(Day)"], shell.Calls);
     }
 
     [AvaloniaFact]

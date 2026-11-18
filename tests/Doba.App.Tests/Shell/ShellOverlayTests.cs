@@ -1,7 +1,9 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.Input;
+using Avalonia.VisualTree;
 using Doba.App.Dialogs;
 using Doba.App.Dialogs.Search;
 using Doba.App.Shell;
@@ -94,6 +96,43 @@ public class ShellOverlayTests
         shell.Key(Key.Escape);                                                  // nothing open: no-op
         Assert.Equal(2, overlay.Escapes);
         Assert.Equal(1, overlay.Closed);
+    }
+
+    [AvaloniaFact]
+    public void Esc_already_handled_by_a_focused_control_does_not_reach_the_overlay()
+    {
+        using var shell = ShellFixture.Open(AppView.Week);
+        var overlay = new FakeOverlay();
+        shell.Vm.OpenOverlay(overlay);
+        shell.Settle();
+
+        // A control below the window (the sidebar's tag input, a text box) marked Esc as handled.
+        shell.Window.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.Escape, Handled = true });
+        Assert.Equal(0, overlay.Escapes);
+        Assert.Same(overlay, shell.Vm.Overlay);
+
+        shell.Window.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.Escape });
+        Assert.Equal(1, overlay.Escapes);
+    }
+
+    [AvaloniaFact]
+    public void Esc_in_the_sidebar_tag_input_only_cancels_the_input()
+    {
+        using var shell = ShellFixture.Open(AppView.Week);
+        var sidebar = shell.Vm.Sidebar;
+        var plus = shell.Window.AppSidebar.GetVisualDescendants().OfType<Button>().Single(b => b.Name == "AddTagButton");
+        var input = shell.Window.AppSidebar.GetVisualDescendants().OfType<TextBox>().Single(t => t.Name == "TagInput");
+        shell.Click(plus);
+        Assert.True(sidebar.IsAddingTag);
+        Assert.True(input.IsFocused);
+
+        shell.Window.KeyTextInput("errands");
+        shell.Key(Key.Escape);
+        Assert.False(sidebar.IsAddingTag);
+        Assert.DoesNotContain("errands", shell.App.Store.Tags);
+        Assert.True(plus.IsFocused);
+        Assert.Null(shell.Vm.Overlay);
+        Assert.Equal(new NavState(AppView.Week, Today), shell.Vm.Nav);
     }
 
     [AvaloniaFact]

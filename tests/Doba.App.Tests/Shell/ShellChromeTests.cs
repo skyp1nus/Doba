@@ -64,6 +64,30 @@ public class ShellChromeTests
     }
 
     [AvaloniaFact]
+    public void Header_actions_sit_where_the_reference_draws_them()
+    {
+        // Edges measured in docs/design/screens/week.png (Chromium keeps fractional text widths; Avalonia rounds them
+        // up, which Space.Shell.Today / Space.Shell.NewTaskKbd absorb).
+        using var shell = ShellFixture.Open(AppView.Week);
+        var w = shell.Window;
+        var header = w.Header;
+        Assert.Equal(new Rect(1477, 0, 99, 30), Horizontal(header.NewTaskButton, w));
+        Assert.Equal(new Rect(1554, 0, 16, 18), Horizontal(header.NewTaskKey, w));
+        Assert.Equal(new Rect(1422, 0, 30, 30), Horizontal(header.NextButton, w));
+        Assert.Equal(new Rect(1386, 0, 30, 30), Horizontal(header.PreviousButton, w));
+        Assert.Equal(new Rect(1320, 0, 60, 30), Horizontal(header.TodayButton, w));
+        Assert.Equal(1041, Bounds(header.ZoomSwitch, w).X); // its Week pill (index 2) at 1041 + 128 = 1169
+
+        // Every label in the row shares one text line: Today's label is not a pixel lower than New task's.
+        static TextBlock Label(Control button, string text) =>
+            button.GetVisualDescendants().OfType<TextBlock>().Single(t => t.Text == text);
+        var today = Bounds(Label(header.TodayButton, "Today"), w);
+        var newTask = Bounds(Label(header.NewTaskButton, "New task"), w);
+        Assert.Equal(newTask.Y, today.Y);
+        Assert.Equal(newTask.Height, today.Height);
+    }
+
+    [AvaloniaFact]
     public void Collapsed_sidebar_is_the_56px_rail()
     {
         using var shell = ShellFixture.Open(AppView.Week);
@@ -130,5 +154,12 @@ public class ShellChromeTests
     {
         var topLeft = v.TranslatePoint(default, root) ?? throw new InvalidOperationException("Not in the tree.");
         return new Rect(topLeft, v.Bounds.Size);
+    }
+
+    /// <summary>X and size only (the header's vertical position is checked in <see cref="Chrome_has_the_design_sizes"/>).</summary>
+    private static Rect Horizontal(Visual v, Visual root)
+    {
+        var b = Bounds(v, root);
+        return new Rect(b.X, 0, b.Width, b.Height);
     }
 }

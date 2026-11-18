@@ -19,14 +19,15 @@ public sealed partial class TagItemViewModel : ObservableObject
         ArgumentNullException.ThrowIfNull(toggle);
         _toggle = toggle;
         Name = entry.Name;
-        Initial = Name.Length > 0 ? Name[..1].ToUpperInvariant() : string.Empty;
+        // The first user-perceived character (a surrogate pair or a combining sequence stays whole), upper-cased.
+        Initial = Name.Length > 0 ? Name[..StringInfo.GetNextTextElementLength(Name)].ToUpperInvariant() : string.Empty;
         Update(entry);
     }
 
     /// <summary>The normalised tag name (the key; also the label).</summary>
     public string Name { get; }
 
-    /// <summary>Upper-case first letter, shown in the rail badge.</summary>
+    /// <summary>Upper-case first character (text element), shown in the rail badge.</summary>
     public string Initial { get; }
 
     /// <summary>Open tasks with this tag (never dimmed by the filter).</summary>

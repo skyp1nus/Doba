@@ -208,6 +208,21 @@ public class ShellNavigationTests
     }
 
     [AvaloniaFact]
+    public void Disposing_the_shell_detaches_the_sidebar()
+    {
+        using var shell = ShellFixture.Open(AppView.Week);
+        var sidebar = shell.Vm.Sidebar;
+        var inbox = sidebar.InboxCount;
+        shell.App.Store.Add(new TaskItem(0, "Before dispose", string.Empty, null, null, null, 0, Priority.None, null, false));
+        Assert.Equal(inbox + 1, sidebar.InboxCount);
+
+        shell.Vm.Dispose();
+        // The sidebar listened to the store itself (not only through the shell): disposed, it stays as it was.
+        shell.App.Store.Add(new TaskItem(0, "After dispose", string.Empty, null, null, null, 0, Priority.None, null, false));
+        Assert.Equal(inbox + 1, sidebar.InboxCount);
+    }
+
+    [AvaloniaFact]
     public void Every_swap_runs_through_the_content_transitions()
     {
         var recorder = new RecordingTransitions();
