@@ -62,6 +62,16 @@ public class PerformanceTests(ITestOutputHelper output)
             ("Sidebar", () => Projector.Sidebar(store, ctx)),
             ("Search", () => Projector.Search(store, ctx, "task 12")),
             ("Week (filtered)", () => Projector.Week(store, filtered, Today, week)),
+            // Added with the performance pass: the remaining store scans and the worst-case inputs.
+            ("CarryOver.Select", () => CarryOver.Select(store, Today)),
+            ("Search (1 char)", () => Projector.Search(store, ctx, "t")),
+            ("Search (no hit)", () => Projector.Search(store, ctx, "no such task anywhere")),
+            ("Inbox (filtered)", () => Projector.Inbox(store, filtered)),
+            ("Today (filtered)", () => Projector.Today(store, filtered)),
+            ("Month (filtered)", () => Projector.Month(store, filtered, Today, month)),
+            ("Year (filtered)", () => Projector.Year(store, filtered, Today.Year)),
+            ("Sidebar (filtered)", () => Projector.Sidebar(store, filtered)),
+            ("Header (Week)", () => Doba.Core.Navigation.HeaderProjection.Build(new Doba.Core.Navigation.NavState(Doba.Core.Navigation.AppView.Week, Today), Today, DayOfWeek.Monday)),
         };
 
         var results = new List<(string Name, double Avg, double Max)>();

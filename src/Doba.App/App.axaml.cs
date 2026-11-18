@@ -4,6 +4,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Controls.Primitives;
 using Avalonia.Media;
 using Avalonia.Markup.Xaml;
+using Doba.App.Diagnostics;
 using Doba.App.Platform;
 using Doba.App.Services;
 using Doba.App.Shell;
@@ -14,7 +15,9 @@ public partial class App : Application
 {
     public override void Initialize()
     {
+        PerfProbe.Mark("platform");
         AvaloniaXamlLoader.Load(this);
+        PerfProbe.Mark("app-xaml");
 
         // Grayscale text, as in the prototype (-webkit-font-smoothing: antialiased): every top level (windows, popups)
         // gets it before its first frame and its visuals inherit it. TextOptions is not a styled property, so a
@@ -47,9 +50,13 @@ public partial class App : Application
 
     private void StartApp(IClassicDesktopStyleApplicationLifetime desktop, StartupFlags flags)
     {
-        var services = AppServices.FromStartup(flags);
+        PerfProbe.Mark("framework");
+        var services = AppServices.FromStartup(flags, AppStartup.TakePreload());
+        PerfProbe.Mark("services");
         var window = ShellComposition.CreateMainWindow(services, this);
+        PerfProbe.Mark("window");
         window.Icon = AvaloniaTrayIcon.LoadIcon();
+        PerfProbe.Mark("icon");
 
         // The lifecycle decides when the app ends (close-to-tray keeps it running with no visible window).
         desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
@@ -59,6 +66,7 @@ public partial class App : Application
         desktop.ShutdownRequested += lifecycle.OnShutdownRequested;
         desktop.Exit += (_, _) => lifecycle.DisposeAsync().AsTask().GetAwaiter().GetResult();
         lifecycle.Start();
+        PerfProbe.Mark("lifecycle");
 
         // The lifetime shows MainWindow when its loop starts; a --minimized start into the tray leaves it unset.
         if (lifecycle.ShowsWindowAtStart)

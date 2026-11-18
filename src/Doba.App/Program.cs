@@ -7,6 +7,7 @@ internal static class Program
     [STAThread]
     public static int Main(string[] args)
     {
+        // Parses the flags and starts loading the database on a pool thread while Avalonia initialises the platform.
         AppStartup.Begin(args);
         return BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
     }

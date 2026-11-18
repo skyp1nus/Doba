@@ -212,6 +212,9 @@ public sealed class AppLifecycle : IAsyncDisposable
         _disposed = true;
         _quitting = true;
         Unsubscribe();
+        // The day clock, hotkey and tray icon belong to the UI thread; the awaits below may resume on a pool thread
+        // (a backup still running when the app quits), so they are released here first.
+        _app.ReleasePlatform();
         await Maintenance.DisposeAsync().ConfigureAwait(false);
         await _app.DisposeAsync().ConfigureAwait(false);
     }
