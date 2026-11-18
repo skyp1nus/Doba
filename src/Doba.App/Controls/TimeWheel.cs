@@ -72,6 +72,9 @@ public class TimeWheel : TemplatedControl
     /// <summary>Distances below this (px) count as "already there".</summary>
     private const double Epsilon = 0.5;
 
+    /// <summary>The prototype's root <c>line-height: 1.4</c>, which the wheel's row buttons inherit.</summary>
+    private const double CssLineHeight = 1.4;
+
     private readonly TranslateTransform _stripTransform = new();
     private readonly List<Border> _rows = [];
     private readonly List<TextBlock> _labels = [];
@@ -96,6 +99,7 @@ public class TimeWheel : TemplatedControl
     // after the last movement ended. _settleGeneration discards callbacks of timers that were restarted or cancelled.
     private bool _userMoved;
     private ITimer? _settleTimer;
+    private DispatcherTimer? _settleDispatcherTimer;
     private int _settleGeneration;
 
     private bool _settingIndex;
@@ -170,8 +174,11 @@ public class TimeWheel : TemplatedControl
     /// </summary>
     public event EventHandler<int>? Committed;
 
-    /// <summary>The clock behind the settle timer; tests replace it to drive the commit rule deterministically.</summary>
-    internal TimeProvider SettleClock { get; set; } = TimeProvider.System;
+    /// <summary>
+    /// The clock behind the settle timer. Null (the app) = a one-shot <see cref="DispatcherTimer"/> on the UI thread, like
+    /// the rest of the app's timers; tests set a manual clock to drive the commit rule deterministically.
+    /// </summary>
+    internal TimeProvider? SettleClock { get; set; }
 
     /// <summary>The row the wheel rests on or is scrolling to (equals <see cref="SelectedIndex"/> once settled).</summary>
     internal int TargetIndex => _target;
@@ -263,6 +270,7 @@ public class TimeWheel : TemplatedControl
             Place(_target);
         }
         else if (property == ForegroundProperty || property == FontSizeProperty || property == FontWeightProperty ||
+                 property == FontFamilyProperty ||
                  property == SelectedForegroundProperty || property == SelectedFontSizeProperty ||
                  property == SelectedFontWeightProperty)
         {
@@ -532,8 +540,25 @@ public class TimeWheel : TemplatedControl
     {
         CancelSettle();
         var generation = _settleGeneration;
-        _settleTimer = SettleClock.CreateTimer(_ => OnSettleElapsed(generation), null,
-            TimeSpan.FromMilliseconds(M.WheelSettle), Timeout.InfiniteTimeSpan);
+        var delay = TimeSpan.FromMilliseconds(M.WheelSettle);
+        if (SettleClock is { } clock)
+        {
+            _settleTimer = clock.CreateTimer(_ => OnSettleElapsed(generation), null, delay, Timeout.InfiniteTimeSpan);
+            return;
+        }
+
+        if (_settleDispatcherTimer is null)
+        {
+            _settleDispatcherTimer = new DispatcherTimer();
+            _settleDispatcherTimer.Tick += (_, _) =>
+            {
+                _settleDispatcherTimer?.Stop();
+                OnSettleElapsed(_settleGeneration);
+            };
+        }
+
+        _settleDispatcherTimer.Interval = delay;
+        _settleDispatcherTimer.Start();
     }
 
     private void CancelSettle()
@@ -541,6 +566,7 @@ public class TimeWheel : TemplatedControl
         _settleGeneration++;
         _settleTimer?.Dispose();
         _settleTimer = null;
+        _settleDispatcherTimer?.Stop();
     }
 
     private void OnSettleElapsed(int generation)
@@ -558,6 +584,7 @@ public class TimeWheel : TemplatedControl
 
         _settleTimer?.Dispose();
         _settleTimer = null;
+        _settleDispatcherTimer?.Stop();
         Commit();
     }
 
@@ -617,7 +644,7 @@ public class TimeWheel : TemplatedControl
             {
                 Text = text,
                 HorizontalAlignment = HorizontalAlignment.Center,
-                VerticalAlignment = VerticalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Top, // placed by LabelTop, like the prototype's line box
             };
             var row = new Border { Height = ItemHeight, Child = label };
             _labels.Add(label);
@@ -685,5 +712,29 @@ public class TimeWheel : TemplatedControl
         label.Foreground = selected ? SelectedForeground ?? Foreground : Foreground;
         label.FontSize = selected ? SelectedFontSize : FontSize;
         label.FontWeight = selected ? SelectedFontWeight : FontWeight;
+        label.Margin = new Thickness(0, LabelTop(label.FontSize, label.FontWeight), 0, 0);
+    }
+
+    /// <summary>
+    /// Top of a number's text box so that its baseline lands where Chromium puts it in the prototype's 34 px row button
+    /// (font inherited, so the root line height 1.4): floor((row − line)/2) + floor((line − (a + d))/2) + a, with the
+    /// font's ascent a and descent d rounded to whole px. That is 22 for both the 15 px and the 19 px numbers
+    /// (dialog-time.png); centring the 19 px text box instead put the selected number a pixel low.
+    /// </summary>
+    private double LabelTop(double fontSize, FontWeight weight)
+    {
+        var metrics = new Typeface(FontFamily, FontStyle.Normal, weight).GlyphTypeface.Metrics;
+        if (metrics.DesignEmHeight <= 0 || fontSize <= 0)
+        {
+            return 0;
+        }
+
+        var ascent = Math.Abs(metrics.Ascent) * fontSize / metrics.DesignEmHeight;
+        var descent = Math.Abs(metrics.Descent) * fontSize / metrics.DesignEmHeight;
+        var line = CssLineHeight * fontSize;
+        var baseline = Math.Floor((ItemHeight - line) / 2)
+                       + Math.Floor((line - (Math.Round(ascent) + Math.Round(descent))) / 2)
+                       + Math.Round(ascent);
+        return Math.Max(0, baseline - ascent);
     }
 }

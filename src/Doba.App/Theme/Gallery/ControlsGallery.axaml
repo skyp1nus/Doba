@@ -6,6 +6,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:c="using:Doba.App.Controls"
+             xmlns:sh="using:Doba.App.Shell"
              x:Class="Doba.App.Theme.Gallery.ControlsGallery"
              Background="{DynamicResource Brush.Bg.Main}">
   <UserControl.Styles>
@@ -104,36 +105,13 @@
       </StackPanel>
 
       <StackPanel Classes="sec">
-        <TextBlock Classes="h" Text="BUTTON.NAV (NORMAL / HOVER / SELECTED)" />
+        <TextBlock Classes="h" Text="SIDEBARITEM · HOVER · SELECTED · .TAG" />
         <Border Background="{DynamicResource Brush.Bg.Window}" Width="232" HorizontalAlignment="Left" Padding="10,4">
           <StackPanel Spacing="1">
-            <Button Theme="{StaticResource Button.Nav}">
-              <Grid ColumnDefinitions="Auto,*,Auto">
-                <c:Icon Data="{StaticResource Icon.Inbox}" Margin="0,0,10,0" />
-                <TextBlock Grid.Column="1" Text="Inbox" VerticalAlignment="Center" />
-                <TextBlock Grid.Column="2" Classes="meta" Text="6" VerticalAlignment="Center" />
-              </Grid>
-            </Button>
-            <Button Theme="{StaticResource Button.Nav}" Classes="demo-hover">
-              <Grid ColumnDefinitions="Auto,*,Auto">
-                <c:Icon Data="{StaticResource Icon.Today}" Margin="0,0,10,0" />
-                <TextBlock Grid.Column="1" Text="Today" VerticalAlignment="Center" />
-                <TextBlock Grid.Column="2" Classes="meta" Text="2" VerticalAlignment="Center" />
-              </Grid>
-            </Button>
-            <Button Theme="{StaticResource Button.Nav}" Classes="selected">
-              <Grid ColumnDefinitions="Auto,*">
-                <c:Icon Data="{StaticResource Icon.Calendar}" Margin="0,0,10,0" />
-                <TextBlock Grid.Column="1" Text="Calendar" VerticalAlignment="Center" />
-              </Grid>
-            </Button>
-            <Button Theme="{StaticResource Button.Nav}" Height="{DynamicResource Size.TagItem}" FontWeight="Normal">
-              <Grid ColumnDefinitions="16,*,Auto" ColumnSpacing="10">
-                <TextBlock Classes="mono muted" Text="#" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                <TextBlock Grid.Column="1" Text="work" VerticalAlignment="Center" />
-                <TextBlock Grid.Column="2" Classes="meta" Text="12" VerticalAlignment="Center" />
-              </Grid>
-            </Button>
+            <sh:SidebarItem Icon="{StaticResource Icon.Inbox}" Label="Inbox" Count="6" />
+            <sh:SidebarItem Icon="{StaticResource Icon.Today}" Label="Today" Count="2" Classes="demo-hover" />
+            <sh:SidebarItem Icon="{StaticResource Icon.Calendar}" Label="Calendar" IsSelected="True" />
+            <sh:SidebarItem Theme="{StaticResource SidebarItem.Tag}" Label="work" Count="12" Initial="W" />
           </StackPanel>
         </Border>
       </StackPanel>
@@ -185,7 +163,7 @@
                 Height="28" Width="360" HorizontalAlignment="Left">
           <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
             <c:TaskCheckBox BoxSize="14" IsChecked="True" />
-            <TextBlock Grid.Column="1" Text="API migration to the new gateway" Foreground="{DynamicResource Brush.Text.Muted}" TextDecorations="Strikethrough"
+            <c:StrikeText Grid.Column="1" Text="API migration to the new gateway" Foreground="{DynamicResource Brush.Text.Muted}" Struck="True" StrikeColor="{DynamicResource Color.Text.Muted}"
                        FontSize="{DynamicResource FontSize.12.5}" FontWeight="Medium" VerticalAlignment="Center" />
             <TextBlock Grid.Column="2" Classes="meta-sm tertiary" Text="3 days" VerticalAlignment="Center" />
           </Grid>
@@ -447,7 +425,7 @@
           <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{DynamicResource Density.CardGap}">
             <c:TaskCheckBox VerticalAlignment="Top" Margin="0,1,0,0" IsChecked="True" />
             <Button Grid.Column="1" Theme="{StaticResource Button.Title}" Foreground="{DynamicResource Brush.Text.Muted}" FontSize="{DynamicResource FontSize.13}" FontWeight="Medium">
-              <TextBlock Text="Coffee with Alex" TextDecorations="Strikethrough" />
+              <c:StrikeText Text="Coffee with Alex" Struck="True" StrikeColor="{DynamicResource Color.Text.Muted}" />
             </Button>
             <TextBlock Grid.Column="2" Classes="meta-sm secondary" Text="18:30" VerticalAlignment="Center" />
           </Grid>
@@ -477,7 +455,7 @@
               <c:TaskCheckBox IsChecked="True" />
               <c:PriorityIcon Grid.Column="1" Priority="None" />
               <Button Grid.Column="2" Theme="{StaticResource Button.Title}" Foreground="{DynamicResource Brush.Text.Muted}">
-                <TextBlock Text="Morning run along the river" TextDecorations="Strikethrough" />
+                <c:StrikeText Text="Morning run along the river" Struck="True" StrikeColor="{DynamicResource Color.Text.Muted}" />
               </Button>
               <TextBlock Grid.Column="3" Classes="meta secondary" Text="08:00" VerticalAlignment="Center" />
             </Grid>

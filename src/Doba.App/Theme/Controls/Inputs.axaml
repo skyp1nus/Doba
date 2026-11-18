@@ -253,7 +253,8 @@
   </ControlTheme>
 
   <!-- Slider (Window transparency): Chromium's range drawn with the accent — 8 px rail (Slider.Rail, 1 px Slider.Border,
-       r4), accent fill up to the 16 px accent thumb. Width 180 in Settings. -->
+       r4) inset 1 px from each end of the box (178 px in a 180 px input), accent fill up to the 16 px accent thumb, which
+       travels the whole box. Width 180 in Settings; margin 2 is Chromium's UA style for range inputs. -->
   <ControlTheme x:Key="SliderFill" TargetType="RepeatButton">
     <Setter Property="Background" Value="{DynamicResource Brush.Accent}" />
     <Setter Property="Focusable" Value="False" />
@@ -267,6 +268,7 @@
 
   <ControlTheme x:Key="{x:Type Slider}" TargetType="Slider">
     <Setter Property="Height" Value="16" />
+    <Setter Property="Margin" Value="2" />
     <Setter Property="Foreground" Value="{DynamicResource Brush.Accent}" />
     <Setter Property="Background" Value="{DynamicResource Brush.Slider.Rail}" />
     <Setter Property="BorderBrush" Value="{DynamicResource Brush.Slider.Border}" />
@@ -276,6 +278,7 @@
         <Grid>
           <Border Name="TrackBackground"
                   Height="8"
+                  Margin="1,0"
                   VerticalAlignment="Center"
                   CornerRadius="4"
                   BorderThickness="1"

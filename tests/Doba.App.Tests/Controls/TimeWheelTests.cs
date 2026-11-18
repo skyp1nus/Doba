@@ -462,7 +462,7 @@ public class TimeWheelTests
     public void Production_clock_settles_on_its_own_on_the_ui_thread()
     {
         using var s = new Scene(selected: 14);
-        s.Wheel.SettleClock = TimeProvider.System; // thread-pool timer, posted back to the dispatcher
+        s.Wheel.SettleClock = null; // the app's default: a one-shot DispatcherTimer on the UI thread
         var thread = Environment.CurrentManagedThreadId;
         var commitThread = -1;
         s.Wheel.Committed += (_, _) => commitThread = Environment.CurrentManagedThreadId;

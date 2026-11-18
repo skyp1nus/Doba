@@ -102,7 +102,10 @@ public class Icon : Control
             : null;
 
         var scale = Size / ViewBox;
-        var dx = (Bounds.Width - Size) / 2;
+        // Centred in a button the way Chromium places the SVG: a half-pixel horizontal centring offset rounds up (see
+        // PixelCentring). Vertically the prototype's offsets also carry fractions from line heights further up, so
+        // there the layout's own rounding is kept (it matched the references; the correction did not).
+        var dx = ((Bounds.Width - Size) / 2) + PixelCentring.Correction(this).X;
         var dy = (Bounds.Height - Size) / 2;
         using (context.PushTransform(Matrix.CreateScale(scale, scale) * Matrix.CreateTranslation(dx, dy)))
         {

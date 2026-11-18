@@ -106,7 +106,9 @@ public class PriorityIcon : Control
 
     public override void Render(DrawingContext context)
     {
-        var origin = new Point(Math.Round((Bounds.Width - Side) / 2), Math.Round((Bounds.Height - Side) / 2));
+        // Centred like Chromium centres the 13 px SVG in the 18 px priority button (see PixelCentring).
+        var shift = PixelCentring.Correction(this);
+        var origin = new Point(PixelCentring.Offset(Bounds.Width, Side) + shift.X, PixelCentring.Offset(Bounds.Height, Side) + shift.Y);
         if (Priority == Priority.Asap)
         {
             context.DrawRectangle(AsapBrush, null, new RoundedRect(new Rect(origin, new Size(Side, Side)), AsapRadius));

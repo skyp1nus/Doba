@@ -3,7 +3,7 @@
                     xmlns:c="using:Doba.App.Controls"
                     xmlns:m="using:Doba.App.Motion">
 
-  <!-- Task checkbox: ring Border.Check 1.5 px → accent fill (250 ms ease), check mark Text.OnPrimary fades in (200 ms).
+  <!-- Task checkbox: ring Border.Check 1.5 px (snapped to device pixels like Chromium: 1 px at 100 %) → accent fill (250 ms ease), check mark Text.OnPrimary fades in (200 ms).
        BoxSize 16 (r4, check 10 px / stroke 3.5), 14 (r4, 9 / 4), 12 (r3, 8 / 4.5), 10 (r3, no mark). -->
   <ControlTheme x:Key="{x:Type c:TaskCheckBox}" TargetType="c:TaskCheckBox">
     <Setter Property="Background" Value="Transparent" />
@@ -18,7 +18,7 @@
                 Width="{TemplateBinding BoxSize}"
                 Height="{TemplateBinding BoxSize}"
                 CornerRadius="{TemplateBinding CornerRadius}"
-                BorderThickness="1.5"
+                BorderThickness="{TemplateBinding RingThickness}"
                 BorderBrush="{TemplateBinding BorderBrush}"
                 Background="{TemplateBinding Background}">
           <Border.Transitions>
