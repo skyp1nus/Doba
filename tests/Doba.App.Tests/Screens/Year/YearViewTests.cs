@@ -265,7 +265,11 @@ public class YearViewTests
         s.Click(button);
         Assert.True(title.Struck);
         Assert.Same(title, button.GetVisualDescendants().OfType<Doba.App.Controls.StrikeText>().Single());
-        Assert.Contains(title.TextDecorations!, d => d.Location == TextDecorationLocation.Strikethrough);
+        // StrikeText paints its own always-present line and only changes its colour (transparent → StrikeColor).
+        Assert.NotEqual(0, title.StrikeColor.A);
+        Assert.True(
+            Doba.App.Tests.DesignSystem.Pump.Until(() => title.StrokeColor == title.StrikeColor, TimeSpan.FromSeconds(5)),
+            "the strike colour never reached StrikeColor");
     }
 
     [AvaloniaFact]
