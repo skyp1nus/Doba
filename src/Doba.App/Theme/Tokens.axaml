@@ -313,6 +313,23 @@
   <x:Double x:Key="Size.Month.Dot">6</x:Double>                    <!-- today dot -->
 
       <!-- == Day == -->
+  <!-- Day screen (design-reference lines 564–611). -->
+  <x:Double x:Key="Size.Day.Span">38</x:Double>              <!-- multi-day span row height -->
+  <Thickness x:Key="Space.Day.Span">11,0</Thickness>         <!-- span padding 0 12, minus the 1 px ring Button.Bar draws inside -->
+  <x:Double x:Key="Space.Day.ListGap">8</x:Double>           <!-- gap between header, spans, cards, empty state, Add task -->
+  <Thickness x:Key="Space.Day.List">0,4,0,0</Thickness>      <!-- list padding-top 4 -->
+  <Thickness x:Key="Space.Day.Header">0,0,0,4</Thickness>    <!-- "TASKS · N / M done" margin-bottom 4 -->
+  <x:Double x:Key="Space.Day.RowGap">10</x:Double>           <!-- checkbox ↔ title (cards and spans) -->
+  <Thickness x:Key="Space.Day.Meta">26,0,0,0</Thickness>     <!-- card meta row indent: checkbox 16 + gap 10 -->
+  <x:Double x:Key="Space.Day.MetaGap">12</x:Double>          <!-- priority · #tag · time -->
+  <Thickness x:Key="Space.Day.Priority">4,0</Thickness>      <!-- priority button padding 0 4 -->
+  <Thickness x:Key="Space.Day.PriorityShift">-4,0,0,0</Thickness> <!-- priority button margin-left -4 -->
+  <x:Double x:Key="Space.Day.PriorityGap">6</x:Double>       <!-- priority icon ↔ name -->
+  <x:Double x:Key="Size.Day.Priority">18</x:Double>          <!-- priority button height -->
+  <Thickness x:Key="Space.Day.Empty">4,10</Thickness>        <!-- "Nothing here" padding 10 4 -->
+  <!-- Card title line: CSS 13.5 × 1.35 = 18.225, but Avalonia's layout rounding ceils it to 19 (cards 1 px taller than
+       the design's 62 / 64 px); 18 gives the design's card heights. -->
+  <x:Double x:Key="LineHeight.Day.Title">18</x:Double>
 
   <!-- == Dialog == -->
 

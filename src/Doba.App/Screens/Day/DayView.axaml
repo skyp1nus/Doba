@@ -1,8 +1,81 @@
-<!-- Day screen. Placeholder until the Day package builds it. -->
+<!--
+  Day content area (design-reference.dc.html lines 564–641): a scrolling list (padding-right 32, content max-width 680,
+  padding-top 4, gap 8) — "TASKS" + "N / M done", multi-day spans, task cards, "Nothing here", the dashed "Add task" at
+  the bottom — and the Schedule aside (380 px, padding-left 24, Border.Subtle left border).
+-->
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:s="using:Doba.App.Screens.Day"
+             xmlns:c="using:Doba.App.Controls"
+             xmlns:local="using:Doba.App.Screens.Day"
+             xmlns:vm="using:Doba.App.ViewModels"
              x:Class="Doba.App.Screens.Day.DayView"
-             x:DataType="s:DayViewModel">
-  <TextBlock Classes="label" Text="Day" />
+             x:DataType="local:DayViewModel"
+             c:TaskListRow.Entrances="{Binding Entrances}">
+  <Grid ColumnDefinitions="*,Auto">
+    <ScrollViewer Name="PART_Scroll" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Padding="0,0,32,0">
+      <Grid>
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*" MaxWidth="{StaticResource Size.Day.MaxWidth}" />
+          <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+        <StackPanel Name="PART_List" Spacing="{StaticResource Space.Day.ListGap}" Margin="{StaticResource Space.Day.List}">
+          <Grid Name="PART_Header" ColumnDefinitions="*,Auto" Margin="{StaticResource Space.Day.Header}">
+            <TextBlock Classes="section" Text="TASKS" VerticalAlignment="Center"
+                       LineHeight="{Binding $self.FontSize, Converter={x:Static c:TaskListRow.CssLineHeight}}" />
+            <TextBlock Name="PART_Progress"
+                       Grid.Column="1"
+                       Classes="mono tertiary"
+                       FontSize="{DynamicResource FontSize.12}"
+                       Text="{Binding Progress}"
+                       VerticalAlignment="Center"
+                       LineHeight="{Binding $self.FontSize, Converter={x:Static c:TaskListRow.CssLineHeight}}" />
+          </Grid>
+
+          <ItemsControl Name="PART_Spans" ItemsSource="{Binding Spans}" IsVisible="{Binding HasSpans}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <StackPanel Spacing="{StaticResource Space.Day.ListGap}" />
+              </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:TaskRowViewModel">
+                <local:DaySpanRow />
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+
+          <ItemsControl Name="PART_Items" ItemsSource="{Binding Items}" IsVisible="{Binding HasItems}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <StackPanel Spacing="{StaticResource Space.Day.ListGap}" />
+              </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:TaskRowViewModel">
+                <local:DayCard />
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+
+          <TextBlock Name="PART_Empty"
+                     Text="Nothing here"
+                     Classes="muted"
+                     FontSize="{DynamicResource FontSize.12.5}"
+                     Margin="{StaticResource Space.Day.Empty}"
+                     LineHeight="{Binding $self.FontSize, Converter={x:Static c:TaskListRow.CssLineHeight}}"
+                     IsVisible="{Binding IsEmpty}" />
+
+          <c:AddTaskButton Name="PART_AddTask" Command="{Binding AddTaskCommand}" />
+        </StackPanel>
+      </Grid>
+    </ScrollViewer>
+
+    <Border Name="PART_Aside"
+            Grid.Column="1"
+            BorderBrush="{DynamicResource Brush.Border.Subtle}"
+            BorderThickness="1,0,0,0"
+            Padding="24,0,0,0">
+      <c:ScheduleTimeline Name="PART_Schedule" Width="{DynamicResource Size.Schedule.Width}" DataContext="{Binding Schedule}" />
+    </Border>
+  </Grid>
 </UserControl>

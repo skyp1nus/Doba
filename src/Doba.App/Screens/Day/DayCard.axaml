@@ -1,0 +1,101 @@
+<!--
+  Day task card (design-reference lines 582–600): Card (Bg.Card, r8, hover Bg.CardHover, padding Density.DayCardPadding)
+  holding a column (gap Density.DayCardGap):
+    · checkbox 16 (margin-top 1) · gap 10 · title (13.5/500, line height 1.35, wraps; click = edit; strike fades in)
+    · meta row (only when there is a priority, tag or time): indent 26, gap 12, mono 11 Text.Muted —
+      priority button (18 px, 0 4, margin-left −4, r4, Text.Tertiary: icon 13 · gap 6 · "High"; click = cycle),
+      #tag, time (Text.Secondary).
+  DataContext: TaskRowViewModel. See DayCard.axaml.cs.
+-->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:Doba.App.Controls"
+             xmlns:local="using:Doba.App.Screens.Day"
+             xmlns:vm="using:Doba.App.ViewModels"
+             xmlns:m="using:Doba.App.Motion"
+             x:Class="Doba.App.Screens.Day.DayCard"
+             x:DataType="vm:TaskRowViewModel">
+  <UserControl.Styles>
+    <Style Selector="Button.title.done">
+      <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Muted}" />
+    </Style>
+    <Style Selector="c|Card.dimmed">
+      <Setter Property="Opacity" Value="{DynamicResource Opacity.Dimmed}" />
+    </Style>
+    <Style Selector="TextBlock.day-meta">
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="LineHeight" Value="{Binding $self.FontSize, Converter={x:Static c:TaskListRow.CssLineHeight}}" />
+    </Style>
+  </UserControl.Styles>
+
+  <c:Card Name="PART_Card"
+          Padding="{DynamicResource Density.DayCardPadding}"
+          Classes.dimmed="{Binding Dimmed}">
+    <c:Card.Transitions>
+      <Transitions>
+        <DoubleTransition Property="Opacity" Duration="{x:Static m:MotionTimes.Dim}" Easing="{x:Static m:Motion.EaseStd}" />
+      </Transitions>
+    </c:Card.Transitions>
+    <StackPanel Spacing="{DynamicResource Density.DayCardGap}">
+      <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{StaticResource Space.Day.RowGap}">
+        <c:TaskCheckBox Name="PART_Check"
+                        VerticalAlignment="Top"
+                        Margin="0,1,0,0"
+                        IsChecked="{Binding Done, Mode=OneWay}"
+                        Command="{Binding ToggleCommand}"
+                        AutomationProperties.Name="{Binding ToggleLabel}" />
+        <Button Grid.Column="1"
+                Name="PART_TitleButton"
+                Classes="title"
+                Classes.done="{Binding Done}"
+                Theme="{StaticResource Button.Title}"
+                HorizontalAlignment="Left"
+                VerticalAlignment="Top"
+                FontWeight="Medium"
+                Command="{Binding OpenCommand}"
+                AutomationProperties.Name="{Binding Title}">
+          <c:StrikeText Name="PART_Title"
+                        Text="{Binding Title}"
+                        Struck="{Binding Done}"
+                        StrikeColor="{DynamicResource Color.Text.Muted}"
+                        TextWrapping="Wrap"
+                        LineHeight="{StaticResource LineHeight.Day.Title}" />
+        </Button>
+      </Grid>
+
+      <StackPanel Name="PART_Meta"
+                  Orientation="Horizontal"
+                  Spacing="{StaticResource Space.Day.MetaGap}"
+                  Margin="{StaticResource Space.Day.Meta}">
+        <StackPanel.IsVisible>
+          <MultiBinding Converter="{x:Static BoolConverters.Or}">
+            <Binding Path="HasPriority" />
+            <Binding Path="HasTag" />
+            <Binding Path="HasTime" />
+          </MultiBinding>
+        </StackPanel.IsVisible>
+        <Button Name="PART_Priority"
+                Height="{StaticResource Size.Day.Priority}"
+                Padding="{StaticResource Space.Day.Priority}"
+                Margin="{StaticResource Space.Day.PriorityShift}"
+                CornerRadius="{DynamicResource Radius.Check}"
+                Foreground="{DynamicResource Brush.Text.Tertiary}"
+                FontFamily="{DynamicResource Font.Mono}"
+                FontSize="{DynamicResource FontSize.11}"
+                IsVisible="{Binding HasPriority}"
+                Command="{Binding CyclePriorityCommand}"
+                ToolTip.Tip="{Binding PriorityTitle}"
+                AutomationProperties.Name="{Binding PriorityLabel}">
+          <StackPanel Orientation="Horizontal" Spacing="{StaticResource Space.Day.PriorityGap}">
+            <c:PriorityIcon Priority="{Binding Priority}" VerticalAlignment="Center" />
+            <TextBlock Name="PART_PriorityName"
+                       Classes="day-meta"
+                       Text="{Binding Priority, Converter={x:Static local:DayCard.PriorityName}}" />
+          </StackPanel>
+        </Button>
+        <TextBlock Name="PART_Tag" Classes="meta day-meta" Text="{Binding TagLabel}" IsVisible="{Binding HasTag}" />
+        <TextBlock Name="PART_Time" Classes="meta secondary day-meta" Text="{Binding Time}" IsVisible="{Binding HasTime}" />
+      </StackPanel>
+    </StackPanel>
+  </c:Card>
+</UserControl>

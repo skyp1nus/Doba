@@ -1,0 +1,72 @@
+<!--
+  Day multi-day span (design-reference lines 573–579, .hv2): Button.Bar, 38 px, r8, padding 0 12, gap 10 —
+  checkbox 16 (display only) · title 13.5/500 one line with ellipsis (strike fades in when done) · "Day k of n"
+  (mono 11 Text.Tertiary). Accent10 fill + Accent25 ring; done Bg.SpanDone + Bg.Track. Click anywhere toggles.
+  DataContext: TaskRowViewModel. (Controls/SpanBarButton is the week bar: 14 px box, gap 8, 10.5 meta.)
+-->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:Doba.App.Controls"
+             xmlns:vm="using:Doba.App.ViewModels"
+             xmlns:m="using:Doba.App.Motion"
+             x:Class="Doba.App.Screens.Day.DaySpanRow"
+             x:DataType="vm:TaskRowViewModel">
+  <UserControl.Styles>
+    <Style Selector="Button.span.done">
+      <Setter Property="Background" Value="{DynamicResource Brush.Bg.SpanDone}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource Brush.Bg.Track}" />
+    </Style>
+    <Style Selector="Button.span.dimmed">
+      <Setter Property="Opacity" Value="{DynamicResource Opacity.Dimmed}" />
+    </Style>
+    <!-- StrikeText is styled as TextBlock. -->
+    <Style Selector="TextBlock.done">
+      <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Muted}" />
+    </Style>
+  </UserControl.Styles>
+
+  <Button Name="PART_Bar"
+          Classes="span"
+          Classes.done="{Binding Done}"
+          Classes.dimmed="{Binding Dimmed}"
+          Theme="{StaticResource Button.Bar}"
+          Height="{StaticResource Size.Day.Span}"
+          CornerRadius="{DynamicResource Radius.Card}"
+          Padding="{StaticResource Space.Day.Span}"
+          Command="{Binding ToggleCommand}"
+          AutomationProperties.Name="{Binding ToggleLabel}">
+    <Button.Transitions>
+      <Transitions>
+        <DoubleTransition Property="Opacity" Duration="{x:Static m:MotionTimes.Dim}" Easing="{x:Static m:Motion.EaseStd}" />
+      </Transitions>
+    </Button.Transitions>
+    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{StaticResource Space.Day.RowGap}">
+      <c:TaskCheckBox Name="PART_Check"
+                      IsChecked="{Binding Done, Mode=OneWay}"
+                      IsHitTestVisible="False"
+                      Focusable="False"
+                      VerticalAlignment="Center" />
+      <c:StrikeText Grid.Column="1"
+                    Name="PART_Title"
+                    Classes.done="{Binding Done}"
+                    Text="{Binding Title}"
+                    Struck="{Binding Done}"
+                    StrikeColor="{DynamicResource Color.Text.Muted}"
+                    FontSize="{DynamicResource FontSize.13.5}"
+                    FontWeight="Medium"
+                    TextTrimming="CharacterEllipsis"
+                    VerticalAlignment="Center">
+        <c:StrikeText.Transitions>
+          <Transitions>
+            <BrushTransition Property="Foreground" Duration="{x:Static m:MotionTimes.Strike}" Easing="{x:Static m:Motion.EaseStd}" />
+          </Transitions>
+        </c:StrikeText.Transitions>
+      </c:StrikeText>
+      <TextBlock Grid.Column="2"
+                 Name="PART_Meta"
+                 Classes="meta tertiary"
+                 Text="{Binding Meta}"
+                 VerticalAlignment="Center" />
+    </Grid>
+  </Button>
+</UserControl>
