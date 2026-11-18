@@ -1,8 +1,271 @@
-<!-- Month screen. Placeholder until the Month package builds it. -->
+<!--
+  Month screen (design-reference lines 456–501, monthData 1379–1430). A 26 px weekday header (after a 40 px spacer),
+  then one row per week, each floor((H − 26) / weeks) px high: the "W46" link (40 px; accent for the current week) and
+  a 7-column grid with rows 34 px (day number) + 24 px per multi-day lane (at most two) + the rest (item list).
+  Only the day cells and the week labels are interactive; numbers, bars, chips and "+N more" let clicks through to the
+  cell (pointer-events: none in the prototype). DataContext: MonthViewModel. The view reports its height after each
+  layout pass (MonthView.axaml.cs) so the projection fits the items to the real space.
+-->
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:Doba.App.Controls"
+             xmlns:m="using:Doba.App.Motion"
+             xmlns:vm="using:Doba.App.ViewModels"
              xmlns:s="using:Doba.App.Screens.Month"
+             xmlns:w="using:Doba.App.Screens.Week"
              x:Class="Doba.App.Screens.Month.MonthView"
              x:DataType="s:MonthViewModel">
-  <TextBlock Classes="label" Text="Month" />
+  <UserControl.Styles>
+    <!-- Week label (.wkl): mono 11, Text.Muted (accent for the current week) → Text.Primary on hover. -->
+    <Style Selector="Button.week-label">
+      <Setter Property="Width" Value="{x:Static s:MonthLayout.WeekLabelWidth}" />
+      <Setter Property="HorizontalAlignment" Value="Left" />
+      <Setter Property="VerticalAlignment" Value="Stretch" />
+      <Setter Property="HorizontalContentAlignment" Value="Left" />
+      <Setter Property="VerticalContentAlignment" Value="Top" />
+      <Setter Property="Padding" Value="{DynamicResource Space.Month.WeekLabel}" />
+      <Setter Property="FontSize" Value="{DynamicResource FontSize.11}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Subtle}" />
+      <Setter Property="BorderThickness" Value="0,1,0,0" />
+    </Style>
+    <Style Selector="Button.week-label.current">
+      <Setter Property="Foreground" Value="{DynamicResource Brush.Accent}" />
+    </Style>
+
+    <!-- Day cell: Border.Subtle top/left, Overlay.Cell on hover; days of other months on Overlay.Faint. -->
+    <Style Selector="Button.cell.outside">
+      <Setter Property="Background" Value="{DynamicResource Brush.Overlay.Faint}" />
+    </Style>
+
+    <!-- Day number: 13 / 500 Text.Primary; other months Text.Muted; today accent / 600. -->
+    <Style Selector="TextBlock.day-num">
+      <Setter Property="FontSize" Value="{DynamicResource FontSize.13}" />
+      <Setter Property="FontWeight" Value="Medium" />
+      <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="TextBlock.day-num.outside">
+      <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Muted}" />
+    </Style>
+    <Style Selector="TextBlock.day-num.today">
+      <Setter Property="Foreground" Value="{DynamicResource Brush.Accent}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+
+    <!-- Item chip: 22 px, Bg.Card, r5, padding 0 6, 10 px checkbox · title 11.5 (done: Text.Muted + strike). -->
+    <Style Selector="Border.chip">
+      <Setter Property="Height" Value="{x:Static s:MonthLayout.ChipHeight}" />
+      <Setter Property="Padding" Value="{DynamicResource Space.Month.Chip}" />
+      <Setter Property="CornerRadius" Value="{DynamicResource Radius.KeyCap}" />
+      <Setter Property="Background" Value="{DynamicResource Brush.Bg.Card}" />
+    </Style>
+
+    <!-- Multi-day bar: 20 px, Accent10 + Accent25 ring (done: Bg.SpanDone + Bg.Track), r5, inset 6 from unclipped
+         ends; title 11.5 / 500. -->
+    <Style Selector="Border.bar">
+      <Setter Property="Height" Value="{x:Static s:MonthLayout.BarHeight}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Padding" Value="{DynamicResource Space.Month.Bar}" />
+      <Setter Property="Margin" Value="{DynamicResource Space.Month.BarInset}" />
+      <Setter Property="CornerRadius" Value="{DynamicResource Radius.Month.Bar}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="Background" Value="{DynamicResource Brush.Accent10}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent25}" />
+    </Style>
+    <Style Selector="Border.bar.done">
+      <Setter Property="Background" Value="{DynamicResource Brush.Bg.SpanDone}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource Brush.Bg.Track}" />
+    </Style>
+    <Style Selector="Border.bar.clip-start">
+      <Setter Property="Margin" Value="{DynamicResource Space.Month.BarInset.ClipStart}" />
+      <Setter Property="CornerRadius" Value="{DynamicResource Radius.Month.Bar.ClipStart}" />
+    </Style>
+    <Style Selector="Border.bar.clip-end">
+      <Setter Property="Margin" Value="{DynamicResource Space.Month.BarInset.ClipEnd}" />
+      <Setter Property="CornerRadius" Value="{DynamicResource Radius.Month.Bar.ClipEnd}" />
+    </Style>
+    <Style Selector="Border.bar.clip-start.clip-end">
+      <Setter Property="Margin" Value="{DynamicResource Space.Month.BarInset.ClipBoth}" />
+      <Setter Property="CornerRadius" Value="{DynamicResource Radius.Month.Bar.ClipBoth}" />
+    </Style>
+
+    <!-- Tag filter: tasks of other tags at Opacity.Dimmed. -->
+    <Style Selector="Border.chip.dimmed, Border.bar.dimmed">
+      <Setter Property="Opacity" Value="{DynamicResource Opacity.Dimmed}" />
+    </Style>
+
+    <Style Selector="TextBlock.item-title">
+      <Setter Property="FontSize" Value="{DynamicResource FontSize.11.5}" />
+      <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
+      <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="TextBlock.item-title.bar-title">
+      <Setter Property="FontWeight" Value="Medium" />
+    </Style>
+    <Style Selector="TextBlock.item-title.done">
+      <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Muted}" />
+    </Style>
+
+    <!-- Bars are logical children of their ItemsControl's containers. -->
+    <Style Selector="ItemsControl.spans > ContentPresenter" x:DataType="s:MonthSpanViewModel">
+      <Setter Property="w:WeekSpanPanel.Column" Value="{Binding Column}" />
+      <Setter Property="w:WeekSpanPanel.ColumnSpan" Value="{Binding ColumnSpan}" />
+      <Setter Property="w:WeekSpanPanel.Lane" Value="{Binding Lane}" />
+    </Style>
+  </UserControl.Styles>
+
+  <Grid RowDefinitions="Auto,*">
+    <!-- Weekday header: 40 px spacer, seven mono 11 upper-case labels (padding 0 10). -->
+    <Grid Height="{x:Static s:MonthLayout.HeaderHeight}" ColumnDefinitions="Auto,*">
+      <Border Width="{x:Static s:MonthLayout.WeekLabelWidth}" />
+      <ItemsControl Grid.Column="1" Name="WeekdayHeader" ItemsSource="{Binding WeekdayLabels}">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate>
+            <UniformGrid Columns="7" Rows="1" />
+          </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="x:String">
+            <TextBlock Classes="label" Padding="{DynamicResource Space.Month.Weekday}" Text="{Binding}" />
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </Grid>
+
+    <ItemsControl Grid.Row="1" Name="WeeksHost" VerticalAlignment="Top" ItemsSource="{Binding Weeks}">
+      <ItemsControl.ItemTemplate>
+        <DataTemplate x:DataType="s:MonthWeekViewModel">
+          <Grid Height="{Binding RowHeight}" ColumnDefinitions="Auto,*">
+            <Button Classes="week-label"
+                    Classes.current="{Binding IsCurrent}"
+                    Theme="{StaticResource Button.Link}"
+                    Content="{Binding Label}"
+                    AutomationProperties.Name="{Binding OpenLabel}"
+                    Click="OnOpenWeek" />
+
+            <Panel Grid.Column="1">
+              <!-- Day cells: background button + day number, lane spacer and item list (not hit-testable). -->
+              <ItemsControl Classes="days" ItemsSource="{Binding Days}">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate>
+                    <UniformGrid Columns="7" Rows="1" />
+                  </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="s:MonthDayViewModel">
+                    <Panel>
+                      <Button Classes="cell"
+                              Classes.outside="{Binding IsOutside}"
+                              Theme="{StaticResource Button.Cell}"
+                              AutomationProperties.Name="{Binding OpenLabel}"
+                              Click="OnOpenDay" />
+                      <Grid RowDefinitions="Auto,Auto,*" IsHitTestVisible="False">
+                        <!-- 34 px row, padding 8 10 0, number (and today's dot) centred in what is left. -->
+                        <Border Height="{x:Static s:MonthLayout.DayNumberHeight}" Padding="{DynamicResource Space.Month.DayNumber}">
+                          <StackPanel Orientation="Horizontal"
+                                      VerticalAlignment="Center"
+                                      Spacing="{DynamicResource Month.InlineGap}">
+                            <TextBlock Classes="day-num"
+                                       Classes.outside="{Binding IsOutside}"
+                                       Classes.today="{Binding IsToday}"
+                                       Text="{Binding DayNumber}" />
+                            <Ellipse Width="{DynamicResource Size.Month.Dot}"
+                                     Height="{DynamicResource Size.Month.Dot}"
+                                     Fill="{DynamicResource Brush.Accent}"
+                                     VerticalAlignment="Center"
+                                     IsVisible="{Binding IsToday}" />
+                          </StackPanel>
+                        </Border>
+
+                        <!-- Room for the week's multi-day lanes. -->
+                        <Border Grid.Row="1" Height="{Binding LaneCount, Converter={x:Static s:MonthView.LanesHeight}}" />
+
+                        <StackPanel Grid.Row="2"
+                                    Margin="{DynamicResource Space.Month.List}"
+                                    Spacing="{x:Static s:MonthLayout.ChipGap}"
+                                    VerticalAlignment="Top"
+                                    ClipToBounds="True">
+                          <ItemsControl Classes="items" ItemsSource="{Binding Items}" IsVisible="{Binding HasItems}">
+                            <ItemsControl.ItemsPanel>
+                              <ItemsPanelTemplate>
+                                <StackPanel Spacing="{x:Static s:MonthLayout.ChipGap}" />
+                              </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                              <DataTemplate x:DataType="vm:TaskRowViewModel">
+                                <Border Classes="chip" Classes.dimmed="{Binding Dimmed}">
+                                  <Border.Transitions>
+                                    <Transitions>
+                                      <DoubleTransition Property="Opacity" Duration="{x:Static m:MotionTimes.Dim}" Easing="{x:Static m:Motion.EaseStd}" />
+                                    </Transitions>
+                                  </Border.Transitions>
+                                  <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Month.InlineGap}">
+                                    <c:TaskCheckBox BoxSize="10"
+                                                    IsChecked="{Binding Done, Mode=OneWay}"
+                                                    Focusable="False" />
+                                    <c:StrikeText Grid.Column="1"
+                                                  Classes="item-title"
+                                                  Classes.done="{Binding Done}"
+                                                  Text="{Binding Title}"
+                                                  Struck="{Binding Done}"
+                                                  StrikeColor="{DynamicResource Color.Text.Muted}">
+                                      <c:StrikeText.Transitions>
+                                        <Transitions>
+                                          <BrushTransition Property="Foreground" Duration="{x:Static m:MotionTimes.Strike}" Easing="{x:Static m:Motion.EaseStd}" />
+                                        </Transitions>
+                                      </c:StrikeText.Transitions>
+                                    </c:StrikeText>
+                                  </Grid>
+                                </Border>
+                              </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                          </ItemsControl>
+                          <TextBlock Classes="meta-sm more"
+                                     Padding="{DynamicResource Space.Month.More}"
+                                     Text="{Binding MoreLabel}"
+                                     IsVisible="{Binding HasMore}" />
+                        </StackPanel>
+                      </Grid>
+                    </Panel>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+
+              <!-- Multi-day bars in up to two 24 px lanes below the day numbers. -->
+              <ItemsControl Classes="spans" ItemsSource="{Binding Spans}" IsHitTestVisible="False">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate>
+                    <w:WeekSpanPanel Columns="7"
+                                     Top="{x:Static s:MonthLayout.DayNumberHeight}"
+                                     LaneHeight="{x:Static s:MonthLayout.LaneHeight}" />
+                  </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="s:MonthSpanViewModel">
+                    <Border Classes="bar"
+                            Classes.done="{Binding Row.Done}"
+                            Classes.dimmed="{Binding Row.Dimmed}"
+                            Classes.clip-start="{Binding ClipStart}"
+                            Classes.clip-end="{Binding ClipEnd}">
+                      <Border.Transitions>
+                        <Transitions>
+                          <DoubleTransition Property="Opacity" Duration="{x:Static m:MotionTimes.Dim}" Easing="{x:Static m:Motion.EaseStd}" />
+                        </Transitions>
+                      </Border.Transitions>
+                      <c:StrikeText Classes="item-title bar-title"
+                                    Classes.done="{Binding Row.Done}"
+                                    Text="{Binding Row.Title}"
+                                    Struck="{Binding Row.Done}"
+                                    StrikeColor="{DynamicResource Color.Text.Muted}" />
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </Panel>
+          </Grid>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+  </Grid>
 </UserControl>

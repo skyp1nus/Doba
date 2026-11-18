@@ -289,6 +289,28 @@
   <!-- == Sidebar == -->
 
   <!-- == Month == -->
+  <!-- Month grid (design-reference lines 456–501). Row/lane/chip heights live in Screens/Month/MonthLayout.cs because
+       the projection fits items with them. -->
+  <Thickness x:Key="Space.Month.Weekday">10,0</Thickness>          <!-- weekday header label: padding 0 10px -->
+  <Thickness x:Key="Space.Month.WeekLabel">0,9,0,0</Thickness>     <!-- "W46": padding 9px 0 0 -->
+  <Thickness x:Key="Space.Month.DayNumber">10,8,10,0</Thickness>   <!-- day number: padding 8px 10px 0 -->
+  <Thickness x:Key="Space.Month.List">6,4,6,0</Thickness>          <!-- item list: padding 4px 6px 0 -->
+  <Thickness x:Key="Space.Month.Chip">6,0</Thickness>              <!-- item chip: padding 0 6px -->
+  <Thickness x:Key="Space.Month.More">6,0,0,0</Thickness>          <!-- "+N more": padding-left 6px -->
+  <!-- Bar: padding 0 8px; the design's 1 px ring is an inset box-shadow (no layout), here a border, so 7 + 1. -->
+  <Thickness x:Key="Space.Month.Bar">7,0</Thickness>
+  <!-- Bar inset from its slot (margin 0 6px), dropped on an end that continues past the week. -->
+  <Thickness x:Key="Space.Month.BarInset">6,0</Thickness>
+  <Thickness x:Key="Space.Month.BarInset.ClipStart">0,0,6,0</Thickness>
+  <Thickness x:Key="Space.Month.BarInset.ClipEnd">6,0,0,0</Thickness>
+  <Thickness x:Key="Space.Month.BarInset.ClipBoth">0</Thickness>
+  <!-- Bar radius 5px, square on an end that continues past the week (radius(cl, cr, 5)). -->
+  <CornerRadius x:Key="Radius.Month.Bar">5</CornerRadius>
+  <CornerRadius x:Key="Radius.Month.Bar.ClipStart">0,5,5,0</CornerRadius>
+  <CornerRadius x:Key="Radius.Month.Bar.ClipEnd">5,0,0,5</CornerRadius>
+  <CornerRadius x:Key="Radius.Month.Bar.ClipBoth">0</CornerRadius>
+  <x:Double x:Key="Month.InlineGap">6</x:Double>                   <!-- number ↔ today dot; checkbox ↔ title -->
+  <x:Double x:Key="Size.Month.Dot">6</x:Double>                    <!-- today dot -->
 
       <!-- == Day == -->
 
