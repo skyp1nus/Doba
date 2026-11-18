@@ -285,6 +285,28 @@
   <!-- Package regions for theme-independent tokens (sizes, spacing, radii, font sizes). A work package adds tokens
        only inside its own region below; the shared tokens above are never moved or renamed. -->
   <!-- == Shell == -->
+  <x:Double x:Key="Size.Shell.Search">380</x:Double>      <!-- title-bar search: flex 0 1 380px -->
+  <x:Double x:Key="Size.Shell.SearchMin">160</x:Double>   <!-- … min-width 160px -->
+  <x:Double x:Key="Size.Shell.Logo">18</x:Double>         <!-- title-bar app mark tile -->
+  <x:Double x:Key="Size.Shell.LogoGlyph">11</x:Double>    <!-- its check glyph -->
+  <Thickness x:Key="Space.Shell.TitleBar">8,0,0,0</Thickness>          <!-- header padding-left 8px -->
+  <Thickness x:Key="Space.Shell.SidebarToggle">-6,0,12,0</Thickness>   <!-- margin-left -6px + the header's 12px gap -->
+  <!-- h1 margin-top 4px. Avalonia puts a LineHeight's extra leading above the glyphs (CSS splits it), which drew the
+       title 2 px low: 2 px move from the top margin to the bottom (same block height, glyphs where the design has them). -->
+  <Thickness x:Key="Space.Shell.Title">0,2,0,2</Thickness>
+  <Thickness x:Key="Space.Shell.Subtitle">-1,0,0,-1</Thickness>  <!-- subtitle on the title's baseline (measured against week.png) -->
+  <!-- Falloff of the backdrop glows (CSS blur(110-120px) on a solid disc), as a radial opacity mask over the solid
+       Glow.A/B/C fill: alpha only, the colour comes from the fill. Calibrated against the reference renders (sidebar and
+       title-bar pixels of docs/design/screens/*.png), so the design's 0.7-0.8 element opacity is folded in. -->
+  <RadialGradientBrush x:Key="Brush.Shell.GlowFalloff">
+    <GradientStop Offset="0" Color="#E6000000" />
+    <GradientStop Offset="0.2" Color="#BF000000" />
+    <GradientStop Offset="0.4" Color="#8C000000" />
+    <GradientStop Offset="0.55" Color="#4D000000" />
+    <GradientStop Offset="0.7" Color="#24000000" />
+    <GradientStop Offset="0.85" Color="#0D000000" />
+    <GradientStop Offset="1" Color="#00000000" />
+  </RadialGradientBrush>
 
   <!-- == Sidebar == -->
   <!-- App / settings sidebar (design-reference.dc.html lines 80-143). The nav's flex gap, the TAGS header row, the new-tag

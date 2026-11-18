@@ -1,0 +1,53 @@
+<!--
+  Title bar (design markup lines 52-76): 40 px, app mark + "Doba", the "Search tasks" button (Ctrl K) and the three
+  caption buttons. The bar itself is the window's drag area (TitleBar role: drag, double-click maximise, snap layouts);
+  the caption buttons carry the Minimize / Maximize / Close roles, the search button the User role.
+  DataContext: MainViewModel.
+-->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:Doba.App.Controls"
+             xmlns:sh="using:Doba.App.Shell"
+             x:Class="Doba.App.Shell.TitleBar"
+             x:DataType="sh:MainViewModel"
+             Height="{DynamicResource Size.TitleBar}">
+  <Grid Name="PART_DragArea" Background="Transparent" ColumnDefinitions="*,Auto,*" ColumnSpacing="12"
+        Margin="{DynamicResource Space.Shell.TitleBar}">
+    <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" IsHitTestVisible="False">
+      <Border Width="{DynamicResource Size.Shell.Logo}" Height="{DynamicResource Size.Shell.Logo}"
+              CornerRadius="{DynamicResource Radius.KeyCap}" Background="{DynamicResource Brush.Bg.Logo}">
+        <c:Icon Data="{StaticResource Icon.Logo}" Size="{DynamicResource Size.Shell.LogoGlyph}" StrokeWidth="3.2"
+                Foreground="{DynamicResource Brush.Bg.DialogFooter}"
+                HorizontalAlignment="Center" VerticalAlignment="Center" />
+      </Border>
+      <TextBlock Text="Doba" FontSize="{DynamicResource FontSize.12.5}" FontWeight="Medium"
+                 Foreground="{DynamicResource Brush.Text.Secondary}" VerticalAlignment="Center" />
+    </StackPanel>
+
+    <Button Name="PART_Search" Grid.Column="1" Theme="{StaticResource Button.Search}"
+            Width="{DynamicResource Size.Shell.Search}" MinWidth="{DynamicResource Size.Shell.SearchMin}"
+            VerticalAlignment="Center" Command="{Binding OpenSearchCommand}"
+            AutomationProperties.Name="Search tasks">
+      <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+        <c:Icon Data="{StaticResource Icon.Search}" Size="14" StrokeWidth="1.8" />
+        <TextBlock Grid.Column="1" Text="Search tasks" VerticalAlignment="Center" />
+        <c:Kbd Grid.Column="2" Content="Ctrl K" />
+      </Grid>
+    </Button>
+
+    <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right">
+      <Button Name="PART_Minimize" Theme="{StaticResource Button.Caption}" AutomationProperties.Name="Minimize"
+              Click="OnMinimize">
+        <c:Icon Data="{StaticResource Icon.Caption.Minimize}" ViewBox="10" Size="10" StrokeWidth="1" />
+      </Button>
+      <Button Name="PART_Maximize" Theme="{StaticResource Button.Caption}" AutomationProperties.Name="Maximize"
+              Click="OnMaximize">
+        <c:Icon Data="{StaticResource Icon.Caption.Maximize}" ViewBox="10" Size="10" StrokeWidth="1" />
+      </Button>
+      <Button Name="PART_Close" Theme="{StaticResource Button.CaptionClose}" AutomationProperties.Name="Close"
+              Click="OnClose">
+        <c:Icon Data="{StaticResource Icon.Caption.Close}" ViewBox="10" Size="10" StrokeWidth="1" />
+      </Button>
+    </StackPanel>
+  </Grid>
+</UserControl>

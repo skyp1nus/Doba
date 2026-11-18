@@ -1,8 +1,62 @@
+<!--
+  The application window (design markup lines 43-198, 648-652). Client area extended into the title bar: the backdrop
+  (window colour + three blurred glows) and the chrome tint (Brush.Chrome, Settings › Window transparency) sit behind
+  the 40 px title bar and the sidebar column (232 px, 56 px rail when collapsed; the settings sidebar is always 232);
+  the main panel (Bg.Main, top-left radius 10, 1 px Overlay.Edge top/left hairline) holds the page header and the screen
+  host. The overlay host covers everything, title bar included. Composed by ShellComposition.CreateMainWindow.
+-->
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:sh="using:Doba.App.Shell"
         x:Class="Doba.App.MainWindow"
+        x:DataType="sh:MainViewModel"
         Title="Doba"
         Width="1600" Height="1000"
-        MinWidth="1100" MinHeight="700">
-  <TextBlock Text="Doba" Margin="24" FontSize="24" FontWeight="Medium" />
+        MinWidth="1100" MinHeight="700"
+        ExtendClientAreaToDecorationsHint="True"
+        ExtendClientAreaTitleBarHeightHint="{DynamicResource Size.TitleBar}">
+  <Window.Styles>
+    <Style Selector="Border#PART_SidebarColumn">
+      <Setter Property="Width" Value="{DynamicResource Size.Sidebar}" />
+    </Style>
+    <Style Selector="Border#PART_SidebarColumn.rail">
+      <Setter Property="Width" Value="{DynamicResource Size.Rail}" />
+    </Style>
+  </Window.Styles>
+
+  <Panel>
+    <TemplatedControl Theme="{StaticResource Shell.Backdrop}" />
+    <Border Background="{DynamicResource Brush.Chrome}" IsHitTestVisible="False" />
+
+    <Grid RowDefinitions="Auto,*">
+      <sh:TitleBar Name="PART_TitleBar" />
+
+      <Grid Grid.Row="1" ColumnDefinitions="Auto,*">
+        <Border Name="PART_SidebarColumn" Classes.rail="{Binding IsRail}" ClipToBounds="True">
+          <Panel>
+            <Panel Name="PART_AppSidebar" IsVisible="{Binding !ShowsSettings}">
+              <sh:SidebarView DataContext="{Binding Sidebar}" />
+            </Panel>
+            <Panel Name="PART_SettingsSidebar" IsVisible="{Binding ShowsSettings}">
+              <sh:SettingsSidebarView DataContext="{Binding Sidebar}" />
+            </Panel>
+          </Panel>
+        </Border>
+
+        <Border Name="PART_Main" Grid.Column="1"
+                Background="{DynamicResource Brush.Bg.Main}"
+                BorderBrush="{DynamicResource Brush.Overlay.Edge}"
+                BorderThickness="1,1,0,0"
+                CornerRadius="{DynamicResource Radius.MainPanel}"
+                ClipToBounds="True">
+          <DockPanel>
+            <sh:PageHeader Name="PART_Header" DockPanel.Dock="Top" DataContext="{Binding Header}" />
+            <sh:ScreenHost Name="PART_Screens" Margin="{DynamicResource Space.PageBody}" Screen="{Binding Current}" />
+          </DockPanel>
+        </Border>
+      </Grid>
+    </Grid>
+
+    <sh:OverlayHost Name="PART_Overlays" />
+  </Panel>
 </Window>

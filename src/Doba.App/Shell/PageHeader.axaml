@@ -1,0 +1,89 @@
+<!--
+  Page header (design markup lines 148-195): padding 20 24 18 28, bottom hairline Border.Subtle, items aligned to the
+  bottom with a 12 px gap. Left: the sidebar toggle (30×30, margin-left −6; not in Settings). Middle: breadcrumbs (mono
+  11, 0.08em, upper case, "/" separators, gap 4, 16 px high) over the 24 px title with its 15 px muted subtitle.
+  Right (gap 6): in the calendar the Year/Month/Week/Day switch, a separator, Today, ‹ ›, a separator; then New task
+  with its "N" key cap (not in Settings). DataContext: PageHeaderViewModel.
+-->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:Doba.App.Controls"
+             xmlns:sh="using:Doba.App.Shell"
+             xmlns:t="using:Doba.App.Theme"
+             x:Class="Doba.App.Shell.PageHeader"
+             x:DataType="sh:PageHeaderViewModel">
+  <Border BorderBrush="{DynamicResource Brush.Border.Subtle}" BorderThickness="0,0,0,1"
+          Padding="{DynamicResource Space.PageHeader}">
+    <DockPanel>
+      <Button Name="PART_SidebarToggle" DockPanel.Dock="Left" Theme="{StaticResource Button.OutlineIcon}"
+              Margin="{DynamicResource Space.Shell.SidebarToggle}" VerticalAlignment="Bottom"
+              IsVisible="{Binding ShowSidebarToggle}" Command="{Binding ToggleSidebarCommand}"
+              AutomationProperties.Name="{Binding SidebarToggleLabel}" ToolTip.Tip="{Binding SidebarToggleLabel}">
+        <c:Icon Data="{StaticResource Icon.Sidebar}" Size="16" StrokeWidth="1.7" />
+      </Button>
+
+      <StackPanel Name="PART_Actions" DockPanel.Dock="Right" Orientation="Horizontal" Spacing="6"
+                  VerticalAlignment="Bottom" Margin="12,0,0,0">
+        <StackPanel Name="PART_CalendarActions" Orientation="Horizontal" Spacing="6" IsVisible="{Binding IsCalendar}">
+          <c:SegmentedSwitch Name="PART_Zoom" SelectedIndex="{Binding ZoomIndex, Mode=TwoWay}"
+                             AutomationProperties.Name="Zoom level">
+            <ListBoxItem Content="Year" />
+            <ListBoxItem Content="Month" />
+            <ListBoxItem Content="Week" />
+            <ListBoxItem Content="Day" />
+          </c:SegmentedSwitch>
+          <Border Classes="vsep" />
+          <Button Name="PART_Today" Theme="{StaticResource Button.Outline}" Content="Today"
+                  Command="{Binding GoTodayCommand}" />
+          <Button Name="PART_Previous" Theme="{StaticResource Button.OutlineIcon}" Command="{Binding PreviousCommand}"
+                  AutomationProperties.Name="Previous">
+            <c:Icon Data="{StaticResource Icon.ChevronLeft}" Size="15" StrokeWidth="1.8" />
+          </Button>
+          <Button Name="PART_Next" Theme="{StaticResource Button.OutlineIcon}" Command="{Binding NextCommand}"
+                  AutomationProperties.Name="Next">
+            <c:Icon Data="{StaticResource Icon.ChevronRight}" Size="15" StrokeWidth="1.8" />
+          </Button>
+          <Border Classes="vsep" />
+        </StackPanel>
+        <Button Name="PART_NewTask" Theme="{StaticResource Button.Primary}" IsVisible="{Binding ShowNewTask}"
+                Command="{Binding NewTaskCommand}">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <TextBlock Text="New task" VerticalAlignment="Center" />
+            <c:Kbd Classes="onPrimary" Content="N" />
+          </StackPanel>
+        </Button>
+      </StackPanel>
+
+      <StackPanel Name="PART_Title" VerticalAlignment="Bottom">
+        <ItemsControl Name="PART_Crumbs" ItemsSource="{Binding Crumbs}" Height="16"
+                      AutomationProperties.Name="Breadcrumb">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <StackPanel Orientation="Horizontal" Spacing="4" />
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="sh:CrumbViewModel">
+              <StackPanel Orientation="Horizontal" Spacing="4">
+                <TextBlock Classes="label faint" Text="/" VerticalAlignment="Center" IsVisible="{Binding HasSeparator}" />
+                <Button Classes="crumb" Theme="{StaticResource Button.Crumb}" IsVisible="{Binding IsLink}"
+                        Command="{Binding OpenCommand}"
+                        Content="{Binding Label, Converter={x:Static t:ThemeConverters.Upper}}" />
+                <TextBlock Classes="label" Padding="2,0" VerticalAlignment="Center" IsVisible="{Binding IsPlain}"
+                           Text="{Binding Label, Converter={x:Static t:ThemeConverters.Upper}}" />
+              </StackPanel>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <!-- h1 "Title <span>subtitle</span>": two text blocks because Avalonia applies letter spacing per text block,
+             not per run (the title's -0.02em must not reach the subtitle). The title keeps the h1's trailing space; the
+             subtitle sits on the title's baseline (Space.Shell.Subtitle). -->
+        <StackPanel Name="PART_Heading" Orientation="Horizontal" Margin="{DynamicResource Space.Shell.Title}">
+          <TextBlock Name="PART_HeadingTitle" Classes="title" TextWrapping="NoWrap" VerticalAlignment="Bottom"><Run Text="{Binding Title}" /><Run Text=" " /></TextBlock>
+          <TextBlock Name="PART_HeadingSubtitle" Classes="subtitle" TextWrapping="NoWrap" VerticalAlignment="Bottom"
+                     Margin="{DynamicResource Space.Shell.Subtitle}" Text="{Binding Subtitle}" />
+        </StackPanel>
+      </StackPanel>
+    </DockPanel>
+  </Border>
+</UserControl>

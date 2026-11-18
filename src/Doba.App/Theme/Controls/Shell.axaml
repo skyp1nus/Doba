@@ -1,4 +1,29 @@
-<!-- Shell control themes (title bar, page header, main panel, overlay host). Owned by the Shell package; empty until then. -->
+<!-- Shell control themes (title bar, page header, main panel, overlay host). Owned by the Shell package. -->
 <ResourceDictionary xmlns="https://github.com/avaloniaui"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <!--
+    Window backdrop (design markup lines 45-49): three blurred discs behind the chrome tint. CSS blur() is approximated
+    by a radial opacity mask (Brush.Shell.GlowFalloff) on an ellipse grown by ~2σ on each side, so nothing is blurred at
+    render time. Geometry (1600×1000 reference): A 560 px disc at (−180, 140) blur 120 → centre (100, 420), drawn
+    1040×1040; B 420 px at (60, 680) blur 110 → centre (270, 890), drawn 860×860; C 640×420 at right −220, top −260
+    blur 120 → centre 100 px left of the right edge, y −50, drawn 1120×900. The design's opacity (0.8 / 0.8 / 0.7) is folded into the mask.
+  -->
+  <ControlTheme x:Key="Shell.Backdrop" TargetType="TemplatedControl">
+    <Setter Property="IsHitTestVisible" Value="False" />
+    <Setter Property="ClipToBounds" Value="True" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <!-- A Canvas so the oversized ellipses keep their size at any window size (no layout clamping). -->
+        <Canvas>
+          <Ellipse Canvas.Left="-420" Canvas.Top="-100" Width="1040" Height="1040"
+                   Fill="{DynamicResource Brush.Glow.A}" OpacityMask="{StaticResource Brush.Shell.GlowFalloff}" />
+          <Ellipse Canvas.Left="-160" Canvas.Top="460" Width="860" Height="860"
+                   Fill="{DynamicResource Brush.Glow.B}" OpacityMask="{StaticResource Brush.Shell.GlowFalloff}" />
+          <Ellipse Canvas.Right="-460" Canvas.Top="-500" Width="1120" Height="900"
+                   Fill="{DynamicResource Brush.Glow.C}" OpacityMask="{StaticResource Brush.Shell.GlowFalloff}" />
+        </Canvas>
+      </ControlTemplate>
+    </Setter>
+  </ControlTheme>
 </ResourceDictionary>
