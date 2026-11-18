@@ -1,4 +1,47 @@
-<!-- Search palette control themes (query box, hit rows). Owned by the Search package; empty until then. -->
+<!--
+  Search palette control themes (Dialogs/Search/SearchPaletteView). Owned by the Search package.
+  TextBox.Search: the query box — the dialog's borderless title input sized for a palette (15 px, Text.Primary,
+  placeholder Text.Muted, fills the 52 px query row).
+  Button.SearchHit: a hit row — the popover menu item (.mi: 32 px, r6, 0 8, 13 px Text.Primary, hover Overlay.Press
+  over 150 ms, "selected" = Overlay.Selected); "done" mutes the title (the strike is StrikeText's own).
+  Not focusable: the keyboard stays in the query box (↑/↓ move the selection, Enter opens).
+  ScrollViewer.Search: the hit list's scroller. The content spans the full width and the 8 px bar is drawn over the
+  list's 12 px right padding (2 px from the rows and the panel edge, 6 px from the rule and the footer), so the rows
+  keep the same inset on both sides whether or not the list scrolls.
+-->
 <ResourceDictionary xmlns="https://github.com/avaloniaui"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <ControlTheme x:Key="TextBox.Search" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+    <Setter Property="FontSize" Value="{DynamicResource FontSize.15}" />
+    <Setter Property="VerticalAlignment" Value="Stretch" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <!-- .qa:focus { outline: none } — the caret is the only focus cue, as in the dialog's title input. -->
+    <Setter Property="FocusAdorner" Value="{x:Null}" />
+  </ControlTheme>
+
+  <ControlTheme x:Key="Button.SearchHit" TargetType="Button" BasedOn="{StaticResource Button.Menu}">
+    <Setter Property="Focusable" Value="False" />
+    <Style Selector="^.done">
+      <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Muted}" />
+    </Style>
+  </ControlTheme>
+
+  <ControlTheme x:Key="ScrollViewer.Search" TargetType="ScrollViewer" BasedOn="{StaticResource {x:Type ScrollViewer}}">
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Grid ColumnDefinitions="*,Auto" RowDefinitions="*,Auto">
+          <ScrollContentPresenter Name="PART_ContentPresenter"
+                                  Grid.ColumnSpan="2"
+                                  Padding="{TemplateBinding Padding}"
+                                  Background="{TemplateBinding Background}" />
+          <ScrollBar Name="PART_HorizontalScrollBar" Grid.Row="1" Orientation="Horizontal" />
+          <ScrollBar Name="PART_VerticalScrollBar"
+                     Grid.Column="1"
+                     Orientation="Vertical"
+                     Margin="{DynamicResource Space.Search.ScrollBar}" />
+        </Grid>
+      </ControlTemplate>
+    </Setter>
+  </ControlTheme>
 </ResourceDictionary>

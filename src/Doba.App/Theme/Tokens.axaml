@@ -517,6 +517,22 @@
   </LinearGradientBrush>
 
   <!-- == Search == -->
+  <!-- Search palette (a gap-fill: the design only has the title-bar button). Built from the task dialog's pieces: the
+       Border.dialog panel, the dialog header's 20 px left inset, popover menu rows (Button.Menu: 32 px, r6, 0 8, gap 10,
+       14 px glyph column) inside a popover-like 6 px list padding, and the dialog footer (Space.Dialog.Footer). The
+       12 px list inset puts the row glyphs under the magnifier (x 20) and the titles under the query text (x 44). -->
+  <x:Double x:Key="Size.Search.Query">52</x:Double>                  <!-- query row height -->
+  <Thickness x:Key="Space.Search.Query">20,0</Thickness>            <!-- query row padding (dialog header inset 20) -->
+  <x:Double x:Key="Space.Search.QueryGap">8</x:Double>               <!-- magnifier 16 ↔ query text (title-bar search gap) -->
+  <Thickness x:Key="Space.Search.List">12,6</Thickness>             <!-- result list padding -->
+  <Thickness x:Key="Space.Search.ScrollBar">0,6,2,6</Thickness>     <!-- 8 px bar over the 12 px right padding: 2 px clear of rows and edge, 6 px of rule / footer -->
+  <x:Double x:Key="Size.Search.List">268</x:Double>                  <!-- 8 rows × 32 + 2 × 6: more rows scroll -->
+  <x:Double x:Key="Size.Search.Glyph">14</x:Double>                  <!-- popover row glyph column (priority icon) -->
+  <x:Double x:Key="Space.Search.RowGap">10</x:Double>                <!-- popover row gap: glyph ↔ title ↔ meta -->
+  <x:Double x:Key="Space.Search.MetaGap">12</x:Double>               <!-- #tag ↔ context (list row meta gap) -->
+  <Thickness x:Key="Space.Search.Empty">32,0,8,0</Thickness>        <!-- "No tasks found" on the row titles' x -->
+  <Thickness x:Key="Thickness.Search.Rule">0,1,0,0</Thickness>      <!-- 1 px Border.Subtle above the list and the footer -->
+  <CornerRadius x:Key="Radius.Search.Footer">0,0,12,12</CornerRadius> <!-- footer: border-radius 0 0 12px 12px -->
 
 
   <!-- == Lists (Inbox / Today / Settings) == -->

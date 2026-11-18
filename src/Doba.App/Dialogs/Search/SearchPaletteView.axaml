@@ -1,8 +1,107 @@
-<!-- Search palette (in-window overlay hosted by Shell/OverlayHost). Placeholder until the Search package builds it. -->
+<!--
+  Search palette (in-window overlay hosted by Shell/OverlayHost in the 640 px panel, 150 px from the top). The design
+  only has the title-bar "Search tasks" button, so this is built from the task dialog's parts (Theme/Controls/Search.axaml,
+  the "== Search ==" tokens):
+    query row    52 px, padding 0 20: magnifier (16, Text.Muted) · gap 8 · borderless query box (15 px, "Search tasks")
+    result list  1 px Border.Subtle rule, padding 6 12; popover rows (32 px, r6, 0 8, gap 10): priority glyph (14 px
+                 column) · title (13 px, struck and muted when done, ellipsis) · "#tag" and the context ("Inbox",
+                 "Mon 16 Nov") in mono 11 Text.Muted. Eight rows show; up to 50 (Projector.Search's limit) scroll.
+                 The scrollbar is drawn over the list's right padding (ScrollViewer.Search), so rows keep 12 px on
+                 both sides and the bar stays clear of the rule and the panel edge.
+                 A query without hits shows one muted "No tasks found" line; an empty query shows no list at all.
+    footer       the dialog footer (Bg.DialogFooter, 1 px Border.Subtle rule, r 0 0 12 12, padding 12 14 12 20) with the
+                 mono hint "↑↓ move · ↵ open · Esc close".
+  ClipToBounds is off: UserControls here clip to their bounds unless told otherwise (it is true at run time on every
+  UserControl in the tree), which cut off Border.dialog's 1 px ring and drop shadow, both drawn outside the panel.
+  DataContext: SearchPaletteViewModel.
+-->
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:Doba.App.Controls"
              xmlns:s="using:Doba.App.Dialogs.Search"
              x:Class="Doba.App.Dialogs.Search.SearchPaletteView"
-             x:DataType="s:SearchPaletteViewModel">
-  <TextBlock Classes="label" Text="Search" />
+             x:DataType="s:SearchPaletteViewModel"
+             ClipToBounds="False">
+  <Border Name="PART_Panel" Classes="dialog">
+    <StackPanel>
+      <Grid Name="PART_QueryRow"
+            Height="{DynamicResource Size.Search.Query}"
+            Margin="{DynamicResource Space.Search.Query}"
+            ColumnDefinitions="Auto,*"
+            ColumnSpacing="{DynamicResource Space.Search.QueryGap}">
+        <c:Icon Data="{StaticResource Icon.Search}"
+                Size="{DynamicResource Size.Icon}"
+                StrokeWidth="1.8"
+                Foreground="{DynamicResource Brush.Text.Muted}"
+                VerticalAlignment="Center" />
+        <TextBox Name="PART_Query"
+                 Grid.Column="1"
+                 Theme="{StaticResource TextBox.Search}"
+                 PlaceholderText="Search tasks"
+                 AutomationProperties.Name="Search tasks"
+                 Text="{Binding Query}" />
+      </Grid>
+
+      <Border Name="PART_Results"
+              BorderBrush="{DynamicResource Brush.Border.Subtle}"
+              BorderThickness="{DynamicResource Thickness.Search.Rule}"
+              IsVisible="{Binding HasQuery}">
+        <Panel>
+          <ScrollViewer Name="PART_Scroll"
+                        Theme="{StaticResource ScrollViewer.Search}"
+                        MaxHeight="{DynamicResource Size.Search.List}"
+                        IsVisible="{Binding HasHits}">
+            <ItemsControl Name="PART_Hits" ItemsSource="{Binding Hits}" Padding="{DynamicResource Space.Search.List}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="s:SearchHitViewModel">
+                  <Button Theme="{StaticResource Button.SearchHit}"
+                          Classes.selected="{Binding IsSelected}"
+                          Classes.done="{Binding Done}"
+                          Command="{Binding OpenCommand}"
+                          AutomationProperties.Name="{Binding AccessibleName}">
+                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{DynamicResource Space.Search.RowGap}">
+                      <Panel Width="{DynamicResource Size.Search.Glyph}">
+                        <c:PriorityIcon Priority="{Binding Priority}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                      </Panel>
+                      <c:StrikeText Name="PART_Title"
+                                    Grid.Column="1"
+                                    Text="{Binding Title}"
+                                    Struck="{Binding Done}"
+                                    StrikeColor="{DynamicResource Color.Text.Muted}"
+                                    TextTrimming="CharacterEllipsis"
+                                    VerticalAlignment="Center" />
+                      <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="{DynamicResource Space.Search.MetaGap}">
+                        <TextBlock Name="PART_Tag" Classes="meta" Text="{Binding TagLabel}" IsVisible="{Binding HasTag}"
+                                   VerticalAlignment="Center" />
+                        <TextBlock Name="PART_Context" Classes="meta" Text="{Binding Context}" VerticalAlignment="Center" />
+                      </StackPanel>
+                    </Grid>
+                  </Button>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+          <Border Margin="{DynamicResource Space.Search.List}"
+                  Height="{DynamicResource Size.NavItem}"
+                  Padding="{DynamicResource Space.Search.Empty}"
+                  IsVisible="{Binding ShowsNoResults}">
+            <TextBlock Name="PART_NoResults"
+                       Classes="muted"
+                       FontSize="{DynamicResource FontSize.13}"
+                       VerticalAlignment="Center"
+                       Text="No tasks found" />
+          </Border>
+        </Panel>
+      </Border>
+
+      <Border Name="PART_Footer"
+              Background="{DynamicResource Brush.Bg.DialogFooter}"
+              BorderBrush="{DynamicResource Brush.Border.Subtle}"
+              BorderThickness="{DynamicResource Thickness.Search.Rule}"
+              CornerRadius="{DynamicResource Radius.Search.Footer}"
+              Padding="{DynamicResource Space.Dialog.Footer}">
+        <TextBlock Classes="meta" Text="↑↓ move · ↵ open · Esc close" />
+      </Border>
+    </StackPanel>
+  </Border>
 </UserControl>
