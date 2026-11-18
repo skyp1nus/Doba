@@ -11,10 +11,22 @@ internal sealed class WindowsAutostart : IAutostart
     internal const string RunKeyPath = @"Software\Microsoft\Windows\CurrentVersion\Run";
 
     private readonly string? _exePath;
+    private readonly string _keyPath;
+    private readonly string _valueName;
 
     public WindowsAutostart() : this(Environment.ProcessPath) { }
 
-    internal WindowsAutostart(string? exePath) => _exePath = exePath;
+    internal WindowsAutostart(string? exePath) : this(exePath, RunKeyPath, AutostartCommand.ValueName) { }
+
+    /// <summary>Against another HKCU key / value (<c>--selfcheck</c> uses <c>Software\Doba\SelfCheck</c>, never Run).</summary>
+    internal WindowsAutostart(string? exePath, string keyPath, string valueName)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(keyPath);
+        ArgumentException.ThrowIfNullOrWhiteSpace(valueName);
+        _exePath = exePath;
+        _keyPath = keyPath;
+        _valueName = valueName;
+    }
 
     public bool IsSupported => _exePath is not null;
 
@@ -24,8 +36,8 @@ internal sealed class WindowsAutostart : IAutostart
         {
             try
             {
-                using var key = Registry.CurrentUser.OpenSubKey(RunKeyPath, writable: false);
-                return AutostartCommand.Matches(key?.GetValue(AutostartCommand.ValueName) as string, _exePath);
+                using var key = Registry.CurrentUser.OpenSubKey(_keyPath, writable: false);
+                return AutostartCommand.Matches(key?.GetValue(_valueName) as string, _exePath);
             }
             catch (Exception ex) when (IsRegistryFailure(ex))
             {
@@ -43,14 +55,16 @@ internal sealed class WindowsAutostart : IAutostart
 
         try
         {
-            using var key = Registry.CurrentUser.CreateSubKey(RunKeyPath, writable: true);
             if (enabled)
             {
-                key.SetValue(AutostartCommand.ValueName, AutostartCommand.Build(_exePath), RegistryValueKind.String);
+                using var key = Registry.CurrentUser.CreateSubKey(_keyPath, writable: true);
+                key.SetValue(_valueName, AutostartCommand.Build(_exePath), RegistryValueKind.String);
             }
             else
             {
-                key.DeleteValue(AutostartCommand.ValueName, throwOnMissingValue: false);
+                // Removing never creates the key.
+                using var key = Registry.CurrentUser.OpenSubKey(_keyPath, writable: true);
+                key?.DeleteValue(_valueName, throwOnMissingValue: false);
             }
         }
         catch (Exception ex) when (IsRegistryFailure(ex))

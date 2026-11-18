@@ -4,6 +4,8 @@
     <RootNamespace>Doba.App</RootNamespace>
     <AssemblyName>Doba</AssemblyName>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- The title-bar app mark at 16–256 px; also the window and tray icon (avares://Doba/Assets/doba.ico). -->
+    <ApplicationIcon>Assets\doba.ico</ApplicationIcon>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <BuiltInComInteropSupport>false</BuiltInComInteropSupport>
     <!-- NativeAOT publish (win-x64 in CI); analyzers are on for every build via Directory.Build.props. -->

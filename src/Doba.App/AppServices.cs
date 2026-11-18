@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Doba.App.Platform;
 using Doba.App.Services;
 using Doba.Core.Demo;
@@ -13,6 +14,8 @@ namespace Doba.App;
 /// </summary>
 public sealed class AppServices : IAsyncDisposable
 {
+    private bool _disposed;
+
     private AppServices(TimeProvider clock, ITaskStore store, ISettingsService settings, PlatformServices platform, DobaDatabase? database)
     {
         Clock = clock;
@@ -21,6 +24,10 @@ public sealed class AppServices : IAsyncDisposable
         Platform = platform;
         Database = database;
         DayClock = new DayClock(clock);
+        if (database is not null)
+        {
+            database.WriteFailed += OnWriteFailed;
+        }
     }
 
     public TimeProvider Clock { get; }
@@ -60,20 +67,65 @@ public sealed class AppServices : IAsyncDisposable
             db);
     }
 
-    /// <summary>From command-line flags: --demo, or --data &lt;folder&gt;, else %LOCALAPPDATA%\Doba.</summary>
-    public static AppServices FromStartup() =>
-        AppStartup.Demo
-            ? CreateDemo(platform: PlatformServices.Create())
-            : Open(AppStartup.DataFolder is { } f ? new DataLocation(f) : DataLocation.Default());
-
-    /// <summary>Flushes pending writes and closes the database.</summary>
-    public async ValueTask DisposeAsync()
+    /// <summary>
+    /// From command-line flags: --demo (and --selfcheck), or --data &lt;folder&gt;, else %LOCALAPPDATA%\Doba. Demo mode
+    /// gets no-op autostart and hotkey; --data never touches the registry (see <see cref="PlatformServices.ForLaunch"/>).
+    /// </summary>
+    internal static AppServices FromStartup(StartupFlags flags)
     {
-        DayClock.Dispose();
-        Platform.Hotkey.Dispose();
-        if (Database is not null)
+        ArgumentNullException.ThrowIfNull(flags);
+        var demo = flags.Demo || flags.SelfCheck;
+        var platform = PlatformServices.ForLaunch(demo, flags.DataFolder is not null);
+        return demo
+            ? CreateDemo(platform: platform)
+            : Open(flags.DataFolder is { } f ? new DataLocation(f) : DataLocation.Default(), platform: platform);
+    }
+
+    /// <summary>Waits until every queued task and settings write is on disk (no-op in demo mode). Never throws: a
+    /// failed write is reported through <see cref="Trace"/> (the design has no UI for it).</summary>
+    public async Task FlushAsync()
+    {
+        if (Database is not { } db || _disposed)
         {
-            await Database.DisposeAsync().ConfigureAwait(false);
+            return;
+        }
+
+        try
+        {
+            await db.Tasks.FlushAsync().ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is StorageWriteException or ObjectDisposedException or IOException)
+        {
+            Trace.WriteLine("Doba: flushing pending writes failed: " + ex.Message);
         }
     }
+
+    /// <summary>Flushes pending writes and closes the database (once; later calls do nothing).</summary>
+    public async ValueTask DisposeAsync()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _disposed = true;
+        DayClock.Dispose();
+        Platform.Hotkey.Dispose();
+        Platform.Tray.Dispose();
+        if (Database is not null)
+        {
+            Database.WriteFailed -= OnWriteFailed;
+            try
+            {
+                await Database.DisposeAsync().ConfigureAwait(false);
+            }
+            catch (StorageWriteException ex)
+            {
+                Trace.WriteLine("Doba: writes failed before closing the database: " + ex.Message);
+            }
+        }
+    }
+
+    private static void OnWriteFailed(object? sender, StorageWriteFailedEventArgs e) =>
+        Trace.WriteLine("Doba: a background write failed: " + e.Error.Message);
 }

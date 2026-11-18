@@ -1,4 +1,6 @@
+using Avalonia;
 using Avalonia.Controls;
+using Doba.App.Platform;
 using Doba.App.Shell;
 
 namespace Doba.App;
@@ -41,6 +43,67 @@ public partial class MainWindow : Window
     internal Panel AppSidebar => PART_AppSidebar;
 
     internal Panel SettingsSidebar => PART_SettingsSidebar;
+
+    /// <summary>The painted backdrop (window colour + glows) that stands in for the desktop.</summary>
+    internal Control PaintedBackdrop => PART_Backdrop;
+
+    /// <summary>
+    /// True while the OS draws a real backdrop (Mica / acrylic) behind the window: the painted glows are hidden and the
+    /// window has no background of its own, so the chrome tint (Brush.Chrome, alpha = Window transparency) lies directly
+    /// on the system backdrop over the title bar and sidebar. The main panel keeps its opaque Bg.Main.
+    /// </summary>
+    internal bool HasSystemBackdrop { get; private set; }
+
+    /// <summary>
+    /// Asks the OS for its backdrop: Mica on Windows 11, acrylic blur on Windows 10, then none. Where the OS has none
+    /// (headless, older Windows) nothing changes and the painted fallback stays exactly as it is. The outcome follows
+    /// <see cref="TopLevel.ActualTransparencyLevel"/>. Call before the window is shown.
+    /// </summary>
+    internal void ApplyBackdrop(ISystemPreferences preferences)
+    {
+        ArgumentNullException.ThrowIfNull(preferences);
+        if (!preferences.SupportsBackdrop)
+        {
+            return;
+        }
+
+        TransparencyLevelHint = preferences.PrefersMica
+            ? [WindowTransparencyLevel.Mica, WindowTransparencyLevel.AcrylicBlur, WindowTransparencyLevel.None]
+            : [WindowTransparencyLevel.AcrylicBlur, WindowTransparencyLevel.None];
+        UpdateBackdrop();
+    }
+
+    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+    {
+        base.OnPropertyChanged(change);
+        if (change.Property == ActualTransparencyLevelProperty)
+        {
+            UpdateBackdrop();
+        }
+    }
+
+    private void UpdateBackdrop()
+    {
+        var level = ActualTransparencyLevel;
+        var system = level.Equals(WindowTransparencyLevel.Mica)
+            || level.Equals(WindowTransparencyLevel.AcrylicBlur)
+            || level.Equals(WindowTransparencyLevel.Blur);
+        if (system == HasSystemBackdrop || PART_Backdrop is null)
+        {
+            return;
+        }
+
+        HasSystemBackdrop = system;
+        PART_Backdrop.IsVisible = !system;
+        if (system)
+        {
+            Background = null;
+        }
+        else
+        {
+            ClearValue(BackgroundProperty);
+        }
+    }
 
     /// <summary>Connects the window to <paramref name="vm"/>: bindings, content transitions, overlays, keys, launch.</summary>
     internal void Attach(MainViewModel vm)

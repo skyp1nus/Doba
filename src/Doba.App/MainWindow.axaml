@@ -25,7 +25,8 @@
   </Window.Styles>
 
   <Panel>
-    <TemplatedControl Theme="{StaticResource Shell.Backdrop}" />
+    <!-- Painted stand-in for the desktop; hidden when the OS draws a real backdrop (Mica / acrylic, MainWindow.ApplyBackdrop). -->
+    <TemplatedControl Name="PART_Backdrop" Theme="{StaticResource Shell.Backdrop}" />
     <Border Background="{DynamicResource Brush.Chrome}" IsHitTestVisible="False" />
 
     <Grid RowDefinitions="Auto,*">

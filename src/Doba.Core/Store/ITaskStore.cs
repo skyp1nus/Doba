@@ -10,6 +10,8 @@ public enum TaskChangeKind
     /// <summary>Everything replaced (import, initial load). Old/New are null.</summary>
     Reset,
     TagsChanged,
+    /// <summary>Several tasks updated in one step (carry-over). Old/New are null; re-read the store.</summary>
+    Batch,
 }
 
 /// <summary>One change to the store. Old is null for Added, New is null for Removed.</summary>
@@ -69,6 +71,13 @@ public interface ITaskStore : ITaskReader
 
     /// <summary>"→ Today": moves a single-day task to <paramref name="date"/>.</summary>
     void MoveToDate(long id, DateOnly date);
+
+    /// <summary>
+    /// Replaces every task in <paramref name="items"/> that exists and differs from the stored one, persisting each,
+    /// and raises ONE <see cref="TaskChangeKind.Batch"/> event if anything changed (none otherwise).
+    /// Returns the number of tasks changed.
+    /// </summary>
+    int UpdateMany(IReadOnlyList<TaskItem> items);
 
     /// <summary>Adds a tag after <see cref="Model.Tags.Normalize"/>. Returns the stored name, or null if empty or a duplicate.</summary>
     string? AddTag(string raw);

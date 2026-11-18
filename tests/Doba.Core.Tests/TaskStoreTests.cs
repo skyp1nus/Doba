@@ -207,6 +207,42 @@ public class TaskStoreTests
     }
 
     [Fact]
+    public void UpdateMany_replaces_every_changed_task_with_one_batch_event_and_one_write_each()
+    {
+        var (s, p, events) = Create([T(1, "a", D15.AddDays(-1)), T(2, "b", D15), T(3, "c"), T(4, "span", D15, D15.AddDays(2))]);
+        var one = s.Get(1)! with { Date = D15 };
+        var three = s.Get(3)! with { Date = D15.AddDays(1) };
+        var four = s.Get(4)! with { Date = D15.AddDays(1), End = D15.AddDays(3) };
+
+        var changed = s.UpdateMany([one, s.Get(2)!, three, four, T(99, "missing", D15)]);
+
+        Assert.Equal(3, changed);
+        Assert.Equal(["upsert 1", "upsert 3", "upsert 4"], p.Calls);
+        var e = Assert.Single(events);
+        Assert.Equal(TaskChangeKind.Batch, e.Kind);
+        Assert.Null(e.Old);
+        Assert.Null(e.New);
+        Assert.Equal([1L, 2], s.OnDate(D15).Select(t => t.Id));
+        Assert.Empty(s.OnDate(D15.AddDays(-1)));
+        Assert.Equal([3L], s.OnDate(D15.AddDays(1)).Select(t => t.Id));
+        Assert.Empty(s.Undated);
+        Assert.Equal([4L], s.SpansOverlapping(D15.AddDays(3), D15.AddDays(3)).Select(t => t.Id));
+        Assert.Null(s.Get(99));
+    }
+
+    [Fact]
+    public void UpdateMany_without_changes_raises_nothing_and_writes_nothing()
+    {
+        var (s, p, events) = Create([T(1, "a", D15), T(2, "b")]);
+
+        Assert.Equal(0, s.UpdateMany([s.Get(1)!, s.Get(2)!, T(7, "unknown")]));
+        Assert.Equal(0, s.UpdateMany([]));
+
+        Assert.Empty(p.Calls);
+        Assert.Empty(events);
+    }
+
+    [Fact]
     public void Indexes_stay_consistent_under_random_mutations()
     {
         var rnd = new Random(7);

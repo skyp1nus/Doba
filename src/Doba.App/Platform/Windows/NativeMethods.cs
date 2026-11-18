@@ -69,6 +69,12 @@ internal static class NativeMethods
     [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
     internal static extern IntPtr DefWindowProc(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
 
+    /// <summary>Delivers a message synchronously through the window procedure (<c>--selfcheck</c> uses it to prove the
+    /// native → managed WndProc thunk works under NativeAOT).</summary>
+    [DllImport(User32, ExactSpelling = true, EntryPoint = "SendMessageW")]
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+    internal static extern IntPtr SendMessage(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
+
     // --- Hotkey -------------------------------------------------------------------------------------------------
 
     internal const uint WM_HOTKEY = 0x0312;

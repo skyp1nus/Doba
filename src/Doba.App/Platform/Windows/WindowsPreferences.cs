@@ -63,10 +63,15 @@ internal sealed class WindowsPreferences : ISystemPreferences
         Dispatcher.UIThread.Post(() => _animationsChanged?.Invoke(this, EventArgs.Empty));
     }
 
-    private static bool ReadAnimationsEnabled()
+    private static bool ReadAnimationsEnabled() =>
+        !TryReadAnimationsEnabled(out var enabled) || enabled; // If the query fails, keep animations on.
+
+    /// <summary>SPI_GETCLIENTAREAANIMATION; false when the query itself failed.</summary>
+    internal static bool TryReadAnimationsEnabled(out bool enabled)
     {
-        var enabled = 1;
-        return NativeMethods.SystemParametersInfoBool(NativeMethods.SPI_GETCLIENTAREAANIMATION, 0, ref enabled, 0) == 0
-            || enabled != 0; // If the query fails, keep animations on.
+        var value = 1;
+        var ok = NativeMethods.SystemParametersInfoBool(NativeMethods.SPI_GETCLIENTAREAANIMATION, 0, ref value, 0) != 0;
+        enabled = value != 0;
+        return ok;
     }
 }

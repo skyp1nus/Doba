@@ -63,5 +63,26 @@ public interface IShellIntegration
     void PlayCompletionSound();
 }
 
-/// <summary>Bundle handed to the composition root; <see cref="PlatformServices.Create"/> picks the Windows or no-op set.</summary>
-public sealed partial record PlatformServices(IAutostart Autostart, IGlobalHotkey Hotkey, ISystemPreferences Preferences, IShellIntegration Shell);
+/// <summary>
+/// The notification-area (tray) icon with its menu: Open Doba / New task / Quit. Created lazily the first time it is
+/// made visible; <see cref="IDisposable.Dispose"/> removes it. No-op where there is no tray (headless, tests).
+/// </summary>
+public interface ITrayIcon : IDisposable
+{
+    bool IsSupported { get; }
+
+    /// <summary>Shows or removes the icon. Must be set on the UI thread.</summary>
+    bool IsVisible { get; set; }
+
+    /// <summary>Clicking the icon or "Open Doba". Raised on the UI thread.</summary>
+    event EventHandler? OpenRequested;
+
+    /// <summary>"New task". Raised on the UI thread.</summary>
+    event EventHandler? NewTaskRequested;
+
+    /// <summary>"Quit". Raised on the UI thread.</summary>
+    event EventHandler? QuitRequested;
+}
+
+/// <summary>Bundle handed to the composition root; <see cref="PlatformServices.Create()"/> picks the Windows or no-op set.</summary>
+public sealed partial record PlatformServices(IAutostart Autostart, IGlobalHotkey Hotkey, ISystemPreferences Preferences, IShellIntegration Shell, ITrayIcon Tray);

@@ -101,18 +101,36 @@ public sealed class TaskStore : ITaskStore
             return;
         }
 
-        var stored = Sanitize(item);
-        if (stored.Equals(old))
+        if (Replace(old, item) is { } stored)
         {
-            return;
+            Raise(TaskChangeKind.Updated, old, stored);
+        }
+    }
+
+    public int UpdateMany(IReadOnlyList<TaskItem> items)
+    {
+        ArgumentNullException.ThrowIfNull(items);
+        var changed = 0;
+        foreach (var item in items)
+        {
+            ArgumentNullException.ThrowIfNull(item);
+            if (!_byId.TryGetValue(item.Id, out var old))
+            {
+                continue;
+            }
+
+            if (Replace(old, item) is not null)
+            {
+                changed++;
+            }
         }
 
-        IndexRemove(old);
-        _all[IndexOfId(item.Id)] = stored;
-        _byId[item.Id] = stored;
-        IndexAdd(stored);
-        _persistence.Upsert(stored);
-        Raise(TaskChangeKind.Updated, old, stored);
+        if (changed > 0)
+        {
+            Raise(TaskChangeKind.Batch, null, null);
+        }
+
+        return changed;
     }
 
     public void Delete(long id)
@@ -234,6 +252,24 @@ public sealed class TaskStore : ITaskStore
         }
 
         _multi.Sort(s_byDateThenId);
+    }
+
+    /// <summary>Swaps <paramref name="old"/> for <paramref name="item"/> in every index and persists it. Returns the
+    /// stored item, or null (nothing done) when it equals <paramref name="old"/>. Raises no event.</summary>
+    private TaskItem? Replace(TaskItem old, TaskItem item)
+    {
+        var stored = Sanitize(item);
+        if (stored.Equals(old))
+        {
+            return null;
+        }
+
+        IndexRemove(old);
+        _all[IndexOfId(old.Id)] = stored;
+        _byId[old.Id] = stored;
+        IndexAdd(stored);
+        _persistence.Upsert(stored);
+        return stored;
     }
 
     /// <summary>Undated tasks cannot be spans; Notes is never null.</summary>
