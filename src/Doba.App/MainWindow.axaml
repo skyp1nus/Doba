@@ -16,11 +16,14 @@
         MinWidth="{DynamicResource Size.Shell.WindowMinWidth}" MinHeight="{DynamicResource Size.Shell.WindowMinHeight}"
         ExtendClientAreaToDecorationsHint="True"
         ExtendClientAreaTitleBarHeightHint="{DynamicResource Size.TitleBar}">
+  <!-- The sidebar column and the main panel's left inset have the same width (232, or the 56 px rail with .rail), but
+       separately: the collapse animation (Motion/SidebarCollapse) changes each once and slides the main panel, drawn
+       over the sidebar, with a composition translation in between. MainWindow sets the classes. -->
   <Window.Styles>
-    <Style Selector="Border#PART_SidebarColumn">
+    <Style Selector="Border#PART_SidebarColumn, Border#PART_MainInset">
       <Setter Property="Width" Value="{DynamicResource Size.Sidebar}" />
     </Style>
-    <Style Selector="Border#PART_SidebarColumn.rail">
+    <Style Selector="Border#PART_SidebarColumn.rail, Border#PART_MainInset.rail">
       <Setter Property="Width" Value="{DynamicResource Size.Rail}" />
     </Style>
   </Window.Styles>
@@ -33,8 +36,8 @@
     <Grid RowDefinitions="Auto,*">
       <sh:TitleBar Name="PART_TitleBar" />
 
-      <Grid Grid.Row="1" ColumnDefinitions="Auto,*">
-        <Border Name="PART_SidebarColumn" Classes.rail="{Binding IsRail}" ClipToBounds="True">
+      <Panel Grid.Row="1">
+        <Border Name="PART_SidebarColumn" HorizontalAlignment="Left" ClipToBounds="True">
           <Panel>
             <Panel Name="PART_AppSidebar" IsVisible="{Binding !ShowsSettings}">
               <sh:SidebarView DataContext="{Binding Sidebar}" />
@@ -45,6 +48,8 @@
           </Panel>
         </Border>
 
+        <Grid ColumnDefinitions="Auto,*">
+        <Border Name="PART_MainInset" IsHitTestVisible="False" />
         <Border Name="PART_Main" Grid.Column="1"
                 Background="{DynamicResource Brush.Bg.Main}"
                 BackgroundSizing="OuterBorderEdge"
@@ -54,10 +59,15 @@
                 ClipToBounds="True">
           <DockPanel>
             <sh:PageHeader Name="PART_Header" DockPanel.Dock="Top" DataContext="{Binding Header}" />
-            <sh:ScreenHost Name="PART_Screens" Margin="{DynamicResource Space.PageBody}" Screen="{Binding Current}" />
+            <!-- The content area under the header (prototype: overflow hidden, markup line 197): a zoom or slide of the
+                 screen host is clipped here and never drawn over the page header. -->
+            <Panel Name="PART_ContentClip" ClipToBounds="True">
+              <sh:ScreenHost Name="PART_Screens" Margin="{DynamicResource Space.PageBody}" Screen="{Binding Current}" />
+            </Panel>
           </DockPanel>
         </Border>
-      </Grid>
+        </Grid>
+      </Panel>
     </Grid>
 
     <sh:OverlayHost Name="PART_Overlays" />

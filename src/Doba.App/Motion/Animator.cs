@@ -48,7 +48,7 @@ public sealed class MotionHandle
     private IDisposable? _timer;
 
     internal MotionHandle(Visual target, CompositionVisual? visual, MotionState from, MotionState to, TimeSpan duration,
-        Easing easing, Action<MotionHandle>? onFinished)
+        Easing easing, RelativePoint origin, Action<MotionHandle>? onFinished)
     {
         Target = target;
         _visual = visual;
@@ -57,6 +57,7 @@ public sealed class MotionHandle
         To = to;
         Duration = duration;
         Easing = easing;
+        Origin = origin;
         _onFinished = onFinished;
         _startedAt = Stopwatch.GetTimestamp();
     }
@@ -71,6 +72,9 @@ public sealed class MotionHandle
     public TimeSpan Duration { get; }
 
     public Easing Easing { get; }
+
+    /// <summary>The scale origin relative to the element (the transform origin; centre unless the caller gave one).</summary>
+    public RelativePoint Origin { get; }
 
     /// <summary>True until the animation finishes (naturally, completed, cancelled or superseded).</summary>
     public bool IsAnimating { get; private set; }
@@ -128,7 +132,10 @@ public sealed class MotionHandle
         IsAnimating = true;
         _visual.CenterPoint = new Vector3D(centerPoint.X, centerPoint.Y, 0);
         Animator.Run(_visual, From, To, _restOpacity, Duration, Easing);
-        _timer = DispatcherTimer.RunOnce(() => Finish(snapTo: null, cancelled: false), Duration, DispatcherPriority.Render);
+        if (!Animator.HoldFinishTimers)
+        {
+            _timer = DispatcherTimer.RunOnce(() => Finish(snapTo: null, cancelled: false), Duration, DispatcherPriority.Render);
+        }
     }
 
     /// <summary>Finishes because a newer animation took over the same element (its keyframes replace ours).</summary>
@@ -194,6 +201,15 @@ public static class Animator
     /// <summary>The 1 ms "snap" used to set a composition property immediately while overriding any running keyframes.</summary>
     private static readonly TimeSpan s_snap = TimeSpan.FromTicks(TimeSpan.TicksPerMillisecond);
 
+    /// <summary>
+    /// Test hook. While true, a handle started with a duration schedules no finishing timer: it keeps
+    /// <see cref="MotionHandle.IsAnimating"/> until <see cref="MotionHandle.Complete"/>, <see cref="MotionHandle.Cancel"/> or
+    /// a newer animation on the same element ends it, however long the test takes to pump frames. Headless tests use it to
+    /// assert mid-animation state without depending on the wall clock (the finishing timer is a wall-clock
+    /// <see cref="DispatcherTimer"/>). The composition animation itself still plays. Never set by the app.
+    /// </summary>
+    internal static bool HoldFinishTimers { get; set; }
+
     /// <summary>The animation currently running on <paramref name="target"/>, if any.</summary>
     public static MotionHandle? Running(Visual target) =>
         s_running.TryGetValue(target, out var handle) && handle.IsAnimating ? handle : null;
@@ -221,10 +237,10 @@ public static class Animator
         }
 
         var visual = ElementComposition.GetElementVisual(target);
-        var handle = new MotionHandle(target, visual, from, to, Motion.Ms(durationMs), easing, onFinished);
+        var relative = origin ?? RelativePoint.Center;
+        var handle = new MotionHandle(target, visual, from, to, Motion.Ms(durationMs), easing, relative, onFinished);
         s_running.AddOrUpdate(target, handle);
-        var center = (origin ?? RelativePoint.Center).ToPixels(target.Bounds.Size);
-        handle.Start(center);
+        handle.Start(relative.ToPixels(target.Bounds.Size));
         return handle;
     }
 

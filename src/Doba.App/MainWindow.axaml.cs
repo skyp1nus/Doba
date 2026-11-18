@@ -1,5 +1,7 @@
+using System.ComponentModel;
 using Avalonia;
 using Avalonia.Controls;
+using Doba.App.Motion;
 using Doba.App.Platform;
 using Doba.App.Shell;
 
@@ -34,9 +36,18 @@ public partial class MainWindow : Window
 
     internal ScreenHost ScreenHost => PART_Screens;
 
+    /// <summary>Clips the content area (the screen host and its page margin) so a transition never draws over the header.</summary>
+    internal Panel ContentClip => PART_ContentClip;
+
     internal OverlayHost Overlays => PART_Overlays;
 
     internal Border SidebarColumn => PART_SidebarColumn;
+
+    /// <summary>Holds the main panel's left edge (as wide as the sidebar column once a collapse slide has ended).</summary>
+    internal Border MainInset => PART_MainInset;
+
+    /// <summary>The sidebar collapse / expand slide (null until <see cref="Attach"/>).</summary>
+    internal SidebarCollapse? SidebarCollapse { get; private set; }
 
     internal Border MainPanel => PART_Main;
 
@@ -114,10 +125,32 @@ public partial class MainWindow : Window
         var targets = new ContentTransitionTargets(PART_Screens, PART_Header.TitleBlock, PART_AppSidebar, PART_SettingsSidebar);
         Targets = targets;
         vm.ContentSwapper = (kind, origin, swap) => ShellComposition.Transitions.Run(kind, origin, swap, targets);
+        SidebarCollapse = new SidebarCollapse(PART_SidebarColumn, PART_MainInset, PART_Main);
+        SidebarCollapse.Snap(vm.IsRail);
+        vm.PropertyChanged += OnViewModelPropertyChanged;
         PART_Overlays.FallbackFocus = PART_Header.NewTaskButton;
         Shortcuts = new KeyboardShortcuts(this, vm, PART_Overlays);
         Opened += OnOpened;
         Closed += OnClosed;
+    }
+
+    /// <summary>The Collapse button / header toggle slides the sidebar; entering or leaving Settings (whose sidebar is
+    /// always full width) changes it at once, under the settings transition.</summary>
+    private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (ViewModel is not { } vm || SidebarCollapse is not { } collapse)
+        {
+            return;
+        }
+
+        if (e.PropertyName == nameof(MainViewModel.IsSidebarCollapsed) && !vm.ShowsSettings)
+        {
+            collapse.Animate(vm.IsRail);
+        }
+        else if (e.PropertyName == nameof(MainViewModel.ShowsSettings) && collapse.IsRail != vm.IsRail)
+        {
+            collapse.Snap(vm.IsRail);
+        }
     }
 
     private void OnOpened(object? sender, EventArgs e)
@@ -143,6 +176,11 @@ public partial class MainWindow : Window
     {
         Opened -= OnOpened;
         Closed -= OnClosed;
+        if (ViewModel is { } vm)
+        {
+            vm.PropertyChanged -= OnViewModelPropertyChanged;
+        }
+
         ViewModel?.Dispose();
     }
 }

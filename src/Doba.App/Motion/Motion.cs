@@ -58,8 +58,37 @@ public static class Motion
         SettingsSidebarX = 16, DialogY = 10, DialogScale = 0.97, DialogExitY = 6, DialogExitScale = 0.98,
         PopY = -4, PopScale = 0.98, NavStep = 33, SegStep = 64, ToggleTravel = 16;
 
-    /// <summary>False when the OS asks for no animations (Windows: Settings › Accessibility › Visual effects › Animation effects).</summary>
-    public static bool SystemAnimationsEnabled { get; set; } = true;
+    /// <summary>
+    /// Zoom origins as fractions of the content area (motion spec "Точка зуму"): 50 % 40 % when a zoom has no click
+    /// point (header switch, keyboard, breadcrumbs), 50 % 30 % for entering and leaving Settings (prototype 876, 880).
+    /// </summary>
+    public const double ZoomOriginX = 0.5, ZoomOriginY = 0.4, SettingsOriginY = 0.3;
+
+    private static bool s_systemAnimationsEnabled = true;
+
+    /// <summary>False when the OS asks for no animations (Windows: Settings › Accessibility › Visual effects › Animation effects).
+    /// Setting a different value raises <see cref="SystemAnimationsChanged"/>.</summary>
+    public static bool SystemAnimationsEnabled
+    {
+        get => s_systemAnimationsEnabled;
+        set
+        {
+            if (s_systemAnimationsEnabled == value)
+            {
+                return;
+            }
+
+            s_systemAnimationsEnabled = value;
+            SystemAnimationsChanged?.Invoke(null, EventArgs.Empty);
+        }
+    }
+
+    /// <summary>
+    /// Raised (on the thread that set it — the UI thread in the app) after <see cref="SystemAnimationsEnabled"/> changed.
+    /// <see cref="Animator"/> animations and every <see cref="Ms"/> call already follow the new value; XAML transitions
+    /// that captured a <see cref="MotionTimes"/> duration are re-timed by <see cref="MotionSync"/>.
+    /// </summary>
+    public static event EventHandler? SystemAnimationsChanged;
 
     public static TimeSpan Ms(int ms) => SystemAnimationsEnabled ? TimeSpan.FromMilliseconds(ms) : TimeSpan.Zero;
 

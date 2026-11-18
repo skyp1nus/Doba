@@ -1,4 +1,5 @@
 using Avalonia;
+using Doba.App.Motion;
 using Doba.App.Theme;
 using Doba.Core.Navigation;
 
@@ -6,14 +7,16 @@ namespace Doba.App.Shell;
 
 /// <summary>
 /// Shell wiring that later packages plug into without editing each other's files. The Shell package builds the real
-/// main window here (MainViewModel, ThemeService, keyboard, overlays); the Motion package replaces
-/// <see cref="Transitions"/> at startup.
+/// main window here (MainViewModel, ThemeService, keyboard, overlays); the Motion package provides
+/// <see cref="Transitions"/> and re-times the window's XAML transitions when the OS animation setting changes
+/// (<see cref="MotionSync"/>).
 /// </summary>
 public static class ShellComposition
 {
-    /// <summary>The content-transition player used by the shell. Defaults to <see cref="InstantContentTransitions"/>
-    /// (also what tests use); set once at startup, before <see cref="CreateMainWindow(AppServices, Application)"/>.</summary>
-    public static IContentTransitions Transitions { get; set; } = new InstantContentTransitions();
+    /// <summary>The content-transition player used by the shell: the motion spec's navigation transitions
+    /// (<see cref="ContentTransitions"/>). Instant whenever OS animations are off (tests open the shell that way); a test
+    /// may swap in a recorder.</summary>
+    public static IContentTransitions Transitions { get; set; } = new ContentTransitions();
 
     /// <summary>Builds the main window for <paramref name="app"/>, starting on the "Open on launch" screen.</summary>
     public static MainWindow CreateMainWindow(AppServices app, Application application) =>
@@ -34,6 +37,7 @@ public static class ShellComposition
         var vm = new MainViewModel(app, theme, start);
         var window = new MainWindow();
         window.Attach(vm);
+        MotionSync.Track(window);
         return window;
     }
 }

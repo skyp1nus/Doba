@@ -11,8 +11,9 @@ public partial class PageHeader : UserControl
         InitializeComponent();
     }
 
-    /// <summary>Breadcrumbs + title: the block content transitions cross-fade with the screen.</summary>
-    public Control TitleBlock => PART_Title;
+    /// <summary>The page title (h1: title + subtitle), the target of the title entrance every navigation plays (motion spec:
+    /// the h1 only; the breadcrumbs above it stay put).</summary>
+    public Control TitleBlock => PART_Heading;
 
     /// <summary>"New task" (focus fallback after an overlay closes).</summary>
     public Button NewTaskButton => PART_NewTask;

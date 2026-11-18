@@ -11,8 +11,9 @@ namespace Doba.App.Motion;
 /// Why x:Static and not a resource: <c>Transitions</c> are not resource hosts, so <c>DynamicResource</c> does not resolve
 /// inside them, and <c>StaticResource</c> lookups across included files are resolved once at load. An <c>x:Static</c>
 /// inside a <c>ControlTemplate</c> is evaluated every time the template is applied, so controls created after
-/// <see cref="Motion.SystemAnimationsEnabled"/> changes pick up the new value. Controls that already exist keep the
-/// durations they were created with (the OS setting rarely changes while the app runs).
+/// <see cref="Motion.SystemAnimationsEnabled"/> changes pick up the new value. Transitions of controls that already exist
+/// are re-timed by <see cref="MotionSync"/> in tracked windows (zeroed when animations go off, restored when they come
+/// back; one created while they were off stays instant until it is re-templated).
 /// </para>
 /// </remarks>
 public static class MotionTimes
