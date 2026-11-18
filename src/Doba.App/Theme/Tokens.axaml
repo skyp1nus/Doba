@@ -287,6 +287,20 @@
   <!-- == Shell == -->
 
   <!-- == Sidebar == -->
+  <!-- App / settings sidebar (design-reference.dc.html lines 80-143). The nav's flex gap, the TAGS header row, the new-tag
+       hint, the bottom group, the SETTINGS label and the footer. Items use Size.NavItem / Size.TagItem / Space.NavItem. -->
+  <x:Double x:Key="Sidebar.Gap">1</x:Double>                          <!-- nav flex gap (highlight step 33 = 32 + 1) -->
+  <Thickness x:Key="Sidebar.GapTop">0,1,0,0</Thickness>              <!-- the same gap above the tag list -->
+  <x:Double x:Key="Sidebar.ItemGap">10</x:Double>                     <!-- icon/badge ↔ label ↔ count -->
+  <Thickness x:Key="Sidebar.TagsHeader">10,14,4,4</Thickness>        <!-- .rl padding: 14px 4px 4px 10px -->
+  <x:Double x:Key="Sidebar.AddTagButton">24</x:Double>                <!-- "+" New tag: 24×24, icon 13 / 2 -->
+  <x:Double x:Key="Sidebar.AddTagIcon">13</x:Double>
+  <Thickness x:Key="Sidebar.AddTagRow">9,0</Thickness>               <!-- padding 0 10 inside the 1 px Border.Emphasis ring -->
+  <Thickness x:Key="Sidebar.Hint">10,4,10,0</Thickness>              <!-- "↵ create · Esc cancel" -->
+  <Thickness x:Key="Sidebar.Bottom">0,16,0,0</Thickness>             <!-- Collapse + Settings group: padding-top 16 -->
+  <Thickness x:Key="Sidebar.SettingsLabel">10,18,10,6</Thickness>    <!-- SETTINGS small caps -->
+  <Thickness x:Key="Sidebar.Footer">10,16,10,6</Thickness>           <!-- "Doba 0.1 · local only" -->
+  <x:Double x:Key="Sidebar.LabelLineHeight">14.7</x:Double>           <!-- 10.5 px × the root line height 1.4 -->
 
   <!-- == Month == -->
   <!-- Month grid (design-reference lines 456–501). Row/lane/chip heights live in Screens/Month/MonthLayout.cs because

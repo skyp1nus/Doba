@@ -1,8 +1,47 @@
-<!-- Settings sidebar. Placeholder until the Sidebar package builds it. -->
+<!--
+  Settings sidebar (design-reference.dc.html lines 130-143; tabs 1687-1699). 232 px, padding 4 10 10, gap 1:
+  "Back to app" (Icon.Back, stroke 1.7), the SETTINGS small caps (padding 18 10 6), six tab rows (the open one has the
+  Overlay.Active background and Text.Strong), and the footer "Doba 0.1 · local only" (mono 10.5, padding 16 10 6).
+-->
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:sh="using:Doba.App.Shell"
              x:Class="Doba.App.Shell.SettingsSidebarView"
-             x:DataType="sh:SidebarViewModel">
-  <TextBlock Classes="label-sm" Text="Settings" Margin="{DynamicResource Space.Sidebar}" />
+             x:DataType="sh:SidebarViewModel"
+             ClipToBounds="True">
+  <Grid RowDefinitions="Auto,*,Auto" Margin="{DynamicResource Space.Sidebar}">
+    <StackPanel Spacing="{DynamicResource Sidebar.Gap}">
+      <sh:SidebarItem Name="BackItem"
+                      Icon="{StaticResource Icon.Back}"
+                      IconStrokeWidth="1.7"
+                      Label="Back to app"
+                      Command="{Binding BackFromSettingsCommand}" />
+      <TextBlock Classes="label-sm"
+                 LineHeight="{DynamicResource Sidebar.LabelLineHeight}"
+                 Margin="{DynamicResource Sidebar.SettingsLabel}"
+                 Text="SETTINGS" />
+      <ItemsControl Name="TabList" ItemsSource="{Binding Tabs}">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate>
+            <StackPanel Spacing="{DynamicResource Sidebar.Gap}" />
+          </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="sh:SidebarTabViewModel">
+            <sh:SidebarItem Classes="tab"
+                            Icon="{Binding Tab, Converter={x:Static sh:SidebarTabViewModel.IconOf}}"
+                            Label="{Binding Label}"
+                            IsSelected="{Binding IsActive}"
+                            Command="{Binding SelectCommand}" />
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </StackPanel>
+
+    <TextBlock Grid.Row="2"
+               Classes="meta-sm"
+               LineHeight="{DynamicResource Sidebar.LabelLineHeight}"
+               Margin="{DynamicResource Sidebar.Footer}"
+               Text="{x:Static sh:SidebarViewModel.FooterText}" />
+  </Grid>
 </UserControl>

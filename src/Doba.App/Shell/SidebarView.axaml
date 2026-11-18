@@ -1,8 +1,161 @@
-<!-- App sidebar. Placeholder until the Sidebar package builds it. -->
+<!--
+  App sidebar (design-reference.dc.html lines 80-127; script 883-892, 1611-1628, 1812-1814). Fills the width its host
+  gives it (232 px expanded, 56 px rail; the host owns the width) and clips like the prototype's overflow:hidden nav.
+  Padding 4 10 10, rows 32 px with a 1 px gap. One Overlay.Active pill (SidebarHighlight) slides under Inbox / Today /
+  Calendar by 33 px per section (380 ms ease-out) and fades out in Settings (200 ms). Tags: TAGS header with "+", tag
+  rows (KeyedSync), the inline "Tag name" input with its hint. Bottom group (padding-top 16): Collapse, Settings.
+  Rail (.rail): labels/counts fade (SidebarItem :rail), the TAGS header fades and stops taking input, tag rows show
+  their initial badge.
+-->
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:Doba.App.Controls"
+             xmlns:m="using:Doba.App.Motion"
              xmlns:sh="using:Doba.App.Shell"
              x:Class="Doba.App.Shell.SidebarView"
-             x:DataType="sh:SidebarViewModel">
-  <TextBlock Classes="label-sm" Text="Sidebar" Margin="{DynamicResource Space.Sidebar}" />
+             x:DataType="sh:SidebarViewModel"
+             ClipToBounds="True"
+             Classes.rail="{Binding IsCollapsed}"
+             sh:SidebarItem.IsRail="{Binding IsCollapsed}">
+  <UserControl.Styles>
+    <Style Selector="sh|SidebarView.rail Grid#TagsHeader">
+      <Setter Property="Opacity" Value="0" />
+      <Setter Property="IsHitTestVisible" Value="False" />
+    </Style>
+    <Style Selector="sh|SidebarView.rail Button#AddTagButton">
+      <Setter Property="IsEnabled" Value="False" />
+    </Style>
+    <Style Selector="Panel#HighlightLayer.hidden">
+      <Setter Property="Opacity" Value="0" />
+    </Style>
+  </UserControl.Styles>
+
+  <Grid RowDefinitions="Auto,*,Auto" Margin="{DynamicResource Space.Sidebar}">
+    <!-- The sliding selection pill behind the three section rows. -->
+    <Panel Name="HighlightLayer" Classes.hidden="{Binding !IsHighlightVisible}" IsHitTestVisible="False">
+      <Panel.Transitions>
+        <Transitions>
+          <DoubleTransition Property="Opacity" Duration="{x:Static m:MotionTimes.Color}" Easing="{x:Static m:Motion.EaseStd}" />
+        </Transitions>
+      </Panel.Transitions>
+      <sh:SidebarHighlight Name="Highlight"
+                           Index="{Binding HighlightIndex}"
+                           Height="{DynamicResource Size.NavItem}"
+                           VerticalAlignment="Top"
+                           Background="{DynamicResource Brush.Overlay.Active}"
+                           CornerRadius="{DynamicResource Radius.Item}" />
+    </Panel>
+
+    <StackPanel Spacing="{DynamicResource Sidebar.Gap}">
+      <sh:SidebarItem Name="InboxItem"
+                      Icon="{StaticResource Icon.Inbox}"
+                      Label="Inbox"
+                      Count="{Binding InboxCountText}"
+                      IsCurrent="{Binding IsInboxCurrent}"
+                      Command="{Binding GoInboxCommand}" />
+      <sh:SidebarItem Name="TodayItem"
+                      Icon="{StaticResource Icon.Today}"
+                      Label="Today"
+                      Count="{Binding TodayCountText}"
+                      IsCurrent="{Binding IsTodayCurrent}"
+                      Command="{Binding GoTodayCommand}" />
+      <sh:SidebarItem Name="CalendarItem"
+                      Icon="{StaticResource Icon.Calendar}"
+                      Label="Calendar"
+                      IsCurrent="{Binding IsCalendarCurrent}"
+                      Command="{Binding GoCalendarCommand}" />
+
+      <!-- .rl: TAGS + "New tag". -->
+      <Grid Name="TagsHeader" ColumnDefinitions="*,Auto" Margin="{DynamicResource Sidebar.TagsHeader}">
+        <Grid.Transitions>
+          <Transitions>
+            <DoubleTransition Property="Opacity" Duration="{x:Static m:MotionTimes.RailLabels}" Easing="{x:Static m:Motion.EaseStd}" />
+          </Transitions>
+        </Grid.Transitions>
+        <TextBlock Classes="label-sm" Text="TAGS" VerticalAlignment="Center" />
+        <Button Name="AddTagButton"
+                Grid.Column="1"
+                Width="{DynamicResource Sidebar.AddTagButton}"
+                Height="{DynamicResource Sidebar.AddTagButton}"
+                ToolTip.Tip="New tag"
+                AutomationProperties.Name="New tag"
+                Command="{Binding StartAddTagCommand}">
+          <c:Icon Data="{StaticResource Icon.Plus}" Size="{DynamicResource Sidebar.AddTagIcon}" StrokeWidth="2" />
+        </Button>
+      </Grid>
+    </StackPanel>
+
+    <!-- Tag rows, the inline input and its hint. Scrolls only when the tags outgrow the window (the prototype clips). -->
+    <ScrollViewer Grid.Row="1"
+                  Margin="{DynamicResource Sidebar.GapTop}"
+                  HorizontalScrollBarVisibility="Disabled"
+                  VerticalScrollBarVisibility="Auto">
+      <StackPanel Spacing="{DynamicResource Sidebar.Gap}">
+        <ItemsControl Name="TagList" ItemsSource="{Binding Tags}">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <StackPanel Spacing="{DynamicResource Sidebar.Gap}" />
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="sh:TagItemViewModel">
+              <sh:SidebarItem Theme="{StaticResource SidebarItem.Tag}"
+                              Classes="tag"
+                              Label="{Binding Name}"
+                              Count="{Binding CountText}"
+                              Initial="{Binding Initial}"
+                              IsSelected="{Binding IsActive}"
+                              ToolTip.Tip="{Binding Name}"
+                              Command="{Binding ToggleCommand}" />
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <Border Name="AddTagRow"
+                IsVisible="{Binding IsAddingTag}"
+                Height="{DynamicResource Size.TagItem}"
+                CornerRadius="{DynamicResource Radius.Item}"
+                Background="{DynamicResource Brush.Overlay.Selected}"
+                BorderBrush="{DynamicResource Brush.Border.Emphasis}"
+                BorderThickness="1"
+                Padding="{DynamicResource Sidebar.AddTagRow}">
+          <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Sidebar.ItemGap}">
+            <TextBlock Width="{DynamicResource Size.Icon}"
+                       TextAlignment="Center"
+                       VerticalAlignment="Center"
+                       FontFamily="{DynamicResource Font.Mono}"
+                       Foreground="{DynamicResource Brush.Text.Muted}"
+                       Text="#" />
+            <TextBox Name="TagInput"
+                     Grid.Column="1"
+                     PlaceholderText="Tag name"
+                     AutomationProperties.Name="New tag name"
+                     Text="{Binding TagDraft}"
+                     KeyDown="OnTagInputKeyDown"
+                     LostFocus="OnTagInputLostFocus" />
+          </Grid>
+        </Border>
+        <TextBlock Name="AddTagHint"
+                   IsVisible="{Binding IsAddingTag}"
+                   Classes="meta-sm"
+                   LineHeight="{DynamicResource Sidebar.LabelLineHeight}"
+                   Margin="{DynamicResource Sidebar.Hint}"
+                   Text="↵ create · Esc cancel" />
+      </StackPanel>
+    </ScrollViewer>
+
+    <StackPanel Grid.Row="2" Spacing="{DynamicResource Sidebar.Gap}" Margin="{DynamicResource Sidebar.Bottom}">
+      <sh:SidebarItem Name="CollapseItem"
+                      Classes="collapse"
+                      Icon="{StaticResource Icon.SidebarCollapse}"
+                      Label="Collapse"
+                      ToolTip.Tip="{Binding CollapseLabel}"
+                      AutomationProperties.Name="{Binding CollapseLabel}"
+                      Command="{Binding ToggleSidebarCommand}" />
+      <sh:SidebarItem Name="SettingsItem"
+                      Icon="{StaticResource Icon.Settings}"
+                      Label="Settings"
+                      Command="{Binding OpenSettingsCommand}" />
+    </StackPanel>
+  </Grid>
 </UserControl>
