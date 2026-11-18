@@ -14,8 +14,9 @@
              x:DataType="sh:PageHeaderViewModel">
   <Border BorderBrush="{DynamicResource Brush.Border.Subtle}" BorderThickness="{DynamicResource Thickness.Shell.HeaderRule}"
           Padding="{DynamicResource Space.PageHeader}">
-    <DockPanel>
-      <Button Name="PART_SidebarToggle" DockPanel.Dock="Left" Theme="{StaticResource Button.OutlineIcon}"
+    <!-- Tab order follows the reading order (TabIndex inside this Local group): toggle 1, breadcrumbs 2, actions 3. -->
+    <DockPanel KeyboardNavigation.TabNavigation="Local">
+      <Button Name="PART_SidebarToggle" DockPanel.Dock="Left" Theme="{StaticResource Button.OutlineIcon}" KeyboardNavigation.TabIndex="1"
               Margin="{DynamicResource Space.Shell.SidebarToggle}" VerticalAlignment="Bottom"
               IsVisible="{Binding ShowSidebarToggle}" Command="{Binding ToggleSidebarCommand}"
               AutomationProperties.Name="{Binding SidebarToggleLabel}" ToolTip.Tip="{Binding SidebarToggleLabel}">
@@ -27,7 +28,7 @@
                   VerticalAlignment="Bottom" Margin="{DynamicResource Space.Shell.Actions}">
         <StackPanel Name="PART_CalendarActions" Orientation="Horizontal" Spacing="{DynamicResource Space.Shell.ActionGap}"
                     IsVisible="{Binding IsCalendar}">
-          <c:SegmentedSwitch Name="PART_Zoom" SelectedIndex="{Binding ZoomIndex, Mode=TwoWay}"
+          <c:SegmentedSwitch Name="PART_Zoom" KeyboardNavigation.TabIndex="3" SelectedIndex="{Binding ZoomIndex, Mode=TwoWay}"
                              AutomationProperties.Name="Zoom level">
             <ListBoxItem Content="Year" />
             <ListBoxItem Content="Month" />
@@ -35,21 +36,21 @@
             <ListBoxItem Content="Day" />
           </c:SegmentedSwitch>
           <Border Classes="vsep" />
-          <Button Name="PART_Today" Theme="{StaticResource Button.Outline}" Content="Today"
+          <Button Name="PART_Today" KeyboardNavigation.TabIndex="3" Theme="{StaticResource Button.Outline}" Content="Today"
                   Padding="{DynamicResource Space.Shell.Today}" Command="{Binding GoTodayCommand}" />
-          <Button Name="PART_Previous" Theme="{StaticResource Button.OutlineIcon}" Command="{Binding PreviousCommand}"
+          <Button Name="PART_Previous" KeyboardNavigation.TabIndex="3" Theme="{StaticResource Button.OutlineIcon}" Command="{Binding PreviousCommand}"
                   AutomationProperties.Name="Previous">
             <c:Icon Data="{StaticResource Icon.ChevronLeft}" Size="{DynamicResource Size.Shell.ChevronIcon}" StrokeWidth="1.8"
                     Margin="{DynamicResource Space.Shell.Chevron}" />
           </Button>
-          <Button Name="PART_Next" Theme="{StaticResource Button.OutlineIcon}" Command="{Binding NextCommand}"
+          <Button Name="PART_Next" KeyboardNavigation.TabIndex="3" Theme="{StaticResource Button.OutlineIcon}" Command="{Binding NextCommand}"
                   AutomationProperties.Name="Next">
             <c:Icon Data="{StaticResource Icon.ChevronRight}" Size="{DynamicResource Size.Shell.ChevronIcon}" StrokeWidth="1.8"
                     Margin="{DynamicResource Space.Shell.Chevron}" />
           </Button>
           <Border Classes="vsep" />
         </StackPanel>
-        <Button Name="PART_NewTask" Theme="{StaticResource Button.Primary}" IsVisible="{Binding ShowNewTask}"
+        <Button Name="PART_NewTask" KeyboardNavigation.TabIndex="3" Theme="{StaticResource Button.Primary}" IsVisible="{Binding ShowNewTask}"
                 Command="{Binding NewTaskCommand}">
           <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space.Shell.NewTaskGap}">
             <TextBlock Text="New task" VerticalAlignment="Center" />
@@ -70,7 +71,7 @@
             <DataTemplate x:DataType="sh:CrumbViewModel">
               <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space.Shell.CrumbGap}">
                 <TextBlock Classes="label faint" Text="/" VerticalAlignment="Center" IsVisible="{Binding HasSeparator}" />
-                <Button Classes="crumb" Theme="{StaticResource Button.Crumb}" IsVisible="{Binding IsLink}"
+                <Button Classes="crumb" KeyboardNavigation.TabIndex="2" Theme="{StaticResource Button.Crumb}" IsVisible="{Binding IsLink}"
                         Command="{Binding OpenCommand}"
                         Content="{Binding Label, Converter={x:Static t:ThemeConverters.Upper}}" />
                 <TextBlock Classes="label" Padding="{DynamicResource Space.Shell.Crumb}" VerticalAlignment="Center"

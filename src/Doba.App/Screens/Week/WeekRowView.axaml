@@ -70,7 +70,7 @@
     <Style Selector="ItemsControl#SpansHost Button">
       <Setter Property="KeyboardNavigation.TabIndex" Value="2" />
     </Style>
-    <Style Selector="Border.list Button, Border.list CheckBox">
+    <Style Selector="Border.list Button, Border.list c|TaskCheckBox">
       <Setter Property="KeyboardNavigation.TabIndex" Value="3" />
     </Style>
     <!-- Item containers are logical children of the ItemsControl. -->

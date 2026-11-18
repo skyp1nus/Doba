@@ -27,7 +27,7 @@ public partial class MainWindow : Window
     /// <summary>What content transitions animate.</summary>
     public ContentTransitionTargets? Targets { get; private set; }
 
-    /// <summary>N / Ctrl+K / Esc.</summary>
+    /// <summary>N, Ctrl+K, G I, G T, 1–4, ← →, Esc; focus after navigation.</summary>
     public KeyboardShortcuts? Shortcuts { get; private set; }
 
     internal TitleBar TitleBar => PART_TitleBar;
@@ -129,7 +129,7 @@ public partial class MainWindow : Window
         SidebarCollapse.Snap(vm.IsRail);
         vm.PropertyChanged += OnViewModelPropertyChanged;
         PART_Overlays.FallbackFocus = PART_Header.NewTaskButton;
-        Shortcuts = new KeyboardShortcuts(this, vm, PART_Overlays);
+        Shortcuts = new KeyboardShortcuts(this, vm, PART_Overlays, PART_Screens);
         Opened += OnOpened;
         Closed += OnClosed;
     }
