@@ -61,8 +61,10 @@
     </Style>
 
     <!-- Multi-day bar: 20 px, Accent10 + Accent25 ring (done: Bg.SpanDone + Bg.Track), r5, inset 6 from unclipped
-         ends; title 11.5 / 500. -->
+         ends; title 11.5 / 500. The fill runs under the ring (OuterBorderEdge), as the CSS inset box-shadow is painted
+         over the background. -->
     <Style Selector="Border.bar">
+      <Setter Property="BackgroundSizing" Value="OuterBorderEdge" />
       <Setter Property="Height" Value="{x:Static s:MonthLayout.BarHeight}" />
       <Setter Property="VerticalAlignment" Value="Center" />
       <Setter Property="Padding" Value="{DynamicResource Space.Month.Bar}" />
@@ -218,7 +220,9 @@
                                                   Classes.done="{Binding Done}"
                                                   Text="{Binding Title}"
                                                   Struck="{Binding Done}"
-                                                  StrikeColor="{DynamicResource Color.Text.Muted}">
+                                                  StrikeColor="{DynamicResource Color.Text.Muted}"
+                                                  VerticalAlignment="Top"
+                                                  Margin="{DynamicResource Space.Month.ChipTitle}">
                                       <c:StrikeText.Transitions>
                                         <Transitions>
                                           <BrushTransition Property="Foreground" Duration="{x:Static m:MotionTimes.Strike}" Easing="{x:Static m:Motion.EaseStd}" />

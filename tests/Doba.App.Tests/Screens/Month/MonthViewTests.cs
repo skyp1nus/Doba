@@ -299,6 +299,27 @@ public class MonthViewTests
     }
 
     [AvaloniaFact]
+    public void Chip_titles_and_bar_rings_are_drawn_like_the_reference()
+    {
+        using var s = new Scene();
+
+        // Chip titles start 3 px below the chip top (CSS centres a 16.1 px line box in the 22 px chip; centring the
+        // natural 15 px line rounded them to 4).
+        var chips = s.Cells().SelectMany(Scene.Chips).ToList();
+        Assert.NotEmpty(chips);
+        Assert.All(chips, chip =>
+        {
+            var title = chip.GetVisualDescendants().OfType<StrikeText>().Single();
+            Assert.Equal(3, title.TranslatePoint(default, chip)!.Value.Y, 0.5);
+        });
+
+        // Bars: the fill runs under the 1 px ring, as the CSS inset box-shadow is painted over the background.
+        var bars = s.Weeks().SelectMany(Scene.Bars).ToList();
+        Assert.NotEmpty(bars);
+        Assert.All(bars, b => Assert.Equal(BackgroundSizing.OuterBorderEdge, b.BackgroundSizing));
+    }
+
+    [AvaloniaFact]
     public void Capacity_and_more_follow_the_reported_height()
     {
         int fullMore;

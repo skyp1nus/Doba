@@ -17,6 +17,7 @@
           Classes.done="{Binding Done}"
           Classes.dimmed="{Binding Dimmed}"
           Theme="{StaticResource Button.Bar}"
+          Padding="{DynamicResource Space.Week.Bar}"
           VerticalAlignment="Stretch"
           Command="{Binding ToggleCommand}"
           AutomationProperties.Name="{Binding ToggleLabel}">

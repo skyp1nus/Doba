@@ -173,6 +173,35 @@ public class WeekViewTests
     }
 
     [AvaloniaFact]
+    public void Bar_content_and_card_titles_sit_where_the_reference_draws_them()
+    {
+        foreach (var density in new[] { Density.Comfortable, Density.Compact })
+        {
+            using var s = new Scene(new AppSettings { Density = density });
+
+            // Bars: padding 0 10 measured from the outer edge (the CSS ring is an inset shadow and takes no space), so
+            // the checkbox starts 10 px in and the meta ends 10 px before the right edge.
+            foreach (var bar in s.Bars(0).Concat(s.Bars(1)))
+            {
+                var b = bar.Bar;
+                var check = b.GetVisualDescendants().OfType<TaskCheckBox>().Single();
+                Assert.Equal(10, check.TranslatePoint(default, b)!.Value.X, 0.5);
+                var meta = b.GetVisualDescendants().OfType<TextBlock>().Single(t => t.Classes.Contains("meta-sm"));
+                Assert.Equal(b.Bounds.Width - 10, meta.TranslatePoint(new Point(meta.Bounds.Width, 0), b)!.Value.X, 0.5);
+            }
+
+            // Card titles: the 18 px line block is lifted 1 px (Space.Week.CardTitle), the card itself is unchanged.
+            var cards = Enumerable.Range(0, 2).SelectMany(r => s.Cells(r)).SelectMany(Scene.Cards).ToList();
+            Assert.NotEmpty(cards);
+            Assert.All(cards, c =>
+            {
+                var card = c.FindControl<Card>("PART_Card")!;
+                Assert.Equal(card.Padding.Top - 1, c.TitleText.TranslatePoint(default, card)!.Value.Y, 0.5);
+            });
+        }
+    }
+
+    [AvaloniaFact]
     public void A_shorter_window_shows_fewer_cards_and_a_larger_more_count()
     {
         int full, fullMore;

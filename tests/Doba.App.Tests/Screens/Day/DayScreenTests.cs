@@ -93,6 +93,12 @@ public class DayScreenTests
         Assert.Equal(62, cards[0].Bounds.Height);
         Assert.Equal(64, cards[^1].Bounds.Height);
         Assert.Equal(8, cards[1].TranslatePoint(default, view)!.Value.Y - cards[0].TranslatePoint(default, view)!.Value.Y - 62);
+
+        // The "TASKS · N / M done" row is lifted 1 px (its text drew 1 px low) while the first card stays 20 + 8 below
+        // the top of the list, as in the reference (header text ink at 151, first card at 176).
+        var header = view.ProgressText.GetVisualParent<Grid>()!;
+        Assert.Equal(-1, header.TranslatePoint(default, view.List)!.Value.Y, 0.5);
+        Assert.Equal(20 + 8, cards[0].TranslatePoint(default, view.List)!.Value.Y, 0.5);
         window.Close();
     }
 

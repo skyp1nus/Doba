@@ -410,6 +410,10 @@
   <CornerRadius x:Key="Radius.Month.Bar.ClipBoth">0</CornerRadius>
   <CornerRadius x:Key="Radius.Month.Chip">5</CornerRadius>         <!-- item chip: border-radius 5px -->
   <x:Double x:Key="Month.InlineGap">6</x:Double>                   <!-- number ↔ today dot; checkbox ↔ title -->
+  <!-- Chip title, top-aligned: CSS centres a 16.1 px line box (11.5 × 1.4) in the 22 px chip, which puts the font's
+       ascent + descent box (14.95 px) 3.5 px below the chip top (strike row at + 10). Centring Avalonia's 15 px line
+       gives + 3.5, which layout rounding sent to + 4 (glyphs and strike 1 px low); + 3 matches the reference. -->
+  <Thickness x:Key="Space.Month.ChipTitle">0,3,0,0</Thickness>
   <x:Double x:Key="Size.Month.Dot">6</x:Double>                    <!-- today dot -->
 
       <!-- == Day == -->
@@ -420,9 +424,10 @@
   <Thickness x:Key="Space.Day.List">0,4,0,0</Thickness>      <!-- list padding-top 4 -->
   <!-- "TASKS · N / M done" margin-bottom 4. The row is 16.8 px in CSS (12 px × 1.4) and starts at a fractional y in the
        reference (its content area is 0.4 px above ours), so Chromium puts the first card at y 176; whole-pixel layout
-       rounds the row up to 17 and drew every card 1 px low. 3 lands the cards (and keeps the header text) where the
-       reference has them. -->
-  <Thickness x:Key="Space.Day.Header">0,0,0,3</Thickness>
+       rounds the row up to 17 and drew every card 1 px low. −1 above and 4 below (a 20 px block, as with 0 / 3) land the
+       cards where the reference has them, and the −1 also puts the header text on the reference's rows (ink from 151;
+       with unhinted text 0 drew it 1 px low). -->
+  <Thickness x:Key="Space.Day.Header">0,-1,0,4</Thickness>
   <Thickness x:Key="Space.Day.Scroll">0,0,32,0</Thickness>   <!-- list column padding-right 32 -->
   <Thickness x:Key="Space.Day.Aside">24,0,0,0</Thickness>    <!-- Schedule aside padding-left 24 -->
   <Thickness x:Key="Space.Day.Check">0,1,0,0</Thickness>     <!-- card checkbox margin-top 1 -->
@@ -546,8 +551,12 @@
   <x:Double x:Key="Opacity.Week.Preview">0.55</x:Double>
   <x:Double x:Key="Opacity.Week.PreviewDimmed">0.2</x:Double>
   <!-- Week card title: Avalonia puts the 18 px line's extra leading above the glyphs (CSS splits it), which drew the
-       titles 2 px low; this moves 2 px from above the title to below it (same block height). -->
-  <Thickness x:Key="Space.Week.CardTitle">0,-2,0,2</Thickness>
+       titles low; this moves 1 px from above the title to below it (same block height). Measured with unhinted text:
+       x-height top at card top + 15, as in the reference (2 px drew it at + 14). -->
+  <Thickness x:Key="Space.Week.CardTitle">0,-1,0,1</Thickness>
+  <!-- Week multi-day bar: padding 0 10; the design's ring is an inset box-shadow (no layout), here Button.Bar's 1 px
+       border, so 9 + 1. -->
+  <Thickness x:Key="Space.Week.Bar">9,0</Thickness>
   <!-- Week grid: 12 px under row 1, a 1 px rule, 14 px above row 2 (rows: flex 1 1 0 after the padding). -->
   <Thickness x:Key="Space.Week.RowRule">0,12,0,14</Thickness>
 
