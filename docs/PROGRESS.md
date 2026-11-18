@@ -23,23 +23,24 @@ fresh reviewer agent, with no literal colours/durations outside tokens and `Moti
 - [x] **P1.3 Design system** — `Theme/Tokens.axaml`, fonts, ControlThemes (buttons: primary/outline/ghost/icon, checkbox, priority icon, segmented switch with sliding indicator, toggle switch, pill, kbd, text box, scrollbars, menu item), accent as dynamic resources, density resources, `Motion` animator helpers, literal-colour/duration grep test, a controls gallery screenshot.
   - Notes: tokens in `Theme/Tokens.axaml` (Dark ThemeDictionary, Light-ready), own ControlThemes (no Fluent/Simple), controls (TaskCheckBox, PriorityIcon, SegmentedSwitch, ToggleSwitch, Pill, Kbd, ProgressLine, Card, FocusRing), composition-based `Animator` with cancel/reset, `ThemeService` (accent/density/chrome tint). Gallery `docs/screenshots/controls-gallery.png` compared with the prototype renders by the lead and the implementer; `docs/design-system.md` documents usage. NoLiterals test has a 2-entry allowlist for DayClock's timer arithmetic.
   - Accept: gallery screenshot reviewed against the prototype's control styles; grep test passes.
-- [ ] **P1.4a Shell core** — `App.axaml.cs` builds `AppServices` and the window through `ShellComposition.CreateMainWindow`; `MainWindow` custom chrome (40 px title bar, app mark + "Doba", search button, caption buttons with element roles), page header (crumbs, title+subtitle, Year/Month/Week/Day switch with sliding indicator, Today, ‹ ›, New task), `MainViewModel` (`IAppCommands` + `IShellNavigation`, `NavState`), `ScreenHost` + `ScreenFactory` (views created on first visit and cached), `OverlayHost` (shade, Esc routing, focus return), `DayClock.Start()`, `ThemeService.Apply` at startup, `ShellFixture` screenshot harness.
+- [x] **P1.4a Shell core** — `App.axaml.cs` builds `AppServices` and the window through `ShellComposition.CreateMainWindow`; `MainWindow` custom chrome (40 px title bar, app mark + "Doba", search button, caption buttons with element roles), page header (crumbs, title+subtitle, Year/Month/Week/Day switch with sliding indicator, Today, ‹ ›, New task), `MainViewModel` (`IAppCommands` + `IShellNavigation`, `NavState`), `ScreenHost` + `ScreenFactory` (views created on first visit and cached), `OverlayHost` (shade, Esc routing, focus return), `DayClock.Start()`, `ThemeService.Apply` at startup, `ShellFixture` screenshot harness.
   - Accept: VM tests for every Navigator path; header strings equal `HeaderProjection`; one active screen at a time; filter/accent/density/week start apply live; overlay open/close + Esc + focus return with a fake overlay; full-window screenshot tests for every design name; renders at 1100×700 without layout errors; reviewed against `docs/design/screens/`.
-- [ ] **P1.4b Sidebar** — Inbox/Today/Calendar with open counts and the sliding highlight, Tags with inline new-tag input + filter, Collapse → 56 px rail, Settings; settings sidebar (Back to app, six tabs, footer "Doba 0.1 · local only").
+  - Notes (2026-11-18): implemented in a worktree, fresh code review accepted, then a visual review of every full-window render against `docs/design/screens` (pixel-measured) and a second fresh acceptance pass after the fixes. 698 tests green. Chrome accepted on `week`, `sidebar-collapsed` and `settings-appearance` (title bar, header and sidebar on the reference pixels; backdrop within 3 colour levels).
+- [x] **P1.4b Sidebar** — Inbox/Today/Calendar with open counts and the sliding highlight, Tags with inline new-tag input + filter, Collapse → 56 px rail, Settings; settings sidebar (Back to app, six tabs, footer "Doba 0.1 · local only").
   - Accept: counts follow the store; highlight follows the section and hides in Settings; tag add normalises and rejects duplicates; filter toggles; rail layout; reviewed against the design.
 
 ## Phase 2 — Screens
 
-- [ ] **P2.1 Inbox** _(screen done + 7 tests, virtualised: 5k undated → <200 realised rows; awaiting shell wiring + review)_ — two columns, groups, rows (checkbox, priority, title, tag, meta), Add task row, virtualised list. Screenshot `inbox.png`.
-- [ ] **P2.2 Today** _(screen done + 8 tests; awaiting shell wiring + review)_ — summary + progress, groups incl. Overdue with "→ Today", In progress, Scheduled, Anytime, Done; schedule timeline with now-line. Screenshot `today.png`.
-- [ ] **P2.3 Week** _(screen done + 12 tests, measured fit; awaiting shell wiring + review)_ — two rows of day cells, lanes of multi-day bars, cards, "+N more" from measured size, next-week preview, per-day progress. Screenshot `week.png`.
-- [ ] **P2.4 Month** — weekday header, week rows with W-numbers, day cells, span bars (2 lanes), "+N more". Screenshot `month.png`.
-- [ ] **P2.5 Year** _(screen done + 8 tests; awaiting shell wiring, full-window screenshot and review)_ — 4×3 months with stats, progress, key items, "+N more". Screenshot `year.png`.
-- [ ] **P2.6 Day** — spans, task cards with meta, Add task, timeline. Screenshot `day.png`.
-- [ ] **P2.7a Time wheel** — `Controls/TimeWheel`: 34 px rows, 5 visible, snap to centre, selection band, fade mask, commit after 120 ms of stillness, click scrolls smoothly, instant positioning on open.
-- [ ] **P2.7b Task dialog** — title, notes, Date/Time/Priority/Tag pills and popovers (mini calendar, quick options, lasts N days; time wheel, duration; priority list; tag list), Enter/Esc/Delete rules, Create disabled until a title. Screenshots `dialog-date.png`, `dialog-time.png`, `dialog-priority.png`, `dialog-tag.png`.
-- [ ] **P2.8 Settings** _(content done + 29 tests incl. export/import round trip; awaiting shell wiring/theme application, screenshots, review)_ — settings sidebar, six tabs with live controls bound to `ISettingsService`. Screenshots `settings-*.png` (6).
-- [ ] **P2.9 Density + rail** — compact density across screens; collapsed sidebar rail. Screenshots `density-compact.png`, `sidebar-collapsed.png`.
+- [x] **P2.1 Inbox** _(accepted 2026-11-18: `inbox.png` matches the reference; virtualised: 5k undated → <200 realised rows; Space completes the focused row)_ — two columns, groups, rows (checkbox, priority, title, tag, meta), Add task row, virtualised list. Screenshot `inbox.png`.
+- [ ] **P2.2 Today** _(wired and reviewed; not yet accepted: done titles in list rows and schedule blocks still use the fractional strike, and the time range of a truncated block is 3 px left — in the polish pass)_ — summary + progress, groups incl. Overdue with "→ Today", In progress, Scheduled, Anytime, Done; schedule timeline with now-line. Screenshot `today.png`.
+- [x] **P2.3 Week** _(accepted 2026-11-18: `week.png` track geometry, bars, cards and "+N more" on the reference pixels; titles break between words at 1100×700)_ — two rows of day cells, lanes of multi-day bars, cards, "+N more" from measured size, next-week preview, per-day progress. Screenshot `week.png`.
+- [x] **P2.4 Month** _(accepted 2026-11-18: week rules, columns, bars, chips and "+N more" identical to the reference geometry; capacity follows the measured height)_ — weekday header, week rows with W-numbers, day cells, span bars (2 lanes), "+N more". Screenshot `month.png`.
+- [x] **P2.5 Year** _(accepted 2026-11-18: `year.png` track edges and header stacks match the reference)_ — 4×3 months with stats, progress, key items, "+N more". Screenshot `year.png`.
+- [ ] **P2.6 Day** _(implemented and reviewed; not yet accepted: schedule strike and truncated-block range, shared with Today — in the polish pass)_ — spans, task cards with meta, Add task, timeline. Screenshot `day.png`.
+- [x] **P2.7a Time wheel** _(accepted 2026-11-18: 652-line test suite incl. settle commit, snap, clamp, keys, animations-off; wheel area matches `dialog-time.png` pixel for pixel)_ — `Controls/TimeWheel`: 34 px rows, 5 visible, snap to centre, selection band, fade mask, commit after 120 ms of stillness, click scrolls smoothly, instant positioning on open.
+- [x] **P2.7b Task dialog** _(accepted 2026-11-18: fresh review accepted; `dialog-date|time|priority|tag.png` match the references on panel, pills, popovers, calendar cells and wheel; leftovers are 1–3 px text-width rounding)_ — title, notes, Date/Time/Priority/Tag pills and popovers (mini calendar, quick options, lasts N days; time wheel, duration; priority list; tag list), Enter/Esc/Delete rules, Create disabled until a title. Screenshots `dialog-date.png`, `dialog-time.png`, `dialog-priority.png`, `dialog-tag.png`.
+- [x] **P2.8 Settings** _(accepted 2026-11-18: all six `settings-*.png` accepted; column 261–1040, switches pixel-identical; export/import round trip tested)_ — settings sidebar, six tabs with live controls bound to `ISettingsService`. Screenshots `settings-*.png` (6).
+- [x] **P2.9 Density + rail** _(accepted 2026-11-18: `density-compact.png` and `sidebar-collapsed.png` accepted; compact shows as many cards as fit, by decision)_ — compact density across screens; collapsed sidebar rail. Screenshots `density-compact.png`, `sidebar-collapsed.png`.
 
 ## Phase 3 — Motion
 
@@ -49,9 +50,9 @@ fresh reviewer agent, with no literal colours/durations outside tokens and `Moti
 
 ## Phase 4 — Platform and remaining features
 
-- [ ] **P4.1 Windows platform** _(services done: autostart, hotkey, preferences, shell/sound — wiring of tray/backdrop/hotkey into the shell pending)_ — tray (keep running in tray), autostart (HKCU Run), global hotkey Ctrl+Alt+N, backdrop transparency (Mica/acrylic + tint from the transparency setting), OS animation setting, open folder, completion sound; no-op fallbacks.
-- [ ] **P4.2 Data features** — daily backup wiring, Export / Import (file pickers), Open folder, settings persistence wiring, carry-over at startup and midnight, midnight rollover.
-- [ ] **P4.3 Search palette** — Ctrl K overlay in the dialog style, substring search, arrows + Enter opens the task. Screenshot `search.png`.
+- [x] **P4.1 Windows platform** _(done 2026-11-18: `AppLifecycle` wires tray, close-to-tray, hotkey, autostart reconcile, Mica/acrylic, OS animations; fresh review accepted; `Doba.exe --selfcheck` on the NativeAOT build: 9/9 checks pass on Windows 11; what only a person can check is listed under "Needs Windows verification")_ — tray (keep running in tray), autostart (HKCU Run), global hotkey Ctrl+Alt+N, backdrop transparency (Mica/acrylic + tint from the transparency setting), OS animation setting, open folder, completion sound; no-op fallbacks.
+- [x] **P4.2 Data features** _(done 2026-11-18: flush on hide/quit/exit/session end, carry-over and daily backup after the first frame and on day change, settings survive a restart — all tested; a real AOT run on a temp data folder moved an overdue task to today and wrote the day's backup)_ — daily backup wiring, Export / Import (file pickers), Open folder, settings persistence wiring, carry-over at startup and midnight, midnight rollover.
+- [ ] **P4.3 Search palette** _(implemented; review found the panel ring/shadow clipped — fixed, re-check pending in the polish pass)_ — Ctrl K overlay in the dialog style, substring search, arrows + Enter opens the task. Screenshot `search.png`.
 - [ ] **P4.4 Keyboard** — N, Ctrl K, G I, G T, 1–4, ← →, Space on focused task, Esc; Tab order with visible focus everywhere.
 
 ## Phase 5 — Hardening
@@ -68,4 +69,15 @@ fresh reviewer agent, with no literal colours/durations outside tokens and `Moti
 
 ## Needs Windows verification
 
-(filled in during Phase 4/5; copied to HANDOFF.md)
+Verified here by `Doba.exe --selfcheck` (NativeAOT, Windows 11): window + icon, Mica actually active, OS animation setting read, hidden message window, Ctrl+Alt+N register/unregister with a simulated press, tray icon create/remove, autostart write/read/remove against a test registry key.
+
+Still needs a person (exact steps go to HANDOFF.md):
+
+- Tray: close hides the window, left-click restores, menu Open Doba / New task / Quit, tray setting off → close quits.
+- Global hotkey Ctrl+Alt+N from another app, with Doba hidden in the tray and minimised.
+- Launch at startup: the real HKCU Run value on the default data location, and an actual start after sign-in (hidden in the tray).
+- Mica / acrylic look under the chrome tint and the transparency slider (acrylic on Windows 10 untested: this PC is Windows 11).
+- OS "Animation effects" switched off while Doba runs: everything becomes instant.
+- Session end: add a task, sign out at once, the task is there after sign-in.
+- Sleep through midnight: date rolls over, carry-over and backup happen.
+- Title bar on a real window: drag, double-click maximise, snap-layout flyout on Maximise, resize borders, mixed-DPI monitors.
