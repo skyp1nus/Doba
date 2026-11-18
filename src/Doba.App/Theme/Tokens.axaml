@@ -158,6 +158,12 @@
       <!-- == TimeWheel == -->
 
       <!-- == Search == -->
+
+
+      <!-- == Lists (Inbox / Today / Settings) == -->
+
+
+      <!-- == Calendar (Week / Year) == -->
     </ResourceDictionary>
   </ResourceDictionary.ThemeDictionaries>
 
@@ -385,4 +391,10 @@
   </LinearGradientBrush>
 
   <!-- == Search == -->
+
+
+  <!-- == Lists (Inbox / Today / Settings) == -->
+
+
+  <!-- == Calendar (Week / Year) == -->
 </ResourceDictionary>
