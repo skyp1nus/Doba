@@ -34,9 +34,10 @@ public sealed partial class MainViewModel : ObservableObject, IAppCommands, IShe
         _theme = theme;
         _settings = app.Settings.Current;
         Screens = new ScreenServices(app, new TaskActions(app.Store, app.Settings, app.Platform.Shell, app.Clock), this, () => FilterTag);
+        // Nav first: the sidebar and header read it in their constructors.
+        Nav = start ?? InitialState(_settings, app.DayClock.Today);
         Sidebar = new SidebarViewModel(app, this);
         Header = new PageHeaderViewModel(this, this);
-        Nav = start ?? InitialState(_settings, app.DayClock.Today);
 
         app.Store.Changed += OnStoreChanged;
         app.Settings.Changed += OnSettingsChanged;

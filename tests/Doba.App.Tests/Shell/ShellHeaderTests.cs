@@ -116,22 +116,21 @@ public class ShellHeaderTests
     public void Filter_change_refreshes_the_active_screen_and_the_sidebar()
     {
         using var shell = ShellFixture.Open(AppView.Today);
-        var sidebarRefreshes = 0;
-        shell.Vm.Sidebar.PropertyChanged += (_, _) => sidebarRefreshes++;
+        var workTag = Assert.Single(shell.Vm.Sidebar.Tags, t => t.Name == "work");
+        Assert.False(workTag.IsActive);
         var rows = shell.Screen<TodayViewModel>().Groups.SelectMany(g => g.Items).ToList();
         Assert.All(rows, r => Assert.False(r.Dimmed));
 
         shell.Vm.ToggleTagFilter("work");
         Assert.Equal("work", shell.Vm.FilterTag);
         Assert.Equal("work", shell.Vm.Screens.FilterTag());
-        Assert.True(sidebarRefreshes > 0);
+        Assert.True(workTag.IsActive);
         Assert.Contains(rows, r => r.Dimmed);
         Assert.All(rows.Where(r => r.Dimmed), r => Assert.NotEqual("#work", r.TagLabel));
 
-        sidebarRefreshes = 0;
         shell.Vm.ToggleTagFilter("work");
         Assert.Null(shell.Vm.FilterTag);
-        Assert.True(sidebarRefreshes > 0);
+        Assert.False(workTag.IsActive);
         Assert.All(rows, r => Assert.False(r.Dimmed));
     }
 
@@ -139,13 +138,12 @@ public class ShellHeaderTests
     public void Store_changes_refresh_the_sidebar_and_add_tag_normalises()
     {
         using var shell = ShellFixture.Open(AppView.Week);
-        var sidebarRefreshes = 0;
-        shell.Vm.Sidebar.PropertyChanged += (_, _) => sidebarRefreshes++;
+        Assert.DoesNotContain(shell.Vm.Sidebar.Tags, t => t.Name == "deep-work");
         Assert.Equal("deep-work", shell.Vm.AddTag("# Deep Work"));
         Assert.Null(shell.Vm.AddTag("work"));
         Assert.Null(shell.Vm.AddTag("  "));
         Assert.Contains("deep-work", shell.App.Store.Tags);
-        Assert.True(sidebarRefreshes > 0);
+        Assert.Single(shell.Vm.Sidebar.Tags, t => t.Name == "deep-work");
     }
 
     [AvaloniaFact]
