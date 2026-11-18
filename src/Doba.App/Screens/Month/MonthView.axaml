@@ -1,0 +1,8 @@
+<!-- Month screen. Placeholder until the Month package builds it. -->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:s="using:Doba.App.Screens.Month"
+             x:Class="Doba.App.Screens.Month.MonthView"
+             x:DataType="s:MonthViewModel">
+  <TextBlock Classes="label" Text="Month" />
+</UserControl>

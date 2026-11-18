@@ -34,3 +34,10 @@ One line per decision, newest last. Format: **topic** — decision (reason).
 - **Inbox virtualisation** — per-group ItemsControls with VirtualizingStackPanel inside one page ScrollViewer (Avalonia 12 virtualises against the effective viewport), so both columns still scroll together as designed.
 - **Week fit measurement** — the view reports each row's height; card heights come from shaping the title with the real font at the real column width (≤2 lines), per density; Core's `WeekMetrics.CardHeight` receives the measured map.
 - **Week compact** — compact density shows as many cards as actually fit (the prototype's compact render reuses its fixed 403 px heuristic).
+- **Windows-first from 2026-11-18** — the build continues on the owner's Windows 11 PC, so build, tests, headless screenshots, NativeAOT `win-x64` publish and `--perf` are all run locally; the local AOT smoke is `win-x64`, not `linux-x64`.
+- **No extra Actions runs** — owner's instruction: test everything locally. No `workflow_dispatch` runs; the single CI run is the one the final pull request into `main` triggers.
+- **Overlays are in-window panels** — the task dialog, its popovers and the search palette are hosted by `Shell/OverlayHost` inside the main window, not Avalonia `Popup` windows: headless frame capture does not include popup top-levels, and one window keeps focus handling simple.
+- **Screenshot writing is opt-in** — tests write PNGs to git-ignored `artifacts/screenshots/` unless `DOBA_SCREENSHOTS=1`, which refreshes `docs/screenshots/` (parallel worktrees would otherwise rewrite tracked binaries on every test run).
+- **Sidebar collapsed state** is kept in memory only (the prototype does not persist it either).
+- **Search hits** always open the task's edit dialog; the palette never navigates.
+- **Local runs never touch the real machine state** — tests and `--demo` use no-op platform services; the app is launched locally only with `--demo`, `--data <folder>` or `--selfcheck`.

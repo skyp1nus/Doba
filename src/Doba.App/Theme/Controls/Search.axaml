@@ -1,0 +1,4 @@
+<!-- Search palette control themes (query box, hit rows). Owned by the Search package; empty until then. -->
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+</ResourceDictionary>

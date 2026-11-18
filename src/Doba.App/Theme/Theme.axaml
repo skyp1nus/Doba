@@ -15,6 +15,11 @@
         <MergeResourceInclude Source="avares://Doba/Theme/Controls/Switches.axaml" />
         <MergeResourceInclude Source="avares://Doba/Theme/Controls/Inputs.axaml" />
         <MergeResourceInclude Source="avares://Doba/Theme/Controls/Surfaces.axaml" />
+        <MergeResourceInclude Source="avares://Doba/Theme/Controls/Shell.axaml" />
+        <MergeResourceInclude Source="avares://Doba/Theme/Controls/Sidebar.axaml" />
+        <MergeResourceInclude Source="avares://Doba/Theme/Controls/Dialog.axaml" />
+        <MergeResourceInclude Source="avares://Doba/Theme/Controls/Search.axaml" />
+        <MergeResourceInclude Source="avares://Doba/Theme/Controls/TimeWheel.axaml" />
       </ResourceDictionary.MergedDictionaries>
     </ResourceDictionary>
   </Styles.Resources>

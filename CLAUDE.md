@@ -16,18 +16,28 @@ project state; `docs/DECISIONS.md` lists decisions already made (do not reopen t
 
 ## Commands
 
-```bash
-export DOTNET_CLI_TELEMETRY_OPTOUT=1 DOTNET_NOLOGO=1 AVALONIA_TELEMETRY_OPTOUT=1
+Development happens on Windows 11 (PowerShell; Git Bash also works — there prefix git commands that take
+`rev:path` arguments with `MSYS_NO_PATHCONV=1`). Everything is verified locally; do not trigger GitHub Actions.
+
+```powershell
+$env:DOTNET_CLI_TELEMETRY_OPTOUT='1'; $env:DOTNET_NOLOGO='1'; $env:AVALONIA_TELEMETRY_OPTOUT='1'
 dotnet build -warnaserror                       # whole solution; trim + AOT analyzers are on
 dotnet test                                     # Microsoft Testing Platform, all test projects
 dotnet test --project tests/Doba.Core.Tests     # one project
 dotnet test --project tests/Doba.App.Tests -- --filter-method "*Screenshot*"   # e.g. only screenshot tests
-dotnet publish src/Doba.App -r linux-x64 -c Release -o /tmp/doba-aot   # local NativeAOT smoke (CI does win-x64)
+dotnet publish src/Doba.App -c Release -r win-x64 -o artifacts\doba-win-x64 -warnaserror   # NativeAOT, 0 warnings
 ```
 
-When several agents work in parallel without worktrees, build and test **only your own projects**
-(`dotnet build src/Doba.Core`, `dotnet test --project tests/Doba.Core.Tests`) — concurrent builds of the same project
-corrupt each other's output.
+Screenshots: tests write PNGs to git-ignored `artifacts/screenshots/`. Only the lead refreshes the tracked
+`docs/screenshots/` (`$env:DOBA_SCREENSHOTS='1'` before the test run). Look at your PNGs in `artifacts/screenshots/`
+and compare them with `docs/design/screens/<name>.png`.
+
+Each agent works in its own git worktree and builds/tests only there. Never run two builds of the same checkout at
+once — concurrent builds of the same project corrupt each other's output.
+
+Never touch the real machine from tests or local runs: tests use `PlatformServices.NoOp()` (never
+`PlatformServices.Create()`), and the app is launched only with `--demo`, `--data <folder under artifacts\>` or
+`--selfcheck` — never against `%LOCALAPPDATA%\Doba`, the real `HKCU\...\Run` key or the global hotkey.
 
 ## Conventions
 
@@ -42,7 +52,11 @@ corrupt each other's output.
 - Animate only `Opacity` and render transforms; never Margin/Width/Height (exception: none — progress bars use ScaleX).
 - Platform-specific code goes behind `Doba.App.Platform` interfaces with a no-op fallback.
 - Avalonia's API changed between 11 and 12 and memory may be outdated: confirm APIs against the installed package
-  (XML docs in `~/.nuget/packages/avalonia/12.1.6/lib/net10.0/*.xml`) or the AvaloniaUI/Avalonia GitHub repo before
+  (XML docs in `%USERPROFILE%\.nuget\packages\avalonia\12.1.6\lib\net10.0\*.xml`) or the AvaloniaUI/Avalonia GitHub repo before
   relying on them (composition animations, easing, window decorations, transparency, headless capture).
 - Tests: xunit v3 (`[Fact]`); UI tests use `[AvaloniaFact]` from Avalonia.Headless.XUnit. Never skip or weaken tests.
-- Commits are made by the lead architect; agents report what they changed.
+- Contracts are lead-only: `Shell/ShellContracts.cs`, `Shell/OverlayViewModel.cs`, `Shell/IAppCommands.cs`,
+  `Screens/ScreenViewModel.cs`, shared tokens in `Theme/Tokens.axaml` (a package adds tokens only inside its own
+  marked region), `Theme/Theme.axaml`, `Theme/Styles.axaml`, `Theme/Icons.axaml`, the no-literals allowlist, `docs/*`,
+  `Directory.*.props`, `.github/**`. Need a change there? Say so in your report.
+- An agent commits only on its own worktree branch; the lead architect integrates into `dev`. Never push.

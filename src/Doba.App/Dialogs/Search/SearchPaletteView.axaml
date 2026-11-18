@@ -1,0 +1,8 @@
+<!-- Search palette (in-window overlay hosted by Shell/OverlayHost). Placeholder until the Search package builds it. -->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:s="using:Doba.App.Dialogs.Search"
+             x:Class="Doba.App.Dialogs.Search.SearchPaletteView"
+             x:DataType="s:SearchPaletteViewModel">
+  <TextBlock Classes="label" Text="Search" />
+</UserControl>

@@ -1,0 +1,4 @@
+<!-- TimeWheel control theme (Doba.App.Controls.TimeWheel). Owned by the TimeWheel package; empty until then. -->
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+</ResourceDictionary>

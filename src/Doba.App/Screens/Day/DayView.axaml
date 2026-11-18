@@ -1,0 +1,8 @@
+<!-- Day screen. Placeholder until the Day package builds it. -->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:s="using:Doba.App.Screens.Day"
+             x:Class="Doba.App.Screens.Day.DayView"
+             x:DataType="s:DayViewModel">
+  <TextBlock Classes="label" Text="Day" />
+</UserControl>

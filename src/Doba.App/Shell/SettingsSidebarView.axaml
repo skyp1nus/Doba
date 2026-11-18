@@ -1,0 +1,8 @@
+<!-- Settings sidebar. Placeholder until the Sidebar package builds it. -->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:sh="using:Doba.App.Shell"
+             x:Class="Doba.App.Shell.SettingsSidebarView"
+             x:DataType="sh:SidebarViewModel">
+  <TextBlock Classes="label-sm" Text="Settings" Margin="{DynamicResource Space.Sidebar}" />
+</UserControl>

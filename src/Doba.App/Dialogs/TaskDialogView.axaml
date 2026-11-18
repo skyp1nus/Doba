@@ -1,0 +1,8 @@
+<!-- Task dialog (in-window overlay hosted by Shell/OverlayHost). Placeholder until the Task dialog package builds it. -->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="using:Doba.App.Dialogs"
+             x:Class="Doba.App.Dialogs.TaskDialogView"
+             x:DataType="d:TaskDialogViewModel">
+  <TextBlock Classes="label" Text="{Binding Draft.Title}" />
+</UserControl>

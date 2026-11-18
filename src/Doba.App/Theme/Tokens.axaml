@@ -142,6 +142,22 @@
       <SolidColorBrush x:Key="Brush.Knob.On" Color="{StaticResource Color.Knob.On}" />
       <SolidColorBrush x:Key="Brush.Slider.Border" Color="{StaticResource Color.Slider.Border}" />
       <SolidColorBrush x:Key="Brush.Slider.Rail" Color="{StaticResource Color.Slider.Rail}" />
+
+      <!-- Package regions for palette colours and brushes (Dark). A work package adds tokens only inside its own
+           region below; the shared tokens above are never moved or renamed. -->
+      <!-- == Shell == -->
+
+      <!-- == Sidebar == -->
+
+      <!-- == Month == -->
+
+      <!-- == Day == -->
+
+      <!-- == Dialog == -->
+
+      <!-- == TimeWheel == -->
+
+      <!-- == Search == -->
     </ResourceDictionary>
   </ResourceDictionary.ThemeDictionaries>
 
@@ -265,4 +281,20 @@
   <x:Double x:Key="Density.CardGap">9</x:Double>               <!-- week card: checkbox ↔ title -->
   <Thickness x:Key="Density.DayCardPadding">12,11</Thickness> <!-- day cards: padding 11px 12px -->
   <x:Double x:Key="Density.DayCardGap">6</x:Double>            <!-- day card: title row ↔ meta row -->
+
+  <!-- Package regions for theme-independent tokens (sizes, spacing, radii, font sizes). A work package adds tokens
+       only inside its own region below; the shared tokens above are never moved or renamed. -->
+  <!-- == Shell == -->
+
+  <!-- == Sidebar == -->
+
+  <!-- == Month == -->
+
+      <!-- == Day == -->
+
+  <!-- == Dialog == -->
+
+  <!-- == TimeWheel == -->
+
+  <!-- == Search == -->
 </ResourceDictionary>

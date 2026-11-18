@@ -1,0 +1,4 @@
+<!-- Shell control themes (title bar, page header, main panel, overlay host). Owned by the Shell package; empty until then. -->
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+</ResourceDictionary>
