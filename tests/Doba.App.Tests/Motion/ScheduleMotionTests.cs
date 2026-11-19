@@ -174,6 +174,18 @@ public class ScheduleMotionTests
 
     private static void NothingRuns(Scene s) => Assert.Empty(s.Handles());
 
+    /// <summary>While the dragged block flies, the blocks layer is drawn over the now-line and the "+N"s (the prototype's
+    /// <c>zIndex: 3</c> over the line's 2) and still under the copy, the chip and the list.</summary>
+    private static void AssertLandingLayer(Scene s)
+    {
+        var blocks = s.Timeline.BlockList.ZIndex;
+        Assert.True(blocks > s.Timeline.NowLine.ZIndex, $"blocks layer {blocks} is not above the now-line");
+        Assert.True(blocks > s.Timeline.OverflowList.ZIndex, $"blocks layer {blocks} is not above the \"+N\"s");
+        Assert.True(blocks <= s.Timeline.CopyPanel.ZIndex && blocks < s.Timeline.ChipPanel.ZIndex && blocks < s.Timeline.ListPopover.ZIndex);
+        var grid = s.Timeline.GridPanel.Children;
+        Assert.True(grid.IndexOf(s.Timeline.BlockList) < grid.IndexOf(s.Timeline.CopyPanel)); // a tie goes to the copy
+    }
+
     // ---- Lift and steps ------------------------------------------------------------------------------------------------
 
     [AvaloniaFact]
@@ -299,6 +311,7 @@ public class ScheduleMotionTests
         Transit.Is(land, new MotionState(1, 0, 0, AppMotion.LiftScale, AppMotion.LiftScale), MotionState.Rest, AppMotion.Land, AppMotion.EaseOut);
         Assert.Equal(new RelativePoint(aVm.X + (aVm.Width / 2), aVm.Top + (aVm.Height / 2), RelativeUnit.Absolute), land!.Origin);
         Assert.Equal(1, container.ZIndex); // above the other blocks while it lands
+        AssertLandingLayer(s);
         Assert.Equal(MotionState.Rest, Animator.Shown(s.PartOf<Border>(a, "PART_ContentBox"))); // its content is back at once
 
         var shadow = s.PartOf<Border>(a, "PART_Shadow");
@@ -313,6 +326,7 @@ public class ScheduleMotionTests
 
         s.Finish();
         Assert.Equal(0, container.ZIndex);
+        Assert.Equal(0, s.Timeline.BlockList.ZIndex); // under the now-line and the "+N"s again
         Assert.DoesNotContain("landing", s.Root(a).Classes);
         Assert.False(shadow.IsVisible);
         Assert.Equal(MotionState.Rest, Animator.Shown(shadow));
@@ -336,8 +350,11 @@ public class ScheduleMotionTests
             new MotionState(1, 0, TopOf(10, 0) - TopOf(9, 0), AppMotion.LiftScale, AppMotion.LiftScale), MotionState.Rest,
             AppMotion.Land, AppMotion.EaseOut);
         Transit.Is(Scene.Running(s.PartOf<Border>(a, "PART_Shadow")), MotionState.Rest, MotionState.Hidden, AppMotion.Land, AppMotion.EaseIn);
+        AssertLandingLayer(s);
         s.Up(p + new Point(0, 48));
         Assert.Empty(s.Changes);
+        s.Finish();
+        Assert.Equal(0, s.Timeline.BlockList.ZIndex);
     }
 
     [AvaloniaFact]
@@ -410,6 +427,7 @@ public class ScheduleMotionTests
         var step = Scene.Running(s.Container(a));
         Transit.Is(step, MotionState.Offset(0, TopOf(9, 0) - TopOf(9, 15)), MotionState.Rest, AppMotion.Snap, AppMotion.EaseOut);
         Assert.Equal(1, s.Container(a).ZIndex);
+        AssertLandingLayer(s);
         var slide = Scene.Running(s.Container(b));
         Transit.Is(slide, MotionState.Offset(54 - 207, 0), MotionState.Rest, AppMotion.Land, AppMotion.EaseOut);
         Transit.Is(Scene.Running(s.Timeline.ChipPanel), MotionState.Hidden, MotionState.Rest, AppMotion.Fade, AppMotion.EaseOut);
@@ -425,7 +443,45 @@ public class ScheduleMotionTests
 
         s.Finish();
         Assert.Equal(0, s.Container(a).ZIndex);
+        Assert.Equal(0, s.Timeline.BlockList.ZIndex);
         Assert.Same(s.PartOf<Button>(a, "PART_Open"), s.Window.FocusManager?.GetFocusedElement()); // focus kept
+    }
+
+    [AvaloniaFact]
+    public void A_key_step_slides_the_keyboard_focus_ring_with_its_block()
+    {
+        // The ring lives in the adorner layer, which follows layout but not composition offsets: it is flown with the
+        // block, so it never sits at the new slot while the block is still on its way (the prototype's outline is the
+        // element's own).
+        using var s = new Scene(Timed("A", 9, 0, 60));
+        var a = s.Ids[0];
+        s.Focus(a);
+        var open = s.PartOf<Button>(a, "PART_Open");
+        var ring = Assert.IsType<FocusRing>(Doba.App.Tests.Keyboard.KeyboardKit.RingOf(open));
+
+        s.Key(Key.Down);
+        var step = Scene.Running(s.Container(a));
+        var flown = Scene.Running(ring);
+        Transit.Is(step, MotionState.Offset(0, TopOf(9, 0) - TopOf(9, 15)), MotionState.Rest, AppMotion.Snap, AppMotion.EaseOut);
+        Transit.Is(flown, step!.From, step.To, AppMotion.Snap, AppMotion.EaseOut);
+
+        // Mid-way: the ring is drawn where the block is drawn (both laid out at the new slot, both offset alike).
+        Assert.Equal(open.TranslatePoint(default, s.Window), ring.TranslatePoint(default, s.Window));
+        Assert.Equal(Animator.Shown(s.Container(a)).Y, Animator.Shown(ring).Y, 1);
+
+        // Held down: each step continues from where both are drawn; the old ring flight gives way to the new one.
+        s.Key(Key.Down);
+        var next = Scene.Running(s.Container(a));
+        Assert.True(flown!.WasCancelled);
+        Transit.Is(Scene.Running(ring), next!.From, next.To, AppMotion.Snap, AppMotion.EaseOut);
+
+        // The ring lands with the block, and stays on it.
+        next.Complete();
+        Assert.Null(Scene.Running(ring));
+        Assert.Equal(MotionState.Rest, Animator.Shown(ring));
+        s.Finish();
+        Assert.Same(ring, Doba.App.Tests.Keyboard.KeyboardKit.RingOf(open));
+        Assert.Equal(open.TranslatePoint(default, s.Window), ring.TranslatePoint(default, s.Window));
     }
 
     // ---- "+N" list ---------------------------------------------------------------------------------------------------------
@@ -530,6 +586,7 @@ public class ScheduleMotionTests
             Assert.False(Part<Border>(s.Timeline.BlockOf(vm)!, "PART_Shadow").IsVisible);
         });
         Assert.False(s.Timeline.CopyPanel.IsVisible);
+        Assert.Equal(0, s.Timeline.BlockList.ZIndex);
     }
 
     // ---- OS animations off ------------------------------------------------------------------------------------------------

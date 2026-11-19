@@ -531,6 +531,61 @@ public class ScheduleTimelineTests
     }
 
     [AvaloniaFact]
+    public void The_closed_list_never_takes_the_schedule_as_its_data_context()
+    {
+        // Its bindings are typed for ScheduleOverflowViewModel: inheriting the ScheduleViewModel would fail each of them.
+        using var harness = new ScreenHarness();
+        var (vm, view, window) = OpenDay(harness, s_crowded);
+        var t = view.Schedule;
+        Assert.Null(t.ListPopover.DataContext);
+
+        Click(window, More(t));
+        Assert.Same(vm.Schedule.OpenOverflow, t.ListPopover.DataContext);
+        Key(window, Avalonia.Input.Key.Escape);
+        Assert.Null(t.ListPopover.DataContext);
+
+        // A timeline given another schedule keeps it closed and empty too.
+        var other = new DayViewModel(harness.Services);
+        other.Show(new NavState(AppView.Day, s_crowded));
+        t.DataContext = other.Schedule;
+        Settle(window);
+        Assert.Null(t.ListPopover.DataContext);
+        window.Close();
+    }
+
+    [AvaloniaFact]
+    public void The_open_list_follows_its_plus_N_in_the_Tab_order_when_a_new_task_renumbers_it()
+    {
+        using var harness = new ScreenHarness();
+        var (vm, view, window) = OpenDay(harness, s_crowded);
+        var t = view.Schedule;
+        var more = More(t);
+        more.Focus(NavigationMethod.Tab);
+        Key(window, Avalonia.Input.Key.Enter);
+        var overflow = vm.Schedule.OpenOverflow!;
+        Assert.Equal(2, overflow.TabOrder);
+        Assert.Equal(2, KeyboardNavigation.GetTabIndex(t.ListPopover));
+
+        // A new timed task at 08:00 the same day comes first: the "+N" is now the fourth stop; its list stays open.
+        harness.App.Store.Add(Timed(s_crowded, "Early call", 8, 0, 30));
+        Settle(window);
+        Assert.Same(overflow, vm.Schedule.OpenOverflow);
+        Assert.Equal(3, overflow.TabOrder);
+        Assert.Equal(3, KeyboardNavigation.GetTabIndex(t.ListPopover));
+
+        // Tab from the "+N" goes into its list, and Tab from the block before it reaches the "+N", not the list.
+        more.Focus(NavigationMethod.Tab);
+        Settle(window);
+        Key(window, Avalonia.Input.Key.Tab);
+        Assert.True(Focused(window) is Visual inList && t.ListPopover.IsVisualAncestorOf(inList));
+        Assert.True(Part<Button>(Block(t, "10:00 – 10:30"), "PART_Open").Focus(NavigationMethod.Tab));
+        Settle(window);
+        Key(window, Avalonia.Input.Key.Tab);
+        Assert.Same(more, Focused(window));
+        window.Close();
+    }
+
+    [AvaloniaFact]
     public void Another_day_leaving_the_screen_or_a_change_of_its_tasks_closes_the_list()
     {
         using var harness = new ScreenHarness();

@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.VisualTree;
 using Doba.App.Motion;
 using Doba.Core.Editing;
@@ -30,8 +31,10 @@ namespace Doba.App.Controls;
 /// step (<see cref="M.Snap"/>) and gone at once when hidden.</description></item>
 /// </list>
 /// The block root's own opacity stays the tag filter's (a 300 ms XAML transition), so the two dims multiply and never
-/// fight. With OS animations off everything is instant and the copy has no lift, no shadow and no flight (it still follows
-/// the pointer from slot to slot).
+/// fight. While the dragged block flies (a landing or a key step) the blocks layer is drawn above the now-line and the
+/// "+N"s (the prototype's <c>zIndex: 3</c>), and a keyboard focus ring slides with its block. With OS animations off
+/// everything is instant and the copy has no lift, no shadow and no flight (it still follows the pointer from slot to
+/// slot).
 /// </summary>
 public partial class ScheduleTimeline
 {
@@ -50,6 +53,9 @@ public partial class ScheduleTimeline
     private double? _chipTop;
 
     private double? _underOpacity;
+
+    /// <summary>The dragged block's flights now running; while there is one, the blocks layer is raised.</summary>
+    private readonly HashSet<MotionHandle> _flights = [];
 
     /// <summary>The dragged copy's position layer (tests).</summary>
     internal Panel CopyLiftPanel => PART_CopyLift;
@@ -302,7 +308,7 @@ public partial class ScheduleTimeline
         if (scale != 1 || Math.Abs(dx) >= FlipEpsilon || Math.Abs(dy) >= FlipEpsilon)
         {
             var centre = new RelativePoint(block.X + (block.Width / 2), block.Top + (block.Height / 2), RelativeUnit.Absolute);
-            Fly(container, new MotionState(1, dx, dy, scale, scale), M.Land, centre);
+            Fly(block, container, new MotionState(1, dx, dy, scale, scale), M.Land, centre);
         }
 
         if (PartOf<Border>(block, "PART_Shadow") is not { } shadow)
@@ -322,8 +328,8 @@ public partial class ScheduleTimeline
 
     // ---- Keyboard ----------------------------------------------------------------------------------------------------------
 
-    /// <summary>A key step: the block slides from its old place (<see cref="M.Snap"/> ease-out), the blocks the step re-laid
-    /// out from theirs (<see cref="M.Land"/>). Nothing slides with OS animations off.</summary>
+    /// <summary>A key step: the block slides from its old place (<see cref="M.Snap"/> ease-out) with its keyboard focus
+    /// ring, the blocks the step re-laid out from theirs (<see cref="M.Land"/>). Nothing slides with OS animations off.</summary>
     partial void OnKeyStepped(ScheduleBlockViewModel block, ScheduleDragMode mode, IReadOnlyDictionary<long, Rect> before)
     {
         if (!M.SystemAnimationsEnabled || _vm is not { } vm)
@@ -339,7 +345,7 @@ public partial class ScheduleTimeline
             var dy = old.Y + shown.Y - block.Top;
             if (Math.Abs(dx) >= FlipEpsilon || Math.Abs(dy) >= FlipEpsilon)
             {
-                Fly(container, MotionState.Offset(dx, dy), M.Snap, null);
+                Fly(block, container, MotionState.Offset(dx, dy), M.Snap, null);
             }
         }
     }
@@ -365,17 +371,58 @@ public partial class ScheduleTimeline
         }
     }
 
-    /// <summary>The dragged block's flight into its slot, drawn above the other blocks while it lasts (the prototype's
-    /// <c>zIndex: 3</c> during <c>sbFlip</c>).</summary>
-    private static void Fly(Control container, MotionState from, int ms, RelativePoint? centre)
+    /// <summary>
+    /// The dragged block's flight into its slot, drawn above the other blocks, the now-line and the "+N"s while it lasts
+    /// (the prototype's <c>zIndex: 3</c> during <c>sbFlip</c>, over the line's 2): its container is raised among the
+    /// blocks and the blocks layer above <c>PART_Now</c> (still under the copy, the chip and the list). A keyboard focus
+    /// ring on the block (drawn in the adorner layer, which composition offsets do not move) flies the same way, so it
+    /// stays on the block as the prototype's outline does; it ends with the flight.
+    /// </summary>
+    private void Fly(ScheduleBlockViewModel block, Control container, MotionState from, int ms, RelativePoint? centre)
     {
-        var handle = Animator.Animate(container, from, MotionState.Rest, ms, M.EaseOut, centre, static h => ((Control)h.Target).ZIndex = 0);
+        var ring = RingOf(block);
+        // The ring is centred on the block (the open button fills it but for 1 px all round): its own centre is the origin.
+        var ringHandle = ring is null ? null : Animator.Animate(ring, from, MotionState.Rest, ms, M.EaseOut);
+        var handle = Animator.Animate(container, from, MotionState.Rest, ms, M.EaseOut, centre, h =>
+        {
+            ((Control)h.Target).ZIndex = 0;
+            if (ringHandle is { IsAnimating: true })
+            {
+                if (h.WasCancelled)
+                {
+                    ringHandle.Cancel();
+                }
+                else
+                {
+                    ringHandle.Complete();
+                }
+            }
+
+            if (_flights.Remove(h) && _flights.Count == 0)
+            {
+                PART_Blocks.ZIndex = 0;
+            }
+        });
 
         // Raised after starting: superseding an earlier flight runs its callback (which lowers it) first.
         if (handle.IsAnimating)
         {
             container.ZIndex = 1;
+            _flights.Add(handle);
+            PART_Blocks.ZIndex = PART_Now.ZIndex + 1;
         }
+    }
+
+    /// <summary>The visible keyboard focus ring on <paramref name="block"/>'s open button, if it has one.</summary>
+    private Control? RingOf(ScheduleBlockViewModel block)
+    {
+        if (PartOf<Button>(block, "PART_Open") is not { IsFocused: true } open
+            || AdornerLayer.GetAdornerLayer(open) is not { } layer)
+        {
+            return null;
+        }
+
+        return layer.Children.FirstOrDefault(a => a is FocusRing { IsVisible: true } && ReferenceEquals(AdornerLayer.GetAdornedElement(a), open));
     }
 
     /// <summary>Keeps <paramref name="block"/>'s shadow drawn while it fades from <paramref name="opacity"/> to nothing.</summary>

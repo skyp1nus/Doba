@@ -265,6 +265,56 @@ public class ScheduleDragTests
         AssertAtRest(s);
     }
 
+    [AvaloniaFact]
+    public void A_press_on_the_grip_below_the_block_edge_resizes_it_even_with_a_block_right_after()
+    {
+        // The grip is the bottom 11 px, 2 of them below the block's outer edge (the prototype's bottom: −3px inside its
+        // 1 px border). A real press there, outside the block's own bounds, resizes it.
+        using var s = new Scene(Timed("Write the weekly update", 9, 30, 60), Timed("Call the bank", 13, 0, 60));
+        var id = s.Ids[0];
+        var root = s.Root(id);
+        var below = root.TranslatePoint(new Point(root.Bounds.Width / 2, root.Bounds.Height + 1), s.Window)!.Value;
+
+        s.Pull(below, 2);
+        Assert.Equal(ScheduleDragState.Resizing, s.Drag.State);
+        Assert.True(s.BlockVm(id).IsResizing);
+        Assert.Same(ScheduleDrag.ResizeCursor, s.Timeline.GridPanel.Cursor);
+        s.Move(below + new Point(0, 12)); // 15 min longer
+        s.Up(below + new Point(0, 12));
+        Assert.Single(s.Changes);
+        Assert.Equal(75, s.Task(id).DurationMinutes);
+        Assert.Equal(new TimeOnly(9, 30), s.Task(id).Time);
+        AssertAtRest(s);
+
+        // With a block starting right at its end (10:45, 3 px lower: blocks are 3 px short of their slot), the press in
+        // the gap still resizes the block above, and one on the next block's top edge moves that block.
+        s.Changes.Clear();
+        var next = s.Ids[1];
+        s.Harness.App.Store.Update(s.Task(next) with { Time = new TimeOnly(10, 45) });
+        Settle(s.Window);
+        s.Changes.Clear();
+        root = s.Root(id);
+        var nextRoot = s.Root(next);
+        below = root.TranslatePoint(new Point(root.Bounds.Width / 2, root.Bounds.Height + 1), s.Window)!.Value;
+        var nextTop = nextRoot.TranslatePoint(new Point(nextRoot.Bounds.Width / 2, 1.5), s.Window)!.Value;
+        Assert.Equal(below.Y + 2, nextRoot.TranslatePoint(default, s.Window)!.Value.Y);
+
+        s.Pull(below, 2);
+        Assert.Equal(ScheduleDragState.Resizing, s.Drag.State);
+        Assert.Same(s.BlockVm(id), s.Schedule.Dragged);
+        s.Key(Key.Escape);
+        s.Up(below + new Point(0, 2));
+
+        s.Pull(nextTop, 4);
+        Assert.Equal(ScheduleDragState.Moving, s.Drag.State);
+        Assert.Same(s.BlockVm(next), s.Schedule.Dragged);
+        Assert.False(s.BlockVm(id).IsResizing);
+        s.Key(Key.Escape);
+        s.Up(nextTop + new Point(0, 4));
+        Assert.Empty(s.Changes);
+        AssertAtRest(s);
+    }
+
     // ---- Resize ----------------------------------------------------------------------------------------------------------
 
     [AvaloniaFact]

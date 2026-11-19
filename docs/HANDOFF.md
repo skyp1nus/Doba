@@ -379,10 +379,8 @@ Schedule drag (2026-11-19), known and left as they are:
 
 - **"+N" open state** is not exposed to screen readers as expanded / collapsed (no `aria-expanded` equivalent on an
   Avalonia Button); its name says how many tasks and which times it holds.
-- **A landing block passes under the now-line** (the grid's layer 2); the prototype draws it above. Visible only when a
-  block lands across the now-line, for 0.2 s.
-- **The focus outline** jumps to the block's final place at once during a 90 ms key-step slide (composition offsets do
-  not move adorners).
+- **While a block lands** (0.2 s) the whole blocks layer is drawn over the now-line, not only the landing block as in
+  the prototype: another block crossing the line hides it for that moment.
 - **Shadows and dashes**: the lifted copy's and the "+N" list's box shadows spread 1–2 colour levels differently from
   Chromium, and the dash pattern on vertical edges starts at another phase.
 - **Touch**: no long-press drag (the prototype has none either).

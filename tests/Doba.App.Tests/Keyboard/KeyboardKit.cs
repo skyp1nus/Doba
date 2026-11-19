@@ -257,11 +257,19 @@ internal static class KeyboardKit
             .FirstOrDefault(a => a.IsEffectivelyVisible && ReferenceEquals(AdornerLayer.GetAdornedElement(a), c));
 
     /// <summary>
-    /// Pixel check: with <paramref name="c"/> focused from the keyboard its ring is drawn on at least three of its four
-    /// edges, compared with a frame where <paramref name="neutral"/> has focus. The ring's colour, width and offset are
-    /// read from the control's <see cref="FocusRing"/> adorner: the app's default is 1 px Brush.Border.Focus with CSS
-    /// <c>outline-offset: -2px</c> (the line lies 1 px inside the edge); a schedule block's is 1.5 px Schedule.Focus
-    /// 2 px outside it.
+    /// The ring the design gives <paramref name="c"/>: a schedule block's open button has the prototype's
+    /// <c>.sbm:focus-visible</c> outline (1.5 px Schedule.Focus, 2 px outside the edge); every other control the app's
+    /// default (1 px Brush.Border.Focus with CSS <c>outline-offset: -2px</c>, the line 1 px inside the edge).
+    /// </summary>
+    public static (Color Colour, double Thickness, double Offset) DesignRing(Control c) =>
+        c is Button { Name: "PART_Open" } && c.FindAncestorOfType<ScheduleTimeline>() is not null
+            ? (Pixels.Resource("Brush.Schedule.Focus"), 1.5, 2)
+            : (Pixels.Resource("Brush.Border.Focus"), 1, -2);
+
+    /// <summary>
+    /// Pixel check: with <paramref name="c"/> focused from the keyboard its ring is the design's
+    /// (<see cref="DesignRing"/>: the adorner's colour, width and offset are asserted) and is drawn in that colour, at that
+    /// place, on at least three of its four edges, compared with a frame where <paramref name="neutral"/> has focus.
     /// </summary>
     public static void AssertRingDrawn(ShellFixture shell, Control c, Control neutral)
     {
@@ -274,10 +282,14 @@ internal static class KeyboardKit
         shell.Settle();
         using var after = Frame(shell);
 
+        var (colour, thickness, offset) = DesignRing(c);
         var adorner = RingOf(c) ?? throw new InvalidOperationException(Describe(c) + " has no focus ring.");
-        var stroke = adorner.Stroke is ISolidColorBrush brush ? brush.Color : throw new InvalidOperationException("Ring stroke is not a solid colour.");
-        var ring = Color.FromRgb(stroke.R, stroke.G, stroke.B);
-        var line = adorner.Offset + (adorner.StrokeThickness / 2); // the stroke's centre line, outward from the edge
+        var what = $"{Describe(c)} ({c.Theme?.TargetType?.Name ?? c.GetType().Name})";
+        Assert.True(adorner.Stroke is ISolidColorBrush brush && brush.Color == colour, what + ": focus ring is not the design's colour.");
+        Assert.True(adorner.StrokeThickness == thickness, $"{what}: focus ring is {adorner.StrokeThickness} px, not {thickness}.");
+        Assert.True(adorner.Offset == offset, $"{what}: focus ring offset is {adorner.Offset}, not {offset}.");
+        var ring = Color.FromRgb(colour.R, colour.G, colour.B);
+        var line = offset + (thickness / 2); // the stroke's centre line, outward from the edge
         var r = Bounds(c, shell.Window);
         var midX = (int)Math.Round(r.Center.X);
         var midY = (int)Math.Round(r.Center.Y);
@@ -305,7 +317,7 @@ internal static class KeyboardKit
             drawn += hit ? 1 : 0;
         }
 
-        Assert.True(drawn >= 3, $"{Describe(c)} ({c.Theme?.TargetType?.Name ?? c.GetType().Name}): focus ring drawn on {drawn}/4 edges.");
+        Assert.True(drawn >= 3, $"{what}: focus ring drawn on {drawn}/4 edges.");
     }
 
     private static WriteableBitmap Frame(ShellFixture shell)

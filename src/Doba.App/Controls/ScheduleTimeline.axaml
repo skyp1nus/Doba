@@ -3,7 +3,7 @@
   "SCHEDULE · 07–23" (margin 4 0 6), a polite live region, then the grid's own scroller (padding 8 8 8 0, margin-right −8)
   holding the 770 px grid: hour lines every 48 px, task blocks in overlap columns, "+N" stand-ins, the accent now-line,
   the dragged copy, the time chip and the "+N" list. Layers: blocks and "+N" → now-line (2) → copy (3) → chip (4) →
-  list (5). DataContext = ScheduleViewModel. The screen draws the aside frame (380 px, padding-left 24, Border.Subtle
+  list (5); while the dragged block lands the blocks rise to 3 (ScheduleTimeline.Motion.cs). DataContext = ScheduleViewModel. The screen draws the aside frame (380 px, padding-left 24, Border.Subtle
   left border).
 -->
 <UserControl xmlns="https://github.com/avaloniaui"
@@ -506,9 +506,12 @@
 
         <!-- The "+N" list (layer 5, role dialog): 232 px at x 124, under the "+N" or above it; head, then one 32 px row
              per folded task (checkbox button, open button with the title and the range). Shown, filled and placed by
-             ScheduleTimeline.axaml.cs. -->
+             ScheduleTimeline.axaml.cs. Its DataContext is the open "+N" (never the inherited ScheduleViewModel, which its
+             compiled bindings are not typed for); its TabIndex follows that "+N"'s, so it comes right after it. -->
         <Border Name="PART_List"
                 x:DataType="c:ScheduleOverflowViewModel"
+                DataContext="{x:Null}"
+                KeyboardNavigation.TabIndex="{Binding TabOrder}"
                 IsVisible="False"
                 ZIndex="5"
                 HorizontalAlignment="Left"

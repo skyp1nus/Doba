@@ -157,8 +157,7 @@ public partial class ScheduleTimeline : UserControl
             return;
         }
 
-        PART_List.DataContext = open;
-        KeyboardNavigation.SetTabIndex(PART_List, open.TabOrder);
+        PART_List.DataContext = open; // its TabIndex is bound to the "+N"'s TabOrder (a re-projection can renumber it)
         PART_List.IsVisible = true;
 
         // sbPop: opacity 0 → 1, translateY −4 → 0, scale 0.98 → 1 from the corner next to the "+N" (top right below it,
