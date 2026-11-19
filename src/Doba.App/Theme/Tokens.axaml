@@ -332,6 +332,11 @@
   <!-- Package regions for theme-independent tokens (sizes, spacing, radii, font sizes). A work package adds tokens
        only inside its own region below; the shared tokens above are never moved or renamed. -->
   <!-- == Shell == -->
+  <!-- Tray context menu (Theme/Controls/Menu.axaml): the Priority / Tag popover's geometry. -->
+  <Thickness x:Key="Space.Menu.Padding">5</Thickness>          <!-- popover padding 6 minus the 1 px ring -->
+  <Thickness x:Key="Space.Menu.Item">8,0</Thickness>           <!-- item padding 0 8px -->
+  <Thickness x:Key="Space.Menu.Separator">-5,4</Thickness>     <!-- full-width 1 px rule with 4 px above and below -->
+  <x:Double x:Key="Size.Menu.MinWidth">180</x:Double>
   <x:Double x:Key="Size.Overlay.BackdropBlur">3</x:Double> <!-- modal shade: backdrop-filter blur(3px) of what is behind an overlay -->
   <x:Double x:Key="Size.Shell.Search">380</x:Double>      <!-- title-bar search: flex 0 1 380px -->
   <x:Double x:Key="Size.Shell.SearchMin">160</x:Double>   <!-- … min-width 160px -->

@@ -20,6 +20,7 @@
         <MergeResourceInclude Source="avares://Doba/Theme/Controls/Dialog.axaml" />
         <MergeResourceInclude Source="avares://Doba/Theme/Controls/Search.axaml" />
         <MergeResourceInclude Source="avares://Doba/Theme/Controls/TimeWheel.axaml" />
+        <MergeResourceInclude Source="avares://Doba/Theme/Controls/Menu.axaml" />
       </ResourceDictionary.MergedDictionaries>
     </ResourceDictionary>
   </Styles.Resources>

@@ -1,0 +1,87 @@
+<!--
+  Menus. The only menu in the app is the tray icon's context menu (Open Doba / New task / Quit): on Windows Avalonia
+  shows a NativeMenu from a tray icon as a small borderless, transparent window holding a MenuFlyoutPresenter with one
+  MenuItem per entry and a Separator between groups. Doba ships no stock theme, so without these three ControlThemes
+  that window has nothing to draw and the menu is invisible.
+
+  The look is the task dialog's Priority / Tag popover (design markup 774–785): Bg.Popover, radius Radius.Panel, a 1 px
+  Border.Popover ring, padding 6; items 32 px high, radius Radius.Item, 13 px Text.Primary, hover Overlay.Press over
+  Motion.HoverFast. The popover's drop shadow is left out: the menu window is exactly as large as the menu, so a
+  shadow would be clipped or would push the menu away from the pointer.
+-->
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:m="using:Doba.App.Motion">
+
+  <ControlTheme x:Key="{x:Type MenuFlyoutPresenter}" TargetType="MenuFlyoutPresenter">
+    <Setter Property="Background" Value="{DynamicResource Brush.Bg.Popover}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Popover}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Radius.Panel}" />
+    <Setter Property="Padding" Value="{DynamicResource Space.Menu.Padding}" />
+    <Setter Property="MinWidth" Value="{DynamicResource Size.Menu.MinWidth}" />
+    <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
+    <Setter Property="FontSize" Value="{DynamicResource FontSize.13}" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Name="PART_LayoutRoot"
+                Background="{TemplateBinding Background}"
+                BorderBrush="{TemplateBinding BorderBrush}"
+                BorderThickness="{TemplateBinding BorderThickness}"
+                CornerRadius="{TemplateBinding CornerRadius}"
+                Padding="{TemplateBinding Padding}">
+          <ItemsPresenter Name="PART_ItemsPresenter"
+                          ItemsPanel="{TemplateBinding ItemsPanel}"
+                          KeyboardNavigation.TabNavigation="Continue" />
+        </Border>
+      </ControlTemplate>
+    </Setter>
+  </ControlTheme>
+
+  <ControlTheme x:Key="{x:Type MenuItem}" TargetType="MenuItem">
+    <Setter Property="Height" Value="{DynamicResource Size.NavItem}" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Radius.Item}" />
+    <Setter Property="Padding" Value="{DynamicResource Space.Menu.Item}" />
+    <Setter Property="FontSize" Value="{DynamicResource FontSize.13}" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Name="PART_LayoutRoot"
+                Background="{TemplateBinding Background}"
+                CornerRadius="{TemplateBinding CornerRadius}"
+                Padding="{TemplateBinding Padding}">
+          <Border.Transitions>
+            <Transitions>
+              <BrushTransition Property="Background" Duration="{x:Static m:MotionTimes.HoverFast}" Easing="{x:Static m:Motion.EaseStd}" />
+            </Transitions>
+          </Border.Transitions>
+          <ContentPresenter Name="PART_HeaderPresenter"
+                            VerticalAlignment="Center"
+                            Content="{TemplateBinding Header}"
+                            ContentTemplate="{TemplateBinding HeaderTemplate}" />
+        </Border>
+      </ControlTemplate>
+    </Setter>
+    <!-- :selected is the row under the pointer or the keyboard cursor. -->
+    <Style Selector="^:selected /template/ Border#PART_LayoutRoot">
+      <Setter Property="Background" Value="{DynamicResource Brush.Overlay.Press}" />
+    </Style>
+    <Style Selector="^:disabled">
+      <Setter Property="Opacity" Value="{DynamicResource Opacity.Disabled}" />
+    </Style>
+  </ControlTheme>
+
+  <ControlTheme x:Key="{x:Type Separator}" TargetType="Separator">
+    <Setter Property="Focusable" Value="False" />
+    <Setter Property="Background" Value="{DynamicResource Brush.Border.Default}" />
+    <Setter Property="Height" Value="1" />
+    <Setter Property="Margin" Value="{DynamicResource Space.Menu.Separator}" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Background="{TemplateBinding Background}" />
+      </ControlTemplate>
+    </Setter>
+  </ControlTheme>
+</ResourceDictionary>
