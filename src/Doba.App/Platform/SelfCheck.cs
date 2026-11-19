@@ -180,18 +180,18 @@ internal static class SelfCheck
         {
             using var tray = new AvaloniaTrayIcon();
             tray.IsVisible = true;
-            if (!tray.IsCreated || !tray.IsVisible)
+            if (!tray.IsCreated || !tray.IsNative || !tray.IsVisible)
             {
                 throw new InvalidOperationException("the tray icon was not created");
             }
 
             tray.IsVisible = false;
         });
-        // Only Avalonia's managed TrayIcon state is observable here; whether Shell_NotifyIcon put an icon in the
-        // notification area is not reported back, so that part stays a manual check.
+        // The native implementation being attached is what this proves (without it no icon can ever appear); the
+        // result of Shell_NotifyIcon itself is not reported back, so seeing the icon stays a manual check.
         report.Line("tray", ok, ok
-            ? "TrayIcon object created, set visible, hidden and removed (that Windows shows the icon needs a person to look)"
-            : "tray icon failed");
+            ? "native tray icon attached to the application, set visible, hidden and removed (seeing it in the notification area needs a person)"
+            : "tray icon failed: no native tray icon was attached");
     }
 
     [SupportedOSPlatform("windows")]

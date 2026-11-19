@@ -313,8 +313,10 @@ Known gaps left by the final review (not fixed, with the reason):
 - **Idle memory at 10,000 tasks** is 122 MB, 2 MB over the 120 MB aim (section 4).
 - **New-row entrance on a reused week card**: a card that is re-pointed when the week changes does not play the
   entrance; a just-created task is not expected in that situation.
-- **Tray availability**: `AvaloniaTrayIcon.IsSupported` is always true on Windows, so "with no tray, closing quits"
-  only applies off Windows.
+- **Tray icon** (found by the owner on 2026-11-19, fixed): the icon never appeared, because an Avalonia 12 `TrayIcon` gets
+  its native icon only once it is in the application's `TrayIcon.Icons` collection and Doba created it standalone;
+  closing then hid the window with nothing to bring it back. The icon is now attached there, `IsSupported` turns false
+  when no native icon could be created (closing then quits), and `--selfcheck` fails without the native icon.
 - **Daily backup failures** go to the debugger trace only (not to `doba.log`, no notice).
 - **Database rows are not validated on load**; the store normalises every task it loads instead (bad values are
   corrected in memory and on the next write of that task).

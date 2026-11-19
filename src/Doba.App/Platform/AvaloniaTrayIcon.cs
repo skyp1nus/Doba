@@ -1,3 +1,4 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Platform;
 
@@ -8,6 +9,12 @@ namespace Doba.App.Platform;
 /// left click opens the window, the context menu has Open Doba / New task / Quit. The native icon is created the first
 /// time <see cref="IsVisible"/> becomes true (never on the startup path) and removed by <see cref="Dispose"/>.
 /// </summary>
+/// <remarks>
+/// An Avalonia 12 <see cref="TrayIcon"/> has no native icon until it is in the application's
+/// <see cref="TrayIcon.IconsProperty"/> collection (that is what attaches the platform implementation), so the icon is
+/// added there. If the platform gives no native icon (headless, or the attach fails) <see cref="IsSupported"/> turns
+/// false, and closing the window quits instead of hiding it where nothing could bring it back.
+/// </remarks>
 internal sealed class AvaloniaTrayIcon : ITrayIcon
 {
     /// <summary>The multi-size app icon (16–256 px), also the window and exe icon.</summary>
@@ -15,18 +22,23 @@ internal sealed class AvaloniaTrayIcon : ITrayIcon
 
     private TrayIcon? _icon;
     private bool _disposed;
+    private bool _unavailable;
 
-    public bool IsSupported => true;
+    /// <summary>True until an attempt to create the icon found no native tray on this platform.</summary>
+    public bool IsSupported => !_unavailable;
 
     /// <summary>True once the native icon exists (it may be hidden again).</summary>
     internal bool IsCreated => _icon is not null;
+
+    /// <summary>The platform implementation is attached (Windows: the icon Shell_NotifyIcon works on).</summary>
+    internal bool IsNative => _icon?.NativeMenuExporter is not null;
 
     public bool IsVisible
     {
         get => _icon?.IsVisible ?? false;
         set
         {
-            if (_disposed || value == IsVisible)
+            if (_disposed || _unavailable || value == IsVisible)
             {
                 return;
             }
@@ -34,6 +46,10 @@ internal sealed class AvaloniaTrayIcon : ITrayIcon
             if (value && _icon is null)
             {
                 _icon = Create();
+                if (_icon is null)
+                {
+                    return;
+                }
             }
 
             if (_icon is not null)
@@ -66,9 +82,9 @@ internal sealed class AvaloniaTrayIcon : ITrayIcon
         _disposed = true;
         if (_icon is { } icon)
         {
-            icon.IsVisible = false;
-            icon.Dispose();
             _icon = null;
+            icon.IsVisible = false;
+            Release(icon);
         }
 
         OpenRequested = null;
@@ -76,8 +92,25 @@ internal sealed class AvaloniaTrayIcon : ITrayIcon
         QuitRequested = null;
     }
 
-    private TrayIcon Create()
+    /// <summary>Takes the icon out of the application's collection (which detaches the native icon) and disposes it.</summary>
+    private static void Release(TrayIcon icon)
     {
+        if (Application.Current is { } app && TrayIcon.GetIcons(app) is { } icons)
+        {
+            icons.Remove(icon);
+        }
+
+        icon.Dispose();
+    }
+
+    private TrayIcon? Create()
+    {
+        if (Application.Current is not { } app)
+        {
+            _unavailable = true;
+            return null;
+        }
+
         var open = new NativeMenuItem("Open Doba");
         open.Click += (_, _) => OpenRequested?.Invoke(this, EventArgs.Empty);
         var newTask = new NativeMenuItem("New task");
@@ -93,6 +126,34 @@ internal sealed class AvaloniaTrayIcon : ITrayIcon
             IsVisible = false,
         };
         icon.Clicked += (_, _) => OpenRequested?.Invoke(this, EventArgs.Empty);
+
+        // Attaching is what creates the native icon: Avalonia does it for icons in the application's collection.
+        try
+        {
+            if (TrayIcon.GetIcons(app) is { } icons)
+            {
+                icons.Add(icon);
+            }
+            else
+            {
+                TrayIcon.SetIcons(app, [icon]);
+            }
+        }
+        catch (InvalidOperationException)
+        {
+            // No windowing platform that can host a tray icon.
+        }
+        catch (NotSupportedException)
+        {
+        }
+
+        if (icon.NativeMenuExporter is null)
+        {
+            _unavailable = true;
+            Release(icon);
+            return null;
+        }
+
         return icon;
     }
 }
