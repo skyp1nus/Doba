@@ -22,7 +22,7 @@ internal sealed class LifecycleHarness : IDisposable
     private readonly FakePlatform? _platform;
     private bool _exited;
 
-    private LifecycleHarness(AppServices app, FakePlatform? platform, LifecycleOptions options)
+    private LifecycleHarness(AppServices app, FakePlatform? platform, LifecycleOptions options, Action<AppLifecycle>? afterStart = null)
     {
         _animationsWere = AppMotion.SystemAnimationsEnabled;
         App = app;
@@ -30,6 +30,7 @@ internal sealed class LifecycleHarness : IDisposable
         Window = ShellComposition.CreateMainWindow(app, Application.Current!);
         Lifecycle = new AppLifecycle(app, Window, options, () => ShutdownCalls++);
         Lifecycle.Start();
+        afterStart?.Invoke(Lifecycle);
         if (Lifecycle.ShowsWindowAtStart)
         {
             Window.Show();
@@ -52,11 +53,13 @@ internal sealed class LifecycleHarness : IDisposable
 
     public MainViewModel Vm => Window.ViewModel!;
 
-    /// <summary>A demo app (DemoData, fixed clock) on fakes.</summary>
-    public static LifecycleHarness Demo(FakePlatform? platform = null, LifecycleOptions? options = null, AppSettings? settings = null)
+    /// <summary>A demo app (DemoData, fixed clock) on fakes. <paramref name="afterStart"/> runs right after
+    /// <see cref="AppLifecycle.Start"/>, before anything Start posted has run (what an early show request does).</summary>
+    public static LifecycleHarness Demo(FakePlatform? platform = null, LifecycleOptions? options = null, AppSettings? settings = null,
+        Action<AppLifecycle>? afterStart = null)
     {
         platform ??= new FakePlatform();
-        return new LifecycleHarness(AppServices.CreateDemo(settings, platform.Services), platform, options ?? new LifecycleOptions());
+        return new LifecycleHarness(AppServices.CreateDemo(settings, platform.Services), platform, options ?? new LifecycleOptions(), afterStart);
     }
 
     /// <summary>A real database in <paramref name="folder"/> with a fixed clock, on fakes; <paramref name="seed"/> runs

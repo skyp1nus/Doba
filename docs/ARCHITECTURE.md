@@ -204,10 +204,11 @@ Motion/                 Motion (tokens), MotionTimes, Animator (+ MotionHandle, 
                         SidebarCollapse, MotionSync.
 Platform/               Interfaces + PlatformServices / PlatformPlan, AvaloniaTrayIcon, AutostartCommand, CompletionSound,
                         SelfCheck, StartupError; Windows/ (NativeMethods, PlatformWindow, WindowsAutostart,
-                        WindowsHotkey, WindowsPreferences, WindowsShell).
-Services/               AppLifecycle, DataMaintenance, DayClock, KeyedSync, TaskActions, SettingsService
-                        (ISettingsService), SingleInstance, DataLog.
-Diagnostics/            PerfProbe, PerfSession, FrameMeter, FrameStats, LongFrames, WeekScenario, OverlayScenario.
+                        WindowsHotkey, WindowsPreferences, WindowsShell, WindowsProcessMemory).
+Services/               AppLifecycle, HiddenMemoryRelease, DataMaintenance, DayClock, KeyedSync, TaskActions,
+                        SettingsService (ISettingsService), SingleInstance, DataLog.
+Diagnostics/            PerfProbe, PerfSession, FrameMeter, FrameStats, LongFrames, WeekScenario, OverlayScenario,
+                        TrayScenario, MemorySample.
 ```
 
 ### 5.3 Shell
@@ -347,6 +348,7 @@ public sealed partial record PlatformServices(IAutostart Autostart, IGlobalHotke
     public static PlatformServices Create(PlatformPlan plan);      // Windows parts the plan allows, no-ops otherwise
     public static PlatformServices ForLaunch(bool demo, bool customDataFolder);
     public static PlatformServices NoOp();                          // tests, headless, non-Windows
+    public IProcessMemory Memory { get; init; }                     // real on Windows whatever the plan; no-op elsewhere
 }
 public sealed record PlatformPlan(bool Autostart, bool Hotkey, bool Tray, bool Bridge)
 {
@@ -359,8 +361,10 @@ public sealed record PlatformPlan(bool Autostart, bool Hotkey, bool Tray, bool B
 * `IAutostart` (HKCU `...\CurrentVersion\Run`, value `Doba` = `"<exe>" --minimized`), `IGlobalHotkey` (Ctrl+Alt+N,
   `RegisterHotKey`), `ISystemPreferences` (OS animation setting, backdrop support, Mica preference, `AnimationsChanged`,
   `ClockChanged` from `WM_TIMECHANGE`), `IShellIntegration` (Explorer for Open folder, `PlaySound` of the synthesized
-  click), `ITrayIcon` (Avalonia `TrayIcon`, menu Open Doba / New task / Quit). Preferences and Shell are always the
-  platform's own (read-only or click-driven).
+  click), `ITrayIcon` (Avalonia `TrayIcon`, menu Open Doba / New task / Quit), `IProcessMemory` (hands unused memory
+  back to the OS: `IDXGIDevice3::Trim` on ANGLE's Direct3D 11 device, `HeapOptimizeResources`; used only by
+  `HiddenMemoryRelease`, §5.8). Preferences, Shell and Memory are always the platform's own (read-only, click-driven
+  or limited to this process).
 * Windows code is in `Platform/Windows/*`, uses `DllImport` with blittable signatures only, and receives `WM_HOTKEY`,
   `WM_SETTINGCHANGE` and `WM_TIMECHANGE` on Doba's own hidden `PlatformWindow`.
 * `SelfCheck` (`--selfcheck`): nine checks on a demo window (HANDOFF §2). `StartupError`: stderr + native message box.
@@ -412,7 +416,15 @@ Doba.exe: BridgeHost (pool threads) → Dispatcher.UIThread → ToolExecutor →
 * `AppLifecycle`: tray and close-to-tray, `--minimized` start, hotkey registration after `Opened`, after the first
   frame: `DataMaintenance.Start`, `ClaudeAccessService.Start` (§5.10), autostart reconcile (default location only), tray icon; flush on hide-to-tray, Quit,
   Exit and session end (3 s bound); `ShowWindow`, `QuickAdd`; `ClockChanged` → `TimeZoneInfo.ClearCachedData()` +
-  `DayClock.Check()`.
+  `DayClock.Check()`; schedules `HiddenMemoryRelease` on hide-to-tray and on a hidden start, cancels it on show and Quit.
+* `HiddenMemoryRelease`: once the window has stayed hidden in the tray for 30 s (`DelayMs`), gives back what a hidden
+  window does not need, once per hide: Skia's GPU resource cache and the graphics driver's buffers, the garbage and the
+  free regions of the managed heap (one aggressive compacting collection, then finalizers), the free blocks of the
+  native heaps. Views, scroll positions and view-models are kept, so the window comes back as it was; the working set
+  is never trimmed by a system call. The GPU cache is reachable only on the render thread while something is drawn and
+  a hidden window draws nothing, so a 1×1 composition visual that draws nothing is attached to the window at `Opened`
+  and the release renders that visual off screen (`Compositor.CreateCompositionVisualSnapshot`); its handler leases
+  Skia's `GRContext` there. Numbers: HANDOFF §4.
 * `DataMaintenance`: carry-over (UI thread, one `Batch`) and daily backup (background, serialised, failures to Trace)
   after the first frame and on every `DayChanged`; never in demo.
 * `DayClock`, `KeyedSync`, `TaskActions`, `SettingsService`, `SingleInstance` (per-session named mutex
@@ -422,8 +434,10 @@ Doba.exe: BridgeHost (pool threads) → Dispatcher.UIThread → ToolExecutor →
 
 `PerfProbe` (startup marks, one branch when off), `PerfSession` (prints the `doba-perf …` lines and ends the app for
 the perf flags), `WeekScenario` and `OverlayScenario` (driven navigations / dialog cycles with `FrameMeter` statistics
-from render-thread and UI-thread frame callbacks, GC attribution in `LongFrames`). Frame times are proxies, not GPU
-present times.
+from render-thread and UI-thread frame callbacks, GC attribution in `LongFrames`), `TrayScenario` (memory samples,
+`MemorySample`, after the start, after every screen, hidden in the tray and shown again; the time from the show call to
+the first rendered frame; the frames of one walk over the screens before hiding and after the show). Frame times are
+proxies, not GPU present times.
 
 ## 6. Command line
 
@@ -440,7 +454,9 @@ value that is itself a flag, an empty `--data` or an out-of-range number is an e
 | `--exit-after-first-frame` | Quit once the first frame with data is rendered. |
 | `--perf-idle-seconds N` | 1–600, implies `--perf`: idle sample after N s, then quit. |
 | `--perf-scenario week` | Implies `--perf`: Week navigation scenario, then the overlay scenario; quit. |
-| `--perf-rounds N` | 1–100: rounds of the scenario. |
+| `--perf-scenario tray` | Implies `--perf`: memory after the start, after every screen, hidden in the tray, shown again; quit. |
+| `--perf-rounds N` | 1–100: rounds of the week scenario. |
+| `--perf-hidden-seconds N` | 1–600: how long the tray scenario stays hidden (default 60). |
 
 Exit codes: 0 normal or handed over to the running instance, 1 self-check failure, 2 bad command line, 3 the data
 folder could not be opened (`StartupFailedException`; nothing in the folder is changed).

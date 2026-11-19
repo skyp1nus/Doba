@@ -1,5 +1,6 @@
 using System.Runtime.Versioning;
 using Avalonia.Controls;
+using Avalonia.Platform;
 using Doba.Bridge.Wire;
 using Doba.App.Platform.Windows;
 
@@ -7,6 +8,10 @@ namespace Doba.App.Platform;
 
 public sealed partial record PlatformServices
 {
+    /// <summary>Returning unused memory to the OS. It touches only this process, so every Windows set has the real
+    /// one whatever the <see cref="PlatformPlan"/> (like the preferences and the shell); no-op elsewhere.</summary>
+    public IProcessMemory Memory { get; init; } = new NoOpMemory();
+
     /// <summary>Windows implementations on Windows, no-op fallbacks elsewhere (headless tests, Linux).</summary>
     public static PlatformServices Create() => Create(PlatformPlan.Full);
 
@@ -35,7 +40,10 @@ public sealed partial record PlatformServices
             new WindowsPreferences(),
             new WindowsShell(),
             plan.Tray ? new AvaloniaTrayIcon() : new NoOpTray(),
-            plan.Bridge ? new ClaudeBridge() : new NoOpBridge());
+            plan.Bridge ? new ClaudeBridge() : new NoOpBridge())
+        {
+            Memory = new WindowsProcessMemory(),
+        };
 
     private sealed class NoOpAutostart : IAutostart
     {
@@ -75,6 +83,12 @@ public sealed partial record PlatformServices
         public event EventHandler? NewTaskRequested { add { } remove { } }
         public event EventHandler? QuitRequested { add { } remove { } }
         public void Dispose() { }
+    }
+
+    private sealed class NoOpMemory : IProcessMemory
+    {
+        public bool TrimGraphicsDevice(IPlatformGraphicsContext context) => false;
+        public void TrimNativeHeaps() { }
     }
 
     private sealed class NoOpBridge : IClaudeBridge

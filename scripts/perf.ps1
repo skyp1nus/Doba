@@ -18,9 +18,9 @@
   4. Idle memory: --perf-idle-seconds for --demo, db-348 and db-10k.
   5. Memory states: --perf-scenario tray for --demo, db-348 and db-10k. One process per run: memory 5 s after the
      start, after every screen was visited (twice), after -HiddenSeconds hidden in the tray (the window is hidden the
-     way closing it to the tray does) and after it is shown again; plus what the hidden time costs: the GCs that ran
-     while hidden, the time from the show call to the first rendered frame, and the frames of one walk over all
-     screens before hiding and right after the show.
+     way closing it to the tray does) and after it is shown again; plus what the hidden time costs: the memory
+     release that runs 30 s after the hide (its GC pause, the GPU cache it emptied), the time from the show call to
+     the first rendered frame, and the frames of one walk over all screens before hiding and right after the show.
   6. Frames: --perf-scenario week (Week view: next/previous, Inbox and back, Month and back; then the New task dialog
      opened and closed with the backdrop blur and without it) for --demo, db-10k and db-dense-compact.
   Prints one summary table (median and worst) and saves it under artifacts\perf\.
@@ -406,9 +406,11 @@ try {
                     (& $pair "$key-working-set-mb" 'F1'), (& $pair "$key-private-mb" 'F1'),
                     (F (Get-Median (& $col "$key-managed-heap-mb")) 'F1'), (F (Get-Median (& $col "$key-gc-committed-mb")) 'F1')))
             }
-            $showRows.Add(('{0,-8} {1,4}  {2,-15} {3,-15} {4,-14} {5,-19} {6,-19} {7,-13} {8,-13} {9,-11}' -f $set, $rows.Count,
-                (& $pair 'show-to-rendered-ms' 'F0'), (& $pair 'show-call-ms' 'F0'),
-                ((F (Get-Median (& $col 'hidden-gc-count'))) + ' / ' + (F (Get-Median (& $col 'hidden-gc-pause-ms')) 'F1')),
+            $released = @($rows | Where-Object { (V $_ 'release') -eq '1' }).Count
+            $cache = if ($released -eq 0) { '-' } else { (F (Get-Median (& $col 'release-gpu-cache-before-mb')) 'F1') + ' -> ' + (F (Get-Median (& $col 'release-gpu-cache-after-mb')) 'F1') }
+            $showRows.Add(('{0,-8} {1,4}  {2,-15} {3,-15} {4,-9} {5,-14} {6,-14} {7,-19} {8,-19} {9,-13} {10,-13} {11,-11}' -f $set, $rows.Count,
+                (& $pair 'show-to-rendered-ms' 'F0'), (& $pair 'show-call-ms' 'F0'), "$released / $($rows.Count)",
+                ((F (Get-Median (& $col 'hidden-gc-count'))) + ' / ' + (F (Get-Median (& $col 'hidden-gc-pause-ms')) 'F1')), $cache,
                 ((F (Get-Median (& $col 'before-render-p95-ms')) 'F1') + ' / ' + (F (Get-Worst (& $col 'before-render-max-ms')) 'F1')),
                 ((F (Get-Median (& $col 'after-render-p95-ms')) 'F1') + ' / ' + (F (Get-Worst (& $col 'after-render-max-ms')) 'F1')),
                 ((F (Get-Worst (& $col 'before-render-over-33.3ms'))) + ' / ' + (F (Get-Worst (& $col 'after-render-over-33.3ms')))),
@@ -421,8 +423,9 @@ try {
         $stateRows | ForEach-Object { $report.Add($_) }
         $report.Add('')
         $report.Add('Back from the tray (ms; show->rendered and show call = median / worst; frames of one walk over all screens: before hiding / right after the show)')
-        $report.Add('  GC hidden = collections while hidden / their total pause; render = p95 (median of runs) / max (worst run); n/a = the window was covered')
-        $report.Add(('{0,-8} {1,4}  {2,-15} {3,-15} {4,-14} {5,-19} {6,-19} {7,-13} {8,-13} {9,-11}' -f 'set', 'runs', 'show->rendered', 'show call', 'GC hidden', 'render before', 'render after', '>33 ms b / a', 'ui max b / a', '>50 ms b / a'))
+        $report.Add('  released = runs in which the hidden-time memory release ran; GC hidden = collections while hidden / their total pause;')
+        $report.Add('  GPU cache = Skia GPU cache MB before -> after the release; render = p95 (median of runs) / max (worst run); n/a = the window was covered')
+        $report.Add(('{0,-8} {1,4}  {2,-15} {3,-15} {4,-9} {5,-14} {6,-14} {7,-19} {8,-19} {9,-13} {10,-13} {11,-11}' -f 'set', 'runs', 'show->rendered', 'show call', 'released', 'GC hidden', 'GPU cache', 'render before', 'render after', '>33 ms b / a', 'ui max b / a', '>50 ms b / a'))
         $showRows | ForEach-Object { $report.Add($_) }
         $report.Add('')
     }

@@ -19,8 +19,9 @@ public sealed record LifecycleOptions(bool StartMinimized = false, bool ManageAu
 /// Makes Doba a resident Windows app around the main window: tray icon and close-to-tray, the global quick-add hotkey,
 /// launch-at-startup reconcile, OS animations and backdrop, carry-over and daily backup after the first frame and at
 /// midnight (<see cref="DataMaintenance"/>), the Claude bridge while Claude access is on
-/// (<see cref="ClaudeAccessService"/>), <see cref="DayClock.Check"/> on activation (sleep through midnight), and
-/// flushing pending writes on hide-to-tray, Quit, Exit and Windows session end. Everything goes through
+/// (<see cref="ClaudeAccessService"/>), <see cref="DayClock.Check"/> on activation (sleep through midnight),
+/// flushing pending writes on hide-to-tray, Quit, Exit and Windows session end, and giving unused memory back while
+/// the window stays hidden in the tray (<see cref="HiddenMemoryRelease"/>). Everything goes through
 /// <see cref="AppServices.Platform"/>, so tests and <c>--demo</c> run it on no-op or fake platform services.
 /// </summary>
 /// <remarks>
@@ -60,6 +61,7 @@ public sealed class AppLifecycle : IAsyncDisposable
         _settings = app.Settings.Current;
         Maintenance = new DataMaintenance(app);
         ClaudeAccess = new ClaudeAccessService(app, OpenEditId);
+        HiddenMemory = new HiddenMemoryRelease(window, app.Platform.Memory, app.LogProblem);
     }
 
     /// <summary>Carry-over and daily backup.</summary>
@@ -67,6 +69,10 @@ public sealed class AppLifecycle : IAsyncDisposable
 
     /// <summary>The Claude bridge pipe, open while Settings → Data → Claude access is on.</summary>
     public ClaudeAccessService ClaudeAccess { get; }
+
+    /// <summary>Gives unused memory back once the window has stayed hidden in the tray for a while; cancelled by
+    /// showing it.</summary>
+    public HiddenMemoryRelease HiddenMemory { get; }
 
     /// <summary>False when <c>--minimized</c> starts the app hidden in the tray (the window is not shown at all).</summary>
     public bool ShowsWindowAtStart { get; private set; } = true;
@@ -127,6 +133,12 @@ public sealed class AppLifecycle : IAsyncDisposable
                 {
                     RegisterHotkey();
                     AfterFirstFrame();
+                    // Hidden from the start: what loading the data left behind goes back too. Not when a show request
+                    // (a second launch) was handled before this job: the window is open then.
+                    if (IsHiddenInTray)
+                    {
+                        HiddenMemory.Schedule();
+                    }
                 }, DispatcherPriority.Background);
             }
             else
@@ -145,6 +157,7 @@ public sealed class AppLifecycle : IAsyncDisposable
         }
 
         IsHiddenInTray = false;
+        HiddenMemory.Cancel();
         if (!_window.IsVisible)
         {
             _window.Show();
@@ -170,7 +183,8 @@ public sealed class AppLifecycle : IAsyncDisposable
         }
     }
 
-    /// <summary>Hides the window to the tray and flushes pending writes in the background.</summary>
+    /// <summary>Hides the window to the tray, flushes pending writes in the background and schedules the memory
+    /// release for when it has stayed hidden (<see cref="HiddenMemoryRelease.DelayMs"/>).</summary>
     public void HideToTray()
     {
         if (_disposed || _quitting)
@@ -181,6 +195,7 @@ public sealed class AppLifecycle : IAsyncDisposable
         IsHiddenInTray = true;
         _window.Hide();
         LastFlush = _app.FlushAsync();
+        HiddenMemory.Schedule();
     }
 
     /// <summary>Tray "Quit" (and closing with the tray off): ends the app; Exit then flushes and closes the database.</summary>
@@ -192,6 +207,7 @@ public sealed class AppLifecycle : IAsyncDisposable
         }
 
         _quitting = true;
+        HiddenMemory.Cancel();
         Platform.Tray.IsVisible = false;
         _shutdown();
     }
@@ -221,6 +237,7 @@ public sealed class AppLifecycle : IAsyncDisposable
 
         _disposed = true;
         _quitting = true;
+        HiddenMemory.Dispose();
         Unsubscribe();
         // The day clock, hotkey and tray icon belong to the UI thread; the awaits below may resume on a pool thread
         // (a backup still running when the app quits), so they are released here first.
@@ -258,6 +275,9 @@ public sealed class AppLifecycle : IAsyncDisposable
         }
 
         _opened = true;
+        // While the window renders: the visual the hidden-time memory release draws through must be in place before
+        // the first hide.
+        HiddenMemory.Attach();
         Platform.Preferences.Watch(_window);
         RegisterHotkey();
         if (_window.WindowState == WindowState.Minimized)

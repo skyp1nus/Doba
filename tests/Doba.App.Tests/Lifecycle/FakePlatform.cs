@@ -169,7 +169,23 @@ internal sealed class FakeBridge(bool supported = true) : IClaudeBridge
     }
 }
 
-/// <summary>The five fakes bundled as <see cref="PlatformServices"/> (the shell integration stays a no-op).</summary>
+/// <summary>Counts what the hidden-time memory release asks of the platform (nothing is trimmed).</summary>
+internal sealed class FakeMemory : IProcessMemory
+{
+    public int GraphicsTrims { get; private set; }
+
+    public int HeapTrims { get; private set; }
+
+    public bool TrimGraphicsDevice(Avalonia.Platform.IPlatformGraphicsContext context)
+    {
+        GraphicsTrims++;
+        return true;
+    }
+
+    public void TrimNativeHeaps() => HeapTrims++;
+}
+
+/// <summary>The six fakes bundled as <see cref="PlatformServices"/> (the shell integration stays a no-op).</summary>
 internal sealed class FakePlatform
 {
     public FakeAutostart Autostart { get; init; } = new();
@@ -182,6 +198,8 @@ internal sealed class FakePlatform
 
     public FakeBridge Bridge { get; init; } = new();
 
+    public FakeMemory Memory { get; init; } = new();
+
     public PlatformServices Services => PlatformServices.NoOp() with
     {
         Autostart = Autostart,
@@ -189,5 +207,6 @@ internal sealed class FakePlatform
         Preferences = Preferences,
         Tray = Tray,
         Bridge = Bridge,
+        Memory = Memory,
     };
 }

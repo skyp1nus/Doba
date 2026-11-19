@@ -12,7 +12,8 @@ namespace Doba.App.Diagnostics;
 /// (<c>start</c>), visits every screen twice through the shell's public navigation API and samples again
 /// (<c>screens</c>), hides the window to the tray the way closing it does, samples after the hidden time
 /// (<c>tray</c>), shows the window again, visits every screen once more and takes the last sample (<c>shown</c>).
-/// <para>The price of the hidden time is on the same line: the GCs that ran while hidden and their pause, the time
+/// <para>The price of the hidden time is on the same line: the GCs that ran while hidden and their pause, what the
+/// memory release did (<c>release-…</c>; it runs <see cref="HiddenMemoryRelease.DelayMs"/> after the hide), the time
 /// from the show call to the first frame (its callback, and the render thread finishing it), and the frames of one
 /// walk over the screens before hiding (<c>before-</c>: every view exists) and right after the show (<c>after-</c>),
 /// recorded by <see cref="FrameMeter"/>.</para>
@@ -84,9 +85,13 @@ internal static class TrayScenario
         var gcPause = GC.GetTotalPauseDuration();
         lifecycle.HideToTray();
         await Task.Delay(TimeSpan.FromSeconds(hiddenSeconds)).ConfigureAwait(true);
+        // A release that started just before the hidden time ended is let to finish, so the sample and its report
+        // describe the same state (completed already when none has started).
+        await lifecycle.HiddenMemory.Completion.ConfigureAwait(true);
         var tray = MemorySample.Take();
         gcCount = GC.CollectionCount(0) - gcCount;
         gcPause = GC.GetTotalPauseDuration() - gcPause;
+        var release = ReleaseFields(lifecycle.HiddenMemory.Last);
 
         var shownAt = Stopwatch.GetTimestamp();
         lifecycle.ShowWindow();
@@ -104,11 +109,20 @@ internal static class TrayScenario
         return string.Create(CultureInfo.InvariantCulture,
             $"doba-perf scenario=tray hidden-seconds={hiddenSeconds} steps={route.Length} step-wait-ms={StepMs} rest-ms={RestMs} " +
             $"{start.Format("start")} {screens.Format("screens")} {tray.Format("tray")} {shown.Format("shown")} " +
-            $"hidden-gc-count={gcCount} hidden-gc-pause-ms={gcPause.TotalMilliseconds:F1} " +
+            $"hidden-gc-count={gcCount} hidden-gc-pause-ms={gcPause.TotalMilliseconds:F1} {release} " +
             $"show-call-ms={PerfProbe.Ms(showCallMs)} show-to-frame-ms={PerfProbe.Ms(frameMs)} show-to-rendered-ms={PerfProbe.Ms(renderedMs)} " +
             $"{Stats(before.UiFrames, beforeFrom, beforeTo).Format("before-ui")} {Stats(before.RenderFrames, beforeFrom, beforeTo).Format("before-render")} " +
             $"{Stats(after.UiFrames, afterFrom, afterTo).Format("after-ui")} {Stats(after.RenderFrames, afterFrom, afterTo).Format("after-render")}");
     }
+
+    /// <summary>What the hidden-time memory release did (<see cref="HiddenMemoryRelease"/>); <c>release=0</c> when
+    /// none ran to its end (the hidden time was shorter than its delay, or it failed and logged why).</summary>
+    private static string ReleaseFields(HiddenMemoryReport? report) => report is null
+        ? "release=0"
+        : string.Create(CultureInfo.InvariantCulture,
+            $"release=1 release-graphics={(report.GraphicsStepRan ? 1 : 0)} release-gpu-cache-before-mb={report.GraphicsCacheBefore / (1024.0 * 1024.0):F1} " +
+            $"release-gpu-cache-after-mb={report.GraphicsCacheAfter / (1024.0 * 1024.0):F1} " +
+            $"release-driver-trim={(report.DriverTrimmed ? 1 : 0)} release-gc-pause-ms={report.GcPauseMs:F1} release-ms={report.TotalMs:F1}");
 
     private static FrameStats Stats(IReadOnlyList<double> frames, double from, double to) =>
         FrameStats.FromTimestamps(FrameMeter.Between(frames, from, to));

@@ -119,6 +119,33 @@ internal static class NativeMethods
     [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
     internal static extern int MessageBox(IntPtr hWnd, IntPtr lpText, IntPtr lpCaption, uint uType);
 
+    // --- Memory -------------------------------------------------------------------------------------------------
+
+    /// <summary>HEAP_INFORMATION_CLASS.HeapOptimizeResources (Windows 8.1+).</summary>
+    internal const int HeapOptimizeResources = 3;
+
+    /// <summary>HEAP_OPTIMIZE_RESOURCES_CURRENT_VERSION.</summary>
+    internal const uint HEAP_OPTIMIZE_RESOURCES_CURRENT_VERSION = 1;
+
+    /// <summary>HEAP_OPTIMIZE_RESOURCES_INFORMATION.</summary>
+    [StructLayout(LayoutKind.Sequential)]
+    internal struct HEAP_OPTIMIZE_RESOURCES_INFORMATION
+    {
+        public uint Version;
+        public uint Flags;
+    }
+
+    /// <summary>HeapSetInformation with HeapOptimizeResources: a null <paramref name="heapHandle"/> means every heap of
+    /// the process. Nonzero on success.</summary>
+    [DllImport(Kernel32, ExactSpelling = true)]
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+    internal static extern int HeapSetInformation(IntPtr heapHandle, int heapInformationClass,
+        ref HEAP_OPTIMIZE_RESOURCES_INFORMATION heapInformation, nuint heapInformationLength);
+
+    /// <summary>IDXGIDevice3::Trim (COM, stdcall): the only parameter is the interface pointer.</summary>
+    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+    internal delegate void DxgiDeviceTrim(IntPtr self);
+
     // --- Sound --------------------------------------------------------------------------------------------------
 
     internal const uint SND_ASYNC = 0x0001;

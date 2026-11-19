@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Avalonia.Platform;
 using Doba.Bridge.Wire;
 
 namespace Doba.App.Platform;
@@ -116,6 +117,29 @@ public interface IClaudeBridge : IDisposable
     /// then the pipe is closed. Never waits for queued work (safe on the UI thread while the app shuts down). Idempotent.
     /// </summary>
     void Stop();
+}
+
+/// <summary>
+/// Hands memory the process holds but does not use back to the OS before a long idle stretch (the window hidden in the
+/// tray; see <c>HiddenMemoryRelease</c>). Only free memory is returned: nothing here trims the working set, which would
+/// only move pages that are in use to the page file. No-op off Windows.
+/// </summary>
+public interface IProcessMemory
+{
+    /// <summary>
+    /// Asks the graphics driver to drop the internal buffers it keeps for the device behind
+    /// <paramref name="context"/> (Windows: <c>IDXGIDevice3::Trim</c> on ANGLE's Direct3D 11 device, the call Windows
+    /// documents for an app that is about to sit idle). Call it on the render thread while the context is leased,
+    /// after the caches above it were emptied. False when there is no such device (software rendering, another
+    /// backend) and nothing was done.
+    /// </summary>
+    bool TrimGraphicsDevice(IPlatformGraphicsContext context);
+
+    /// <summary>
+    /// Returns the free blocks cached inside the process's native heaps (Windows: <c>HeapOptimizeResources</c>). Any
+    /// thread.
+    /// </summary>
+    void TrimNativeHeaps();
 }
 
 /// <summary>Bundle handed to the composition root; <see cref="PlatformServices.Create()"/> picks the Windows or no-op set.</summary>

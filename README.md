@@ -87,7 +87,9 @@ exits with code 2 before anything is opened. Flags are case-insensitive.
 | `--exit-after-first-frame` | Diagnostics: quit as soon as the first frame with data is on screen (used with `--perf`). |
 | `--perf-idle-seconds N` | Diagnostics (implies `--perf`, N = 1–600): stay idle N seconds after the first frame, print memory again, then quit. |
 | `--perf-scenario week` | Diagnostics (implies `--perf`): drive the Week view (next / previous, Inbox and back, Month and back), then open and close the New task dialog with and without the backdrop blur; print frame statistics and quit. Writes nothing. |
-| `--perf-rounds N` | Diagnostics (N = 1–100): rounds of `--perf-scenario`. |
+| `--perf-scenario tray` | Diagnostics (implies `--perf`): print the memory 5 s after the start, after every screen and the New task dialog were visited, after the window was hidden in the tray, and after it is shown again, with the time the show took; then quit. Writes nothing. |
+| `--perf-rounds N` | Diagnostics (N = 1–100): rounds of `--perf-scenario week`. |
+| `--perf-hidden-seconds N` | Diagnostics (N = 1–600, default 60): how long `--perf-scenario tray` stays hidden. |
 
 If several of `--selfcheck`, `--demo` and `--data` are given, `--selfcheck` wins, then `--demo`.
 
