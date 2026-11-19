@@ -61,7 +61,7 @@ public static class JsonTransfer
         }
         catch (JsonException ex)
         {
-            // Our own sentence: under the NativeAOT publish (UseSystemResourceKeys) ex.Message is a bare resource key.
+            // Our own sentence: System.Text.Json's message is written for developers (byte positions, token names).
             string where = ex.LineNumber is { } n ? $" (line {n + 1})" : string.Empty;
             throw new FormatException($"The file is not valid JSON{where}.", ex);
         }

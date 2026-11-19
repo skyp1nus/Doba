@@ -54,15 +54,15 @@ public sealed partial class TaskRowViewModel : ObservableObject
     public bool HasPriority => Priority != Priority.None;
 
     /// <summary>"Mark done: …" / "Mark not done: …" (checkbox accessible name).</summary>
-    public string ToggleLabel => (Done ? "Mark not done: " : "Mark done: ") + Title;
+    public string ToggleLabel => Row.ToggleLabel;
 
     /// <summary>"Priority: High — change for …".</summary>
-    public string PriorityLabel => "Priority: " + (Priority == Priority.None ? "none" : Priority.DisplayName()) + " — change for " + Title;
+    public string PriorityLabel => Row.PriorityLabel;
 
     /// <summary>Tooltip: "High priority" / "No priority".</summary>
-    public string PriorityTitle => Priority == Priority.None ? "No priority" : Priority.DisplayName() + " priority";
+    public string PriorityTitle => Row.PriorityTitle;
 
-    public string MoveLabel => "Move to today: " + Title;
+    public string MoveLabel => Row.MoveLabel;
 
     /// <summary>The record last pushed in.</summary>
     public TaskRow Row { get; private set; } = null!;
