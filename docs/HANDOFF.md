@@ -1,15 +1,14 @@
 # Doba — hand-off
 
 For the owner: what was built, what was verified and how, what still needs a person on a real Windows PC, the measured
-performance, and what is known to be missing. Written against commit `1471998` on `dev` (2026-11-19). Build and run
+performance, and what is known to be missing. Describes the final state of `dev` on 2026-11-19 (the commit that adds this text). Build and run
 commands are in [`README.md`](../README.md); the code map is [`ARCHITECTURE.md`](ARCHITECTURE.md).
 
 ## 1. State
 
-**Branch.** `dev`; the final review fixes were integrated as `8963f7e`, `1b098ed`, `187f206`, `caf95ad`, `a00a6e0`,
-then `f8a32c2` (motion review) and `1471998` (screenshots). Nothing is merged into `main` yet. GitHub Actions has
-**never run** on this code (owner's rule: the only run is the one the final pull request into `main` starts).
-
+**Branch.** `dev`. The final review fixes and the last integration pass are merged; nothing is merged into `main`.
+The single pull request `dev → main` starts the only GitHub Actions run (owner's rule: no other runs); see the pull
+request for its result.
 **What is complete, against the brief (`docs/KICKOFF.md`).**
 
 | Brief | State |
@@ -23,33 +22,27 @@ then `f8a32c2` (motion review) and `1471998` (screenshots). Nothing is merged in
 | §6 gaps: search palette, light theme (dark only, "System" = Dark), Sunday week start, window sizes from 1100×700 | Built as logged in `DECISIONS.md`. |
 | §7 Performance | Instrumented and measured (section 4); not every line is met. |
 | §8 gate 4 (no literal colours / durations) | Enforced by `NoLiteralsTests`, now also easings, delays and layout numbers in screen / control markup. |
-| §10 every `PROGRESS.md` item ticked | **No.** P3.1–P3.3 and P5.1–P5.5 are still open in `PROGRESS.md`; the lead ticks them. |
+| §10 every `PROGRESS.md` item ticked | Yes. |
 | §10 accepted screenshot per screen (Inbox, Today, Year, Month, Week, Day, four dialog popovers, six Settings tabs, collapsed sidebar, compact density) | All present in `docs/screenshots/` (41 tracked PNGs, incl. `search.png` and `controls-gallery.png`). |
 | §10 motion checklist covered by a test or recorded review | `docs/MOTION-REVIEW.md`: all six checklist items covered by tests; its four findings were fixed afterwards (see there). |
-| §10 CI on `windows-latest` builds, tests, publishes NativeAOT, uploads | Workflow written (`.github/workflows/ci.yml`); **never run**. |
+| §10 CI on `windows-latest` builds, tests, publishes NativeAOT, uploads | Workflow in `.github/workflows/ci.yml`; its steps were run locally in the same configuration (Release build, Release tests, AOT publish, `--perf`, `--selfcheck`). It runs once, on the pull request into `main`. |
 | §10 README and HANDOFF | This file and `README.md`. |
 
-**Tests.** 1050 tests, all green in the last recorded runs (Debug configuration):
+**Tests.** 1088 tests, all green on the final `dev`, in Debug and in Release (`dotnet test -c Release`, as CI runs
+them):
 
 | Project | Tests | Covers |
 |---|---|---|
-| `Doba.Core.Tests` | 218 | store, date math, projections, navigation, dialog rules, carry-over, golden fixtures (89 cases), projection timing |
-| `Doba.Storage.Tests` | 111 | database, write-behind writer and its failure handling, backup, JSON import / export, load timing |
-| `Doba.App.Tests` | 721 | headless UI: screens, shell, overlays, keyboard, motion, lifecycle, platform plan, single instance, screenshots, perf flags |
+| `Doba.Core.Tests` | 246 | store, date math, projections (incl. the week lane cap, year fit, labels), navigation, dialog rules, carry-over, golden fixtures, projection timing |
+| `Doba.Storage.Tests` | 123 | database, write-behind writer incl. failure handling and transient retry, backup, JSON import / export, load timing |
+| `Doba.App.Tests` | 719 | headless UI: screens, shell, overlays, keyboard, motion, lifecycle, platform plan, single instance, screenshots, performance |
 
-How these were counted: the final review baseline was 865 (Core 198, Storage 88, App 579); each fixer reported its
-own new tests in the review record (core +20 Core / +23 Storage, app +44, ui +71, overlays +22, perf +5, all App). The
-sum is 1050, which is also the lead's number for the integrated `dev`. Cross-check against the sources: Storage has 41
-`[Fact]` + 70 `[InlineData]` = 111; Core has 73 facts + 56 inline cases + 89 golden member-data cases = 218; App has
-488 facts + 166 inline cases, and its 9 member-data sources were not enumerated. I did not run the tests for this
-document.
-
+The counts are from the test runner's own summary of the final run.
 **Gates used for every package and fix.** `dotnet build -warnaserror` (0 warnings; trim and AOT analyzers on),
 `dotnet test` twice (green), `dotnet publish … -r win-x64 -warnaserror` (0 warnings), screenshots regenerated and
 compared (byte-for-byte unchanged unless the change was meant to move pixels), the no-literals test.
 
-Not run so far: `dotnet test -c Release` (CI tests in Release; every recorded local run was Debug), the CI workflow
-itself.
+Also run on the final `dev`: `dotnet build -c Release -warnaserror` and `dotnet test -c Release --no-build` (what CI runs), `Doba.exe --selfcheck` (9 of 9 checks pass) and `scripts\perf.ps1` (section 4).
 
 ## 2. How it was verified
 
@@ -233,7 +226,7 @@ Write the outcome next to each item.
 32. Import that file into another scratch folder. Expected: an Open dialog; "Imported N tasks."; all tasks, tags and
     settings replaced, without a confirmation. Import a file that is not a Doba export (e.g. any `.txt` renamed to
     `.json`). Expected: an error under the row, nothing changed. Also try a file you cannot read (e.g. in use by another
-    program) and note the message: framework error texts may appear as resource keys in the AOT build.
+    program). Expected: "Import failed: the file could not be read." (or "…access to the file was denied.").
 
 **Second instance**
 
@@ -264,27 +257,26 @@ Write the outcome next to each item.
 
 ## 4. Performance
 
-> **To be refreshed by the lead after the last pass:** the numbers below are the performance fixer's final run at
-> `3b2cb65` (integrated as `a00a6e0`); replace them with the final `scripts\perf.ps1` run on `dev`.
-
+Final run of `scripts\perf.ps1` on `dev` at `938bdb9` (2026-11-19, quiet machine, nothing else building).
 Machine for every number: AMD Ryzen 7 5800X3D (96 MB L3), 32 GB, Radeon RX 9070 XT, 180 Hz display, Windows 11 build
 26300. This is a high-end desktop; no mid-range PC and no integrated GPU was measured. NativeAOT `win-x64` build.
 
 | Budget (KICKOFF §7) | Measured | Verdict |
 |---|---|---|
-| First frame with real data within 400 ms **cold**, AOT, mid-range PC | **Warm** (exe, DLLs and database in the OS file cache), from process start, median / worst of 10: demo 224 / 239 ms, 348 tasks 221 / 257 ms, 10,000 tasks 234 / 241 ms, fresh empty folder 219 / 267 ms. First launch right after publish (also warm): 346 ms. **Partly cold** (`--demo` from a copy of the build written with unbuffered I/O, so `Doba.exe` and `e_sqlite3.dll` come from disk and the antivirus scans the new exe; Windows' own DLLs warm): 1017, 1021 and 1484 ms; the same copy again 203–217 ms. **True cold** (after a reboot): not measured. | Warm: met on this PC. Cold: **not measured**; the partly-cold proxy is far over 400 ms, mostly the first read and scan of a new exe. Mid-range PC: not measured. |
-| Idle working set under 120 MB (aim) | After 5 s on the launch screen, working set / private bytes: demo 110.1 / 130.4 MB, 348 tasks 113.1 / 131.8 MB, 10,000 tasks 130.2 / 150.7 MB. | Met for demo and 348 tasks; **not met at 10,000 tasks** (130 MB). About 15 MB of the idle set is render and composition memory that the launch animation allocates early (the first content transition would allocate it anyway; nothing leaks). |
-| Each projection under 5 ms at 10,000 tasks | Debug build, average per call (P1.1 record): Inbox 1.34, Today 1.08, Day 0.008, Week 0.025, Month 0.065, Year 0.16, Sidebar 0.32 ms; Search 0.63 ms, one-character Search 1.04 ms (median 1.06 ms, 9.6 KB per call, after the bounded-search fix). The test asserts each average under 20 ms (the budget × 4 for CI) and the one-character Search median under 5 ms. | Met. |
-| 60 fps on the Week view with about 40 cards; animate only opacity and transforms on the render thread | Load: `db-dense-compact` (10,000 tasks plus a filled current week, compact density) = 38 cards + 5 bars at 1600×1000; comfortable density holds at most 29 + 5. Week scenario, 5 rounds × 6 navigations, render thread p50 / p95 / max: 5.6 / 5.6 / 27.9 and 22.4 ms (two runs), 0 frames over 33 ms, 11 over 16.7 ms in 30 navigations. Demo (24 + 3): p95 5.6, max 29.9 / 24.0 ms. 10,000 tasks (29 + 5): p95 5.6, max 28.0 / 22.2 ms. **UI thread** max 83–106 ms, at the moment a week's cards are rebuilt (next / previous). | Render thread: mostly met (p95 well under 16.7 ms; a few frames between 16.7 and 28 ms). UI thread: **not met** — a short pause between the old week's exit and the new week's entrance, not a stutter inside a running animation. Cause: moving to another week replaces every card view model and container (12.8–15.9 MB allocated per step). |
-| Overlay (task dialog) fades, with the 3 px backdrop blur | New task dialog opened and closed 8 times with blur and 8 without, render thread inside the fades: blur open p95 5.6–6.5 ms, max 11.1–16.7 ms; blur close p95 5.7–9.9 ms, max 16.7–27.8 ms (1–2 frames over 16.7 ms per 8 fades); without blur open max 11.1–16.7 ms, close max 6.1–11.1 ms. | Met on this GPU (no frame over 33 ms), so the blur stays. Integrated GPU: not measured. |
+| First frame with real data within 400 ms **cold**, AOT, mid-range PC | **Warm** (exe, DLLs and database in the OS file cache), from process start to the first frame with data drawn, median / worst of 10: demo 216 / 246 ms, 348 tasks 216 / 246 ms, 10,000 tasks 233 / 251 ms, fresh empty folder 215 / 243 ms. First launch right after publish (also warm): 330 ms. **Partly cold** (`--demo` from a copy of the build written with unbuffered I/O, so `Doba.exe` and `e_sqlite3.dll` come from disk and the antivirus scans the new exe; Windows' own DLLs warm): 1002, 986 and 952 ms; the same copy again 198–238 ms. **True cold** (after a reboot): not measured. | Warm: met on this PC. Cold: **not measured**; the partly-cold proxy is far over 400 ms, mostly the first read and antivirus scan of a new exe. Mid-range PC: not measured. |
+| Idle working set under 120 MB (aim) | After 5 s on the launch screen, working set / private bytes: demo 106.7 / 124.6 MB, 348 tasks 109.9 / 126.3 MB, 10,000 tasks 122.2 / 138.5 MB (managed heap 10–19 MB; the rest is the renderer, fonts and the GPU cache). | Met for demo and 348 tasks; **2 MB over at 10,000 tasks**. About 15 MB of the idle set is render and composition memory that the launch animation allocates early (the first content transition would allocate it anyway; nothing leaks). |
+| Each projection under 5 ms at 10,000 tasks | Average per call: Inbox 0.87, Today 0.72, Day 0.006, Week 0.02, Month 0.045, Year 0.10, Sidebar 0.16, carry-over selection 0.07 ms (Release, the Core reviewer's run); one-character Search about 1 ms after the bounded-search fix. The test asserts each average under 20 ms (the budget × 4 for CI) and the one-character Search median under 5 ms. | Met. |
+| 60 fps on the Week view with about 40 cards; animate only opacity and transforms on the render thread | Load: `db-dense-compact` (10,000 tasks plus a filled current week, compact density) = 38 cards + 5 bars at 1600×1000; comfortable density holds at most 29 + 5. Week scenario, 5 rounds × 6 navigations, two runs each, render thread p50 / p95 / max: dense 5.6 / 5.6 / 27.8 ms; 10,000 tasks (29 + 5) 5.6 / 5.6 / 26.2 and 22.1 ms; demo (24 + 3) 5.6 / 5.6 / 17.7 and 17.2 ms. No render frame over 33 ms in any run; 3–7 frames over 16.7 ms per 30 navigations. **UI thread**: max 64–99 ms, 2 frames over 50 ms per run. | Render thread (where the animations run): met apart from a few 17–28 ms frames. UI thread: **not fully met** — one or two pauses of 60–100 ms per 30 navigations, at a content swap, between the old screen's exit and the new one's entrance (not a stutter inside a running animation). Moving between weeks now reuses the cards (allocation per step fell from 13–16 MB to about 5 MB), which removed most long frames but not the worst one. |
+| Overlay (task dialog) fades, with the 3 px backdrop blur | New task dialog opened and closed 8 times with blur and 8 without, per data set, render thread inside the fades: with blur open p95 5.6–5.7 ms, max 11–17 ms; close p95 5.7–10.6 ms, max 11–22 ms (0–2 frames over 16.7 ms per 8 fades); without blur max 7–17 ms. | Met on this GPU (no frame over 33 ms), so the blur stays. Integrated GPU: not measured. |
 | Virtualise anything that can grow without bound (Inbox) | Inbox and Today lists are virtualised. Headless test with 10,000 undated tasks: at most 150 rows realised at the top and at the end of the list. | Met (headless; not timed on a real window). |
 | No reflection on hot paths or at startup | Compiled bindings, source-generated JSON and MVVM; NativeAOT publish with 0 trim / AOT warnings. | Met. |
 
 GC note: the AOT build embeds an 8 MB gen0 budget (`Doba.App.csproj`, `IlcArg --runtimeopt:GCgen0size=800000`). With
 the default (about 30 MB on this CPU) the render thread stalled 60–110 ms during Week navigation; with 8 MB the worst
-render frame is about 28 ms. Cost: one or two collections at startup, +0–11 ms (demo) and +18–24 ms (10,000 tasks)
-warm start. `DOTNET_GCgen0size` overrides it at run time. The full candidate table is in `DECISIONS.md`.
-
+render frame is about 28 ms. `DOTNET_GCgen0size` overrides it at run time. The Skia GPU resource cache is capped at
+24 MB (Avalonia's default is about 28 MB); it saves about 3 MB idle and was the largest cap that left frame times
+unchanged here — on a much larger or high-DPI window it is worth re-checking with `scripts\perf.ps1`. The candidate
+tables are in `DECISIONS.md`.
 ## 5. Known gaps and accepted deviations
 
 Accepted deviations (each has a line in `DECISIONS.md`):
@@ -303,8 +295,8 @@ Accepted deviations (each has a line in `DECISIONS.md`):
   re-templated or Doba restarts (it only errs towards no animation).
 - **Sidebar collapse** changes the column widths once per toggle; the content reflows once (start of a collapse, end of
   an expand) instead of continuously.
-- **Month** draws at most two span lanes per week; a span that would need a third lane is not shown in Month and not
-  counted in "+N more" (the prototype does the same).
+- **Month** draws at most two span lanes per week; a span that would need a third lane is counted in "+N more" of each
+  day it covers (the prototype drops it silently).
 - **Window placement** (size, position, maximised) is not remembered between launches; the window opens fitted to the
   screen each time.
 
@@ -312,38 +304,26 @@ Known gaps left by the final review (not fixed, with the reason):
 
 - **Overdue rows at 1100 px** on Today crowd the title to a few characters when a tag, a date and "→ Today" are all
   shown. Needs a design decision (hide the tag, as Week cards do) and a measure pass in a virtualised row.
-- **Failed writes are not retried.** They are shown ("Changes not saved") and logged, and the change stays in memory,
-  but it is lost on restart. Retry belongs in `WriteBehindWriter`.
-- **Import reports success before the write.** "Imported N tasks." appears when the store is replaced; if the queued
-  write then fails, only the title-bar notice says so.
-- **Framework error texts under NativeAOT**: the build uses `UseSystemResourceKeys=true`, so .NET's own exception
-  messages appear as resource keys (e.g. `IO_AlreadyExists_Name`) in the Export / Import error line and in the startup
-  error box for IO failures. Doba's own messages read normally. Fix: own sentences in `SettingsViewModel`, or turn the
-  property off at some size cost.
-- **Exit is not bounded.** On exit the app waits for the last flush with no time limit; a database held busy by
-  another program can delay exit up to SQLite's 30 s busy timeout. (Session end is bounded at 3 s.)
 - **Caption buttons are wired twice** (Avalonia's window-decoration role and a click handler). Whether one click acts
   twice on a real window is unverified (section 3, step 20).
-- **Rules that drifted into the App** (KICKOFF §5 rule 1 wants them in Core): Year key-item fitting, the Week lane cap,
-  Today's whole-percent progress and many display labels are computed in App view models; Month's "+N more in the
-  header" rule exists in both Core and the App (same result). Core now accepts per-task Week card heights
-  (`WeekMetrics.TaskCardHeight`) but the App still passes the title-only heights (the tallest for a title wins), so two
-  same-titled cards with different meta can fit one card fewer. Some dialog transitions live in
-  `TaskDialogViewModel`; Core's `TaskDialog.StepDate` / `StepTime` are unused.
-- **Week next / previous** rebuilds every card (UI-thread pause of up to about 105 ms on 10,000 tasks, section 4).
-  Reusing card containers by slot would change card identity, which the entrance and strike animations depend on.
-- **Idle memory at 10,000 tasks** is 130 MB, over the 120 MB aim (section 4). A smaller Skia GPU cache saved 8 MB but
-  doubled render p95 during transitions; not adopted.
+- **A few display strings are still built in the App**: task-group headers are upper-cased by a converter and the
+  schedule's fixed "07–23" range label lives in the timeline control. Everything else the brief lists (grouping,
+  sorting, lanes, overflow counts, fitting, labels) comes from Core.
+- **Week next / previous**: one or two UI-thread pauses of 60–100 ms per 30 navigations remain (section 4).
+- **Idle memory at 10,000 tasks** is 122 MB, 2 MB over the 120 MB aim (section 4).
+- **New-row entrance on a reused week card**: a card that is re-pointed when the week changes does not play the
+  entrance; a just-created task is not expected in that situation.
 - **Tray availability**: `AvaloniaTrayIcon.IsSupported` is always true on Windows, so "with no tray, closing quits"
   only applies off Windows.
 - **Daily backup failures** go to the debugger trace only (not to `doba.log`, no notice).
 - **Database rows are not validated on load**; the store normalises every task it loads instead (bad values are
   corrected in memory and on the next write of that task).
 - **No unhandled-exception handler** flushes pending writes before a crash.
-- **Small offsets in the dialog**: the Time popover's "Any time / Set time" labels sit about 0.9 px low; pills and the
-  popovers that follow them are 1–2 px right of the reference (width rounding).
-- **CI**: never run; the Release test configuration has never been run locally; the workflow does not run
-  `--selfcheck`, and its perf step passes even when it prints nothing (`continue-on-error`).
+- **Small offsets**: dialog pills and the popovers that follow them are 1–2 px right of the reference (width
+  rounding); settings rows step 71 px where the reference's first row is 70 px, so segment groups from the second row
+  on sit up to 1 px low.
+- **CI** runs once, on the pull request. Its `--perf` and `--selfcheck` steps are informational on a hosted runner
+  (no GPU, no Mica, possibly no notification area): they print their output but cannot fail the job.
 
 Repository housekeeping for the owner:
 
