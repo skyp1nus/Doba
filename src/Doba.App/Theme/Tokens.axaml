@@ -656,6 +656,8 @@
   <SolidColorBrush x:Key="Brush.Accent35" Color="#599FB4C7" />
   <SolidColorBrush x:Key="Brush.Accent45" Color="#739FB4C7" />
   <SolidColorBrush x:Key="Brush.Accent70" Color="#B39FB4C7" />
+  <!-- A block under the dragged copy (or under a block being resized) dims to 0.55 while the drag runs. -->
+  <x:Double x:Key="Opacity.Schedule.Under">0.55</x:Double>
   <!-- Settings (markup 271–351). Page: scroll padding-right 12, column margin 2 0 32. Row: min height 66, control gap 24,
        description margin-top 4, export / import message margin-top 6. Shortcuts: 52 px lines, padding 0 4, gap 12,
        key caps gap 4. Data footnote margin 18 4 0. -->

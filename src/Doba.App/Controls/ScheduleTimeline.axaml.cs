@@ -39,6 +39,7 @@ public partial class ScheduleTimeline : UserControl
     {
         InitializeComponent();
         _scroll = new ScheduleScroll(PART_Scroll, this);
+        InitDrag();
         AddHandler(PointerPressedEvent, OnAnyPointerPressed, RoutingStrategies.Bubble, handledEventsToo: true);
         PART_Grid.AddHandler(KeyDownEvent, OnPreviewKeyDown, RoutingStrategies.Tunnel);
         PART_Grid.AddHandler(KeyUpEvent, OnPreviewKeyUp, RoutingStrategies.Tunnel);
@@ -84,8 +85,12 @@ public partial class ScheduleTimeline : UserControl
     /// <summary>Day: another day is shown — place the grid again (now-line or earliest block).</summary>
     public void ResetScroll() => _scroll.Reset();
 
-    /// <summary>The screen is left: close the "+N" list.</summary>
-    public void CloseList() => _vm?.CloseOverflow();
+    /// <summary>The screen is left: close the "+N" list and cancel a drag (nothing written).</summary>
+    public void CloseList()
+    {
+        Drag.Cancel();
+        _vm?.CloseOverflow();
+    }
 
     protected override void OnDataContextChanged(EventArgs e)
     {
@@ -101,6 +106,7 @@ public partial class ScheduleTimeline : UserControl
             _vm.PropertyChanged += OnViewModelPropertyChanged;
         }
 
+        AttachDrag(_vm);
         ShowList();
     }
 

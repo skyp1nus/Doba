@@ -125,6 +125,20 @@ public sealed partial class ScheduleBlockViewModel : ObservableObject
     /// <summary>Position in the Tab order of the timeline (by time; see <see cref="ScheduleViewModel"/>).</summary>
     [ObservableProperty] public partial int TabOrder { get; set; }
 
+    /// <summary>Being moved: the block stays at its time as the origin (dashed accent 35 % outline, content hidden) while
+    /// the copy shows the new slot.</summary>
+    [ObservableProperty] public partial bool IsOrigin { get; internal set; }
+
+    /// <summary>Being resized: the block grows in place (accent 16 % fill, 45 % ring, shadow, grip shown) and shows its
+    /// range with the length (<see cref="ResizePreview"/>).</summary>
+    [ObservableProperty] public partial bool IsResizing { get; internal set; }
+
+    /// <summary>Another block's dragged copy (or growing end) lies over this one: its body dims to 0.55.</summary>
+    [ObservableProperty] public partial bool IsUnderCopy { get; internal set; }
+
+    /// <summary>The slot a resize shows (start, new length), or null: the block draws its own record.</summary>
+    public ScheduleSlot? ResizePreview { get; private set; }
+
     public void Update(ScheduleBlock block)
     {
         ArgumentNullException.ThrowIfNull(block);
@@ -136,24 +150,57 @@ public sealed partial class ScheduleBlockViewModel : ObservableObject
         X = block.X;
         Top = block.Top;
         Width = block.Width;
-        Height = block.Height;
         Margin = new Thickness(block.X, block.Top, 0, 0);
+        AccessibleLabel = block.AccessibleLabel;
+        ToolTip = block.ToolTip;
+        CheckLabel = block.CheckLabel;
+        ApplyBody();
+    }
+
+    /// <summary>
+    /// A resize in progress: the block keeps its start and draws <paramref name="slot"/>'s length — its height, content
+    /// tier, checkbox and grip follow (the prototype's <c>hOf(dr.dur)</c> with <c>sbVis(…, active)</c>: the range
+    /// "09:30 – 11:15 · 1h 45m"). Nothing is written; null goes back to the task's own length.
+    /// </summary>
+    public void ShowResize(ScheduleSlot? slot)
+    {
+        ResizePreview = slot;
+        ApplyBody();
+    }
+
+    /// <summary>Height and content: the record's, or the resize preview's.</summary>
+    private void ApplyBody()
+    {
+        double height;
+        bool tall;
+        string meta;
+        if (ResizePreview is { } slot)
+        {
+            height = ScheduleLayout.BlockHeight(slot.Duration, ScheduleLayout.DesignHourHeight);
+            tall = !ScheduleLayout.IsCompact(height);
+            meta = ScheduleLayout.Meta(Block.Width, height, slot.Start, slot.Duration, active: true);
+        }
+        else
+        {
+            height = Block.Height;
+            tall = Block.IsTall;
+            meta = Block.Meta;
+        }
+
+        Height = height;
         var wasTall = IsTall;
-        IsTall = block.IsTall;
+        IsTall = tall;
         if (wasTall != IsTall)
         {
             OnPropertyChanged(nameof(IsCompact));
         }
 
-        Meta = block.Meta;
-        HasMeta = block.Meta.Length > 0;
-        ContentPadding = ContentPaddingFor(block.Height, block.IsTall);
-        MetaOffset = MetaOffsetFor(block.Height, block.IsTall);
-        CheckMargin = new Thickness(Border + CheckLeft, Border + block.CheckTop, 0, 0);
-        GripHeight = block.GripHeight;
-        AccessibleLabel = block.AccessibleLabel;
-        ToolTip = block.ToolTip;
-        CheckLabel = block.CheckLabel;
+        Meta = meta;
+        HasMeta = meta.Length > 0;
+        ContentPadding = ContentPaddingFor(height, tall);
+        MetaOffset = MetaOffsetFor(height, tall);
+        CheckMargin = new Thickness(Border + CheckLeft, Border + ScheduleLayout.CheckTop(height), 0, 0);
+        GripHeight = ScheduleLayout.GripHeight(height);
     }
 
     /// <summary>
@@ -310,7 +357,11 @@ public sealed partial class ScheduleOverflowViewModel : ObservableObject
     private void Toggle() => _owner.ToggleOverflow(this);
 }
 
-/// <summary>The dragged copy of a block (layer 3): hidden at rest; the drag stage drives it.</summary>
+/// <summary>
+/// The dragged copy of a block (layer 3): hidden at rest; a move shows it at the slot the block would land on. Its x is
+/// the origin's (<see cref="Margin"/>, set once per drag); its y is <see cref="Y"/>, applied as a render translation, so a
+/// step between slots never touches layout.
+/// </summary>
 public sealed partial class ScheduleCopyViewModel : ObservableObject
 {
     [ObservableProperty] public partial bool IsVisible { get; private set; }
@@ -330,8 +381,14 @@ public sealed partial class ScheduleCopyViewModel : ObservableObject
 
     [ObservableProperty] public partial double Height { get; private set; }
 
-    /// <summary>Position in the grid: (the block's x, the slot's top).</summary>
+    /// <summary>The block's x in the grid (top 0: the slot's top is <see cref="Y"/>).</summary>
     [ObservableProperty] public partial Thickness Margin { get; private set; }
+
+    /// <summary>The slot's top in the grid: round((start − 7h) / 60 · 48) + 1, as a block's.</summary>
+    [ObservableProperty] public partial double Y { get; private set; }
+
+    /// <summary>The slot the copy shows.</summary>
+    public ScheduleSlot Slot { get; private set; }
 
     [ObservableProperty] public partial Thickness ContentPadding { get; private set; }
 
@@ -349,7 +406,9 @@ public sealed partial class ScheduleCopyViewModel : ObservableObject
         IsTall = !ScheduleLayout.IsCompact(h);
         Meta = ScheduleLayout.Meta(block.Width, h, start, duration, active: true);
         HasMeta = Meta.Length > 0;
-        Margin = new Thickness(block.X, ScheduleLayout.BlockTop(start, ScheduleLayout.DesignHourHeight), 0, 0);
+        Margin = new Thickness(block.X, 0, 0, 0);
+        Y = ScheduleLayout.BlockTop(start, ScheduleLayout.DesignHourHeight);
+        Slot = new ScheduleSlot(start, duration);
         ContentPadding = ScheduleBlockViewModel.ContentPaddingFor(h, IsTall);
         MetaOffset = ScheduleBlockViewModel.MetaOffsetFor(h, IsTall);
         IsVisible = true;
@@ -465,6 +524,8 @@ public sealed partial class ScheduleViewModel : ObservableObject
         ArgumentNullException.ThrowIfNull(model);
         var sameDay = _date == date;
         _date = date;
+        var dragged = Dragged;
+        var draggedBefore = dragged?.Block;
         if (!sameDay)
         {
             HideChip(); // the prototype shows the key chip only on the day it was stepped on
@@ -486,6 +547,19 @@ public sealed partial class ScheduleViewModel : ObservableObject
 
         AssignTabOrder();
         SetNow(model.NowMinutes);
+
+        if (dragged is not null && ReferenceEquals(dragged, Dragged))
+        {
+            if (!sameDay || !Blocks.Contains(dragged) || TaskChanged(draggedBefore!, dragged.Block))
+            {
+                DragInvalidated?.Invoke(this, EventArgs.Empty);
+                EndDrag(commit: false); // nothing left to do when the controller has cancelled already
+            }
+            else
+            {
+                ShowDrag(); // neighbours may have moved or appeared; the resize preview stays
+            }
+        }
     }
 
     /// <summary>
@@ -517,6 +591,144 @@ public sealed partial class ScheduleViewModel : ObservableObject
 
     /// <summary>The "+N" that folds the task <paramref name="id"/>, if any.</summary>
     public ScheduleOverflowViewModel? OverflowOf(long id) => Overflows.FirstOrDefault(o => o.Rows.Any(r => r.Id == id));
+
+    // ---- Drag (ScheduleTimeline.Drag.cs drives it) ---------------------------------------------------------------------
+
+    /// <summary>The block being moved or resized, or null.</summary>
+    public ScheduleBlockViewModel? Dragged { get; private set; }
+
+    /// <summary>What the drag changes.</summary>
+    public ScheduleDragMode DragMode { get; private set; }
+
+    /// <summary>The slot the drag would write now (start and effective length).</summary>
+    public ScheduleSlot DragSlot { get; private set; }
+
+    /// <summary>The slot the dragged task had when the drag started.</summary>
+    public ScheduleSlot DragOrigin { get; private set; }
+
+    /// <summary>
+    /// Raised by <see cref="Update"/> when a running drag can no longer be applied: another day is shown, or the dragged
+    /// task changed in the store (its time, length, title or done state) or is no longer drawn. The drag controller
+    /// cancels; without one listening the drag is cancelled here.
+    /// </summary>
+    public event EventHandler? DragInvalidated;
+
+    /// <summary>
+    /// Starts dragging <paramref name="block"/> (the prototype's first <c>setState({ drag, ovf: null, kb: null })</c>):
+    /// the "+N" list closes, the arrow-key chip goes, and the drag shows its slot (still the block's own) at once: the
+    /// copy (move) or the growing block (resize), the chip, and the neighbours under it dimmed. Nothing is re-laid out
+    /// until the drop: the dragged task stays at its old time for the overlap layout.
+    /// </summary>
+    public void BeginDrag(ScheduleBlockViewModel block, ScheduleDragMode mode)
+    {
+        ArgumentNullException.ThrowIfNull(block);
+        if (Dragged is not null)
+        {
+            EndDrag(commit: false);
+        }
+
+        CloseOverflow();
+        HideChip();
+        Dragged = block;
+        DragMode = mode;
+        DragOrigin = new ScheduleSlot(block.StartMinutes, block.DurationMinutes);
+        DragSlot = DragOrigin;
+        block.IsOrigin = mode == ScheduleDragMode.Move;
+        block.IsResizing = mode == ScheduleDragMode.Resize;
+        ShowDrag();
+    }
+
+    /// <summary>Shows the drag at <paramref name="slot"/> (from Core's <see cref="ScheduleEdit.Drag"/>). Returns false
+    /// when that slot is already shown (nothing changes).</summary>
+    public bool PreviewDrag(ScheduleSlot slot)
+    {
+        if (Dragged is null || slot == DragSlot)
+        {
+            return false;
+        }
+
+        DragSlot = slot;
+        ShowDrag();
+        return true;
+    }
+
+    /// <summary>
+    /// Ends the drag and clears what it showed (copy, chip, origin and resize states, dimmed neighbours). With
+    /// <paramref name="commit"/> a slot other than the origin is written as ONE store update
+    /// (<see cref="TaskActions.Reschedule"/>: a move keeps an unspecified length unspecified; the same slot writes
+    /// nothing) and announced ("Moved / Resized Title, a to b"); a cancel writes nothing and says "Move cancelled".
+    /// Returns true when something was written.
+    /// </summary>
+    public bool EndDrag(bool commit)
+    {
+        if (Dragged is not { } block)
+        {
+            return false;
+        }
+
+        var mode = DragMode;
+        var slot = DragSlot;
+        Dragged = null;
+        Copy.Hide();
+        HideChip();
+        foreach (var b in Blocks)
+        {
+            b.IsUnderCopy = false;
+        }
+
+        block.IsUnderCopy = false;
+        block.IsOrigin = false;
+        block.IsResizing = false;
+        block.ShowResize(null);
+
+        if (!commit)
+        {
+            Announce(ScheduleEdit.CancelledMessage);
+            return false;
+        }
+
+        var title = block.Row.Title;
+        if (slot == DragOrigin || !_actions.Reschedule(block.Id, mode, slot))
+        {
+            return false;
+        }
+
+        Announce(ScheduleEdit.ChangedMessage(mode, title, slot));
+        return true;
+    }
+
+    /// <summary>The drag's slot on screen: the copy at it (move) or the block grown to it (resize), the chip at the new
+    /// start (move) or end (resize), and every other block under it at 0.55.</summary>
+    private void ShowDrag()
+    {
+        if (Dragged is not { } block)
+        {
+            return;
+        }
+
+        var slot = DragSlot;
+        if (DragMode == ScheduleDragMode.Move)
+        {
+            Copy.Show(block, slot.Start, slot.Duration);
+        }
+        else
+        {
+            block.ShowResize(slot);
+        }
+
+        Chip.Show(ScheduleEdit.ChipMinutes(DragMode, slot));
+        foreach (var b in Blocks)
+        {
+            b.IsUnderCopy = !ReferenceEquals(b, block) && ScheduleEdit.UnderCopy(b.StartMinutes, b.DurationMinutes, slot);
+        }
+    }
+
+    /// <summary>The dragged task itself changed between two projections (not just its place in the columns or the tag
+    /// filter's dim).</summary>
+    private static bool TaskChanged(ScheduleBlock before, ScheduleBlock after) =>
+        before.StartMinutes != after.StartMinutes
+        || before.DurationMinutes != after.DurationMinutes
+        || before.Row with { Dimmed = after.Row.Dimmed } != after.Row;
 
     /// <summary>Shows the time chip at <paramref name="minutes"/> and hides it <see cref="MotionTimes.ChipHold"/> later
     /// (a new step restarts the hold). The hold is information, not an animation: it stays with animations off.</summary>
