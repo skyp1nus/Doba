@@ -3,8 +3,8 @@ using Doba.App.Diagnostics;
 
 namespace Doba.App.Tests.Performance;
 
-/// <summary>The perf flags (<c>--perf-idle-seconds</c>, <c>--perf-scenario</c>, <c>--perf-rounds</c>) and the frame
-/// statistics the scenario prints.</summary>
+/// <summary>The perf flags (<c>--perf-idle-seconds</c>, <c>--perf-scenario</c>, <c>--perf-rounds</c>,
+/// <c>--perf-hidden-seconds</c>) and the frame statistics and memory samples the scenarios print.</summary>
 public sealed class PerfFlagsTests
 {
     [Fact]
@@ -51,7 +51,30 @@ public sealed class PerfFlagsTests
         Assert.True(flags.ExitsAfterPerf);
     }
 
+    [Fact]
+    public void The_tray_scenario_implies_perf_and_an_exit_and_takes_the_hidden_seconds()
+    {
+        var flags = StartupFlags.Parse(["--perf-scenario", "TRAY", "--perf-hidden-seconds", "45", "--demo"]);
+
+        Assert.True(flags.Perf);
+        Assert.Equal(StartupFlags.TrayScenario, flags.PerfScenario);
+        Assert.Equal(45, flags.PerfHiddenSeconds);
+        Assert.True(flags.ExitsAfterPerf);
+        // The hidden time alone starts nothing.
+        Assert.False(StartupFlags.Parse(["--demo", "--perf-hidden-seconds", "45"]).ExitsAfterPerf);
+    }
+
+    [Fact]
+    public void A_memory_sample_prints_megabytes_under_its_prefix()
+    {
+        var sample = new MemorySample(WorkingSet: 100 * 1024 * 1024, PrivateBytes: 3 * 512 * 1024, ManagedHeap: 0, GcCommitted: 1024 * 1024);
+
+        Assert.Equal("tray-working-set-mb=100.0 tray-private-mb=1.5 tray-managed-heap-mb=0.0 tray-gc-committed-mb=1.0", sample.Format("tray"));
+    }
+
     [Theory]
+    [InlineData("--perf-hidden-seconds", "0")]
+    [InlineData("--perf-hidden-seconds", "601")]
     [InlineData("--perf-idle-seconds", "0")]
     [InlineData("--perf-idle-seconds", "-3")]
     [InlineData("--perf-idle-seconds", "601")]
@@ -73,6 +96,7 @@ public sealed class PerfFlagsTests
     [InlineData("--perf-idle-seconds")]
     [InlineData("--perf-scenario")]
     [InlineData("--perf-rounds")]
+    [InlineData("--perf-hidden-seconds")]
     public void A_value_flag_at_the_end_is_an_error(string flag)
     {
         Assert.False(StartupFlags.TryParse([flag], out _, out var error));

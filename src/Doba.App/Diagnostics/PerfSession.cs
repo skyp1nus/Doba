@@ -4,6 +4,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Rendering.Composition;
 using Avalonia.Threading;
+using Doba.App.Services;
 
 namespace Doba.App.Diagnostics;
 
@@ -21,6 +22,7 @@ namespace Doba.App.Diagnostics;
 /// doba-perf idle-seconds=… working-set-mb=… private-mb=… managed-heap-mb=… gc-count=… gc-committed-mb=… (as of the last GC; 0 before the first)
 /// doba-perf scenario=week …   (see WeekScenario)
 /// doba-perf scenario=overlay … (see OverlayScenario; runs after the week scenario, over the Week view)
+/// doba-perf scenario=tray …   (see TrayScenario)
 /// </code>
 /// <c>time-to-first-frame-ms</c> keeps its original meaning (since Main, to the first animation-frame callback after the
 /// window opened, i.e. the UI thread is about to commit the first frame). <c>frame-rendered-ms</c> is when the render
@@ -34,11 +36,13 @@ internal static class PerfSession
 
     /// <summary>Hooks <paramref name="window"/>'s first frame when <paramref name="flags"/> ask for any perf output or
     /// for an exit after the first frame. Call before the window is shown.</summary>
-    public static void Attach(MainWindow window, IClassicDesktopStyleApplicationLifetime lifetime, StartupFlags flags)
+    public static void Attach(MainWindow window, IClassicDesktopStyleApplicationLifetime lifetime, StartupFlags flags,
+        AppLifecycle lifecycle)
     {
         ArgumentNullException.ThrowIfNull(window);
         ArgumentNullException.ThrowIfNull(lifetime);
         ArgumentNullException.ThrowIfNull(flags);
+        ArgumentNullException.ThrowIfNull(lifecycle);
         if (!flags.Perf && !flags.ExitAfterFirstFrame)
         {
             return;
@@ -54,11 +58,12 @@ internal static class PerfSession
 
             opened = true;
             PerfProbe.Mark("shown");
-            window.RequestAnimationFrame(_ => OnFirstFrame(window, lifetime, flags));
+            window.RequestAnimationFrame(_ => OnFirstFrame(window, lifetime, flags, lifecycle));
         };
     }
 
-    private static void OnFirstFrame(MainWindow window, IClassicDesktopStyleApplicationLifetime lifetime, StartupFlags flags)
+    private static void OnFirstFrame(MainWindow window, IClassicDesktopStyleApplicationLifetime lifetime, StartupFlags flags,
+        AppLifecycle lifecycle)
     {
         var firstFrameMs = PerfProbe.NowMs;
         PerfProbe.Mark("first-frame");
@@ -82,11 +87,11 @@ internal static class PerfSession
             },
             CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
 
-        void Continue(double renderedMs) => _ = AfterFirstFrameAsync(window, lifetime, flags, firstFrameMs, renderedMs);
+        void Continue(double renderedMs) => _ = AfterFirstFrameAsync(window, lifetime, flags, lifecycle, firstFrameMs, renderedMs);
     }
 
     private static async Task AfterFirstFrameAsync(MainWindow window, IClassicDesktopStyleApplicationLifetime lifetime,
-        StartupFlags flags, double firstFrameMs, double renderedMs)
+        StartupFlags flags, AppLifecycle lifecycle, double firstFrameMs, double renderedMs)
     {
         if (!double.IsNaN(renderedMs))
         {
@@ -112,6 +117,10 @@ internal static class PerfSession
             {
                 Console.WriteLine(await WeekScenario.RunAsync(window, flags.PerfRounds).ConfigureAwait(true));
                 Console.WriteLine(await OverlayScenario.RunAsync(window, OverlayScenario.DefaultCycles).ConfigureAwait(true));
+            }
+            else if (string.Equals(flags.PerfScenario, StartupFlags.TrayScenario, StringComparison.Ordinal))
+            {
+                Console.WriteLine(await TrayScenario.RunAsync(window, lifecycle, flags.PerfHiddenSeconds).ConfigureAwait(true));
             }
         }
 #pragma warning disable CA1031 // A failed measurement is reported on stdout; a perf run must still end.

@@ -82,7 +82,7 @@ public partial class App : Application
             desktop.MainWindow = window;
         }
 
-        AppStartup.WatchFirstFrame(window, desktop);
+        AppStartup.WatchFirstFrame(window, desktop, lifecycle);
     }
 
     /// <summary>
