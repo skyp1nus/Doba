@@ -21,13 +21,15 @@ internal static class SettingsMapping
     public const string LaunchAtStartup = "launchAtStartup";
     public const string KeepInTray = "keepInTray";
     public const string DailyBackup = "dailyBackup";
+    public const string ClaudeAccess = "claudeAccess";
+    public const string ClaudeAccessLevel = "claudeAccessLevel";
 
     /// <summary>Every key written by <see cref="ToPairs"/>, one per <see cref="AppSettings"/> property.</summary>
     /// <remarks>A "sidebarCollapsed" row written by earlier builds is an unknown key now and ignored.</remarks>
     public static IReadOnlyList<string> Keys { get; } =
     [
         Accent, WindowTransparency, Theme, Density, WeekStart, LaunchView, DefaultPriority,
-        CarryOver, CompletionSound, LaunchAtStartup, KeepInTray, DailyBackup,
+        CarryOver, CompletionSound, LaunchAtStartup, KeepInTray, DailyBackup, ClaudeAccess, ClaudeAccessLevel,
     ];
 
     public static KeyValuePair<string, string>[] ToPairs(AppSettings s) =>
@@ -44,6 +46,8 @@ internal static class SettingsMapping
         new(LaunchAtStartup, FormatBool(s.LaunchAtStartup)),
         new(KeepInTray, FormatBool(s.KeepInTray)),
         new(DailyBackup, FormatBool(s.DailyBackup)),
+        new(ClaudeAccess, FormatBool(s.ClaudeAccess)),
+        new(ClaudeAccessLevel, s.ClaudeAccessLevel.ToString()),
     ];
 
     public static AppSettings FromPairs(IEnumerable<KeyValuePair<string, string>> pairs)
@@ -66,6 +70,8 @@ internal static class SettingsMapping
                 LaunchAtStartup when bool.TryParse(value, out bool v) => s with { LaunchAtStartup = v },
                 KeepInTray when bool.TryParse(value, out bool v) => s with { KeepInTray = v },
                 DailyBackup when bool.TryParse(value, out bool v) => s with { DailyBackup = v },
+                ClaudeAccess when bool.TryParse(value, out bool v) => s with { ClaudeAccess = v },
+                ClaudeAccessLevel when TryParseEnum(value, out ClaudeAccessLevel v) => s with { ClaudeAccessLevel = v },
                 _ => s,
             };
         }

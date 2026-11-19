@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Doba.Bridge.Wire;
 
 namespace Doba.App.Platform;
 
@@ -91,5 +92,31 @@ public interface ITrayIcon : IDisposable
     event EventHandler? QuitRequested;
 }
 
+/// <summary>
+/// The Claude bridge: the local named pipe Doba.Mcp.exe talks to while Settings → Data → Claude access is on
+/// (Windows: <c>Doba.Bridge.BridgeHost</c>, current user only). Every request runs <c>execute</c> on the UI thread.
+/// No-op where there is no pipe for it (headless, tests, demo, self-check).
+/// </summary>
+public interface IClaudeBridge : IDisposable
+{
+    bool IsSupported { get; }
+
+    /// <summary>True between <see cref="Start"/> and <see cref="Stop"/>.</summary>
+    bool IsRunning { get; }
+
+    /// <summary>
+    /// Opens the pipe for <paramref name="dataFolder"/> (<c>BridgeNames.PipeName</c>) and starts answering requests;
+    /// each one runs <paramref name="execute"/> on the UI thread. Does nothing while running. Call on the UI thread.
+    /// Throws <see cref="IOException"/> or <see cref="UnauthorizedAccessException"/> when the pipe cannot be created.
+    /// </summary>
+    void Start(string dataFolder, Func<BridgeRequest, BridgeResponse> execute);
+
+    /// <summary>
+    /// Synchronous and bounded: requests already queued for the UI thread answer <c>closing</c> instead of running,
+    /// then the pipe is closed. Never waits for queued work (safe on the UI thread while the app shuts down). Idempotent.
+    /// </summary>
+    void Stop();
+}
+
 /// <summary>Bundle handed to the composition root; <see cref="PlatformServices.Create()"/> picks the Windows or no-op set.</summary>
-public sealed partial record PlatformServices(IAutostart Autostart, IGlobalHotkey Hotkey, ISystemPreferences Preferences, IShellIntegration Shell, ITrayIcon Tray);
+public sealed partial record PlatformServices(IAutostart Autostart, IGlobalHotkey Hotkey, ISystemPreferences Preferences, IShellIntegration Shell, ITrayIcon Tray, IClaudeBridge Bridge);

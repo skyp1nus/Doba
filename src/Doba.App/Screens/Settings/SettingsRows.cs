@@ -43,6 +43,10 @@ public abstract partial class SettingsRow : ObservableObject
 
     public bool HasMessage => Message.Length > 0;
 
+    /// <summary>False dims the label and description and disables the control (Data › Claude can and Connect Claude
+    /// while Claude access is off; every Claude row in demo mode).</summary>
+    [ObservableProperty] public partial bool IsEnabled { get; set; } = true;
+
     /// <summary>True while <see cref="Sync"/> pushes settings into the row (property changes must not write back).</summary>
     protected bool Syncing { get; private set; }
 

@@ -18,6 +18,14 @@ public sealed class JsonTransferTests
         return stream.ToArray();
     }
 
+    /// <summary>What an export carries of <paramref name="settings"/>: everything but Claude access, which is never
+    /// exported (a file must not be able to turn it on), so an import yields the defaults there.</summary>
+    private static AppSettings Exportable(AppSettings settings) => settings with
+    {
+        ClaudeAccess = AppSettings.Default.ClaudeAccess,
+        ClaudeAccessLevel = AppSettings.Default.ClaudeAccessLevel,
+    };
+
     private static Task<LoadedData> Import(string json) => Import(Encoding.UTF8.GetBytes(json));
 
     private static async Task<LoadedData> Import(byte[] json)
@@ -37,7 +45,7 @@ public sealed class JsonTransferTests
 
         Assert.Equal(tasks, imported.Tasks);
         Assert.Equal(tags, imported.Tags);
-        Assert.Equal(settings, imported.Settings);
+        Assert.Equal(Exportable(settings), imported.Settings);
     }
 
     [Fact]
@@ -81,6 +89,15 @@ public sealed class JsonTransferTests
         Assert.Equal(35, s.GetProperty("windowTransparency").GetInt32());
         Assert.Equal("high", s.GetProperty("defaultPriority").GetString());
         Assert.False(s.TryGetProperty("sidebarCollapsed", out _)); // in-memory only, never exported
+        Assert.False(s.TryGetProperty("claudeAccess", out _)); // never exported: a file must not turn Claude access on
+        Assert.False(s.TryGetProperty("claudeAccessLevel", out _));
+    }
+
+    [Fact]
+    public async Task Claude_access_in_a_file_is_ignored_on_import()
+    {
+        var data = await Import("""{ "format": "doba", "version": 1, "settings": { "claudeAccess": true, "claudeAccessLevel": "readWrite", "accent": "sand" } }""");
+        Assert.Equal(AppSettings.Default with { Accent = Accent.Sand }, data.Settings);
     }
 
     [Fact]
@@ -291,7 +308,7 @@ public sealed class JsonTransferTests
             var data = db.Load();
             Assert.Equal(tasks, data.Tasks);
             Assert.Equal(["work", "deep-work"], data.Tags);
-            Assert.Equal(NonDefaultSettings(), data.Settings);
+            Assert.Equal(Exportable(NonDefaultSettings()), data.Settings);
         }
     }
 }

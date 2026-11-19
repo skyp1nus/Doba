@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
 using Doba.App.Platform;
+using Doba.Bridge.Wire;
 
 namespace Doba.App.Tests.Platform;
 
@@ -12,12 +13,13 @@ public class PlatformServicesTests
     [Fact]
     public void An_all_off_plan_builds_no_machine_wide_part_on_any_OS()
     {
-        var services = PlatformServices.Create(new PlatformPlan(Autostart: false, Hotkey: false, Tray: false));
+        var services = PlatformServices.Create(new PlatformPlan(Autostart: false, Hotkey: false, Tray: false, Bridge: false));
         var noOp = PlatformServices.NoOp();
 
         Assert.IsType(noOp.Autostart.GetType(), services.Autostart);
         Assert.IsType(noOp.Hotkey.GetType(), services.Hotkey);
         Assert.IsType(noOp.Tray.GetType(), services.Tray);
+        Assert.IsType(noOp.Bridge.GetType(), services.Bridge);
         if (OperatingSystem.IsWindows())
         {
             // The read-only preferences and the click-only shell are the platform's own (no member is used here).
@@ -28,7 +30,7 @@ public class PlatformServicesTests
 
     [Fact]
     public void The_full_plan_allows_every_machine_wide_part() =>
-        Assert.Equal(new PlatformPlan(Autostart: true, Hotkey: true, Tray: true), PlatformPlan.Full);
+        Assert.Equal(new PlatformPlan(Autostart: true, Hotkey: true, Tray: true, Bridge: true), PlatformPlan.Full);
 
     [Fact]
     public void No_op_autostart_is_unsupported_and_never_enabled()
@@ -74,6 +76,22 @@ public class PlatformServicesTests
         Assert.True(preferences.AnimationsEnabled);
         Assert.False(preferences.SupportsBackdrop);
         Assert.False(preferences.PrefersMica);
+    }
+
+    [Fact]
+    public void No_op_bridge_is_unsupported_and_never_runs()
+    {
+        var bridge = PlatformServices.NoOp().Bridge;
+        var executed = 0;
+
+        bridge.Start(Path.GetTempPath(), _ => { executed++; return BridgeResponse.Failure(BridgeErrorCodes.Internal, "x"); });
+
+        Assert.False(bridge.IsSupported);
+        Assert.False(bridge.IsRunning);
+        bridge.Stop();
+        bridge.Dispose();
+        bridge.Dispose(); // idempotent
+        Assert.Equal(0, executed);
     }
 
     [Fact]
