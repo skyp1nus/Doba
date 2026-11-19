@@ -59,6 +59,7 @@ internal sealed class WriteBehindWriter : IAsyncDisposable
     /// <summary>Upper bound of operations per transaction, so a never-ending stream still commits regularly.</summary>
     private const int MaxOperationsPerTransaction = 4096;
 
+
     private readonly Channel<WriteOp> _channel = Channel.CreateUnbounded<WriteOp>(new UnboundedChannelOptions
     {
         SingleReader = true,
@@ -80,6 +81,19 @@ internal sealed class WriteBehindWriter : IAsyncDisposable
     // Writer-thread state.
     private int _failedSinceFlush;
     private Exception? _lastUnreported;
+
+    /// <summary>
+    /// Operations that failed with a transient error (<see cref="IsTransientError"/>), in queue order. They are applied
+    /// first, ahead of the next burst, flush or close, and dropped only when that later attempt fails permanently.
+    /// </summary>
+    private readonly List<WriteOp> _retry = [];
+
+    /// <summary>
+    /// The kept operations have failed since the last barrier (flush, close). Such a barrier only reports that failure; it
+    /// does not try them once more at once, which would just wait out the busy timeout again. The next burst carries
+    /// them, and so does the next barrier after that.
+    /// </summary>
+    private bool _retryJustFailed;
 
     private Exception? _lastError;
     private int _disposed;
@@ -173,7 +187,16 @@ internal sealed class WriteBehindWriter : IAsyncDisposable
             var error = new StorageWriteException(_failedSinceFlush, _lastUnreported);
             _failedSinceFlush = 0;
             _lastUnreported = null;
+            _retry.Clear();
             throw error;
+        }
+
+        if (_retry.Count > 0 && LastError is { } last)
+        {
+            // Kept after a transient failure that a flush already reported, and still not written at close: lost now.
+            var lost = new StorageWriteException(_retry.Count, last);
+            _retry.Clear();
+            throw lost;
         }
     }
 
@@ -188,7 +211,10 @@ internal sealed class WriteBehindWriter : IAsyncDisposable
             {
                 if (op is BarrierOp barrier)
                 {
-                    Commit(segment);
+                    // A barrier tries kept writes even with nothing new queued, unless they failed since the last
+                    // barrier: then it only reports that failure (trying again at once would only wait out the busy
+                    // timeout again); the next burst, or the next barrier, tries them.
+                    Commit(segment, retryKept: !_retryJustFailed);
                     Complete(barrier);
                 }
                 else
@@ -203,6 +229,13 @@ internal sealed class WriteBehindWriter : IAsyncDisposable
 
             Commit(segment);
         }
+
+        // Closing with writes kept after a transient failure: one last attempt, unless the last commit has just tried
+        // them (another immediate attempt would only wait out the busy timeout again). DisposeAsync reports what is left.
+        if (!_retryJustFailed)
+        {
+            Commit(segment, retryKept: true);
+        }
     }
 
     private void Complete(BarrierOp barrier)
@@ -213,6 +246,8 @@ internal sealed class WriteBehindWriter : IAsyncDisposable
             barrier.Completion.TrySetCanceled(barrier.CancellationToken);
             return;
         }
+
+        _retryJustFailed = false; // reported (or about to be): the next barrier tries the kept writes again
 
         if (barrier.Action is { } action)
         {
@@ -240,51 +275,91 @@ internal sealed class WriteBehindWriter : IAsyncDisposable
         barrier.Completion.TrySetResult();
     }
 
-    /// <summary>Commits <paramref name="segment"/> in one transaction and clears it. Never throws.</summary>
-    private void Commit(List<WriteOp> segment)
+    /// <summary>
+    /// Commits the operations kept for a retry and then <paramref name="segment"/>, in queue order, in one transaction,
+    /// and clears <paramref name="segment"/>. Never throws. Operations that fail with a transient error are kept (in
+    /// order) for the next attempt; those that fail permanently are dropped. Every failure is recorded.
+    /// </summary>
+    /// <param name="retryKept">Attempt the kept operations even when <paramref name="segment"/> is empty (barriers and
+    /// close); a burst always carries them.</param>
+    private void Commit(List<WriteOp> segment, bool retryKept = false)
     {
-        if (segment.Count == 0)
+        if (segment.Count == 0 && (_retry.Count == 0 || !retryKept))
         {
             return;
         }
 
-        var effective = Coalesce(segment);
+        List<WriteOp> effective;
+        if (_retry.Count > 0)
+        {
+            // Kept operations go first; Coalesce then drops what a later operation makes irrelevant across both.
+            _retry.AddRange(segment);
+            effective = Coalesce(_retry);
+            _retry.Clear();
+        }
+        else
+        {
+            effective = Coalesce(segment);
+        }
+
         segment.Clear();
         try
         {
             ApplyInTransaction(effective);
+            _retryJustFailed = false;
         }
         catch (Exception batchError)
         {
-            if (effective.Count == 1)
+            if (effective.Count == 1 || !IsPerOperationError(batchError))
             {
-                RecordFailure(batchError);
-                return;
-            }
-
-            if (!IsPerOperationError(batchError))
-            {
-                // The database as a whole refused the write (locked by another process, disk full, I/O error): every
-                // replayed operation would meet the same error, a locked one only after the full busy timeout each
-                // (N × 30 s, while Exit waits for this drain). The burst fails as a whole.
+                // One operation, or the database as a whole refused the write (locked by another process, disk full,
+                // I/O error): every replayed operation would meet the same error, a locked one only after the full busy
+                // timeout each (N × 30 s, while Exit waits for this drain). The burst fails as a whole; a transient
+                // refusal keeps it for the next attempt.
                 RecordFailure(batchError, effective.Count);
+                if (IsTransientError(batchError))
+                {
+                    Keep(effective, 0);
+                }
+
                 return;
             }
 
             // Something in the batch failed and the transaction was rolled back. Replay the operations one by one so
             // that a single bad operation does not take the rest of the burst with it.
-            foreach (var op in effective)
+            for (var i = 0; i < effective.Count; i++)
             {
                 try
                 {
-                    ApplyInTransaction([op]);
+                    ApplyInTransaction([effective[i]]);
                 }
                 catch (Exception opError)
                 {
-                    RecordFailure(opError);
+                    if (IsTransientError(opError))
+                    {
+                        // The database became unavailable mid-replay: keep this and everything after it, in order
+                        // (applying a later operation now could put it before this one, e.g. a delete before the
+                        // upsert it follows).
+                        RecordFailure(opError, effective.Count - i);
+                        Keep(effective, i);
+                        return;
+                    }
+
+                    RecordFailure(opError); // permanent (a constraint, a bad argument): dropped
                 }
             }
         }
+    }
+
+    /// <summary>Keeps <paramref name="ops"/> from <paramref name="from"/> on for the next attempt.</summary>
+    private void Keep(List<WriteOp> ops, int from)
+    {
+        for (var i = from; i < ops.Count; i++)
+        {
+            _retry.Add(ops[i]);
+        }
+
+        _retryJustFailed = true;
     }
 
     /// <summary>
@@ -410,6 +485,15 @@ internal sealed class WriteBehindWriter : IAsyncDisposable
                 or SQLitePCL.raw.SQLITE_FULL or SQLitePCL.raw.SQLITE_CANTOPEN or SQLitePCL.raw.SQLITE_NOTADB => false,
             _ => true,
         };
+
+    /// <summary>
+    /// True when <paramref name="error"/> may well not happen on a later attempt — the database is busy or locked by
+    /// another connection, an I/O error, the disk is full — so the operations are kept and retried rather than lost.
+    /// Everything else (a constraint, misuse, a read-only or corrupt database, a bad argument) is permanent.
+    /// </summary>
+    internal static bool IsTransientError(Exception error) =>
+        error is SqliteException sqlite && (sqlite.SqliteErrorCode & 0xFF) is SQLitePCL.raw.SQLITE_BUSY or SQLitePCL.raw.SQLITE_LOCKED
+            or SQLitePCL.raw.SQLITE_IOERR or SQLitePCL.raw.SQLITE_FULL;
 
     private void RecordFailure(Exception error, int failedWrites = 1)
     {

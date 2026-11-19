@@ -208,9 +208,9 @@ public sealed partial class TaskDialogViewModel : OverlayViewModel
         get => Draft.Timed ? 1 : 0;
         set
         {
-            if (value is 0 or 1 && (value == 1) != Draft.Timed)
+            if (value is 0 or 1)
             {
-                Draft = Draft with { Timed = value == 1 };
+                Draft = TaskDialog.SetTimed(Draft, value == 1);
             }
         }
     }
@@ -224,11 +224,7 @@ public sealed partial class TaskDialogViewModel : OverlayViewModel
         {
             if (value >= 0 && value < TaskDialog.DurationOptions.Count)
             {
-                var minutes = TaskDialog.DurationOptions[value];
-                if (minutes != Draft.DurationMinutes || !Draft.Timed)
-                {
-                    Draft = Draft with { DurationMinutes = minutes, Timed = true };
-                }
+                Draft = TaskDialog.PickDuration(Draft, TaskDialog.DurationOptions[value]);
             }
         }
     }
@@ -252,24 +248,18 @@ public sealed partial class TaskDialogViewModel : OverlayViewModel
     [RelayCommand]
     private void TogglePopover(DraftPopover popover)
     {
-        var next = Draft.Open == popover ? DraftPopover.None : popover;
-        if (next == DraftPopover.Tag)
+        var next = TaskDialog.TogglePopover(Draft, popover);
+        if (next.Open == DraftPopover.Tag)
         {
             RefreshTags();
         }
 
-        Draft = Draft with { Open = next };
+        Draft = next;
     }
 
     /// <summary>Closes the open popover (Esc, focus in the title or notes, Done).</summary>
     [RelayCommand]
-    public void ClosePopover()
-    {
-        if (Draft.Open != DraftPopover.None)
-        {
-            Draft = Draft with { Open = DraftPopover.None };
-        }
-    }
+    public void ClosePopover() => Draft = TaskDialog.ClosePopover(Draft);
 
     [RelayCommand]
     private void PreviousMonth() => Draft = TaskDialog.ShiftCalendarMonth(Draft, -1);
@@ -279,7 +269,7 @@ public sealed partial class TaskDialogViewModel : OverlayViewModel
 
     /// <summary>The calendar's "Today": shows the current month (keeps the popover and the date).</summary>
     [RelayCommand]
-    private void ShowTodayMonth() => Draft = Draft with { CalendarMonth = DateMath.FirstOfMonth(Today) };
+    private void ShowTodayMonth() => Draft = TaskDialog.ShowTodayMonth(Draft, Today);
 
     [RelayCommand]
     private void FewerDays() => Draft = TaskDialog.StepDays(Draft, -1);
@@ -482,7 +472,7 @@ public sealed partial class TaskDialogViewModel : OverlayViewModel
         ShowTime = d.ShowTime;
 
         // A popover whose pill is gone (Time after "Lasts 2 days" or "No date") cannot stay open.
-        var open = d.Open == DraftPopover.Time && !d.ShowTime ? DraftPopover.None : d.Open;
+        var open = TaskDialog.VisiblePopover(d);
         IsDateOpen = open == DraftPopover.Date;
         IsTimeOpen = open == DraftPopover.Time;
         IsPriorityOpen = open == DraftPopover.Priority;
@@ -568,10 +558,9 @@ public sealed partial class TaskDialogViewModel : OverlayViewModel
 
     private void PickQuick(DateChipItem option) => Draft = TaskDialog.PickDate(Draft, option.Date);
 
-    private void PickPriority(PriorityOptionItem option) =>
-        Draft = Draft with { Priority = option.Priority, Open = DraftPopover.None };
+    private void PickPriority(PriorityOptionItem option) => Draft = TaskDialog.PickPriority(Draft, option.Priority);
 
-    private void PickTag(TagOptionItem option) => Draft = Draft with { Tag = option.Tag, Open = DraftPopover.None };
+    private void PickTag(TagOptionItem option) => Draft = TaskDialog.PickTag(Draft, option.Tag);
 
     private static int IndexOf(IReadOnlyList<int> list, int value)
     {

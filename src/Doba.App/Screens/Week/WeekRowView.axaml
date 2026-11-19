@@ -6,7 +6,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:c="using:Doba.App.Controls"
-             xmlns:vm="using:Doba.App.ViewModels"
              xmlns:w="using:Doba.App.Screens.Week"
              x:Class="Doba.App.Screens.Week.WeekRowView"
              x:DataType="w:WeekRowViewModel">
@@ -144,15 +143,16 @@
                              FontSize="{DynamicResource FontSize.12.5}"
                              Padding="{StaticResource Space.Week.Empty}"
                              IsVisible="{Binding Empty}" />
-                  <ItemsControl Classes="cards" Classes.preview="{Binding IsPreview}" ItemsSource="{Binding Tasks}">
+                  <ItemsControl Classes="cards" Classes.preview="{Binding IsPreview}" ItemsSource="{Binding Cards}">
                     <ItemsControl.ItemsPanel>
                       <ItemsPanelTemplate>
                         <StackPanel Spacing="{x:Static w:WeekLayout.CardGap}" />
                       </ItemsPanelTemplate>
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
-                      <DataTemplate x:DataType="vm:TaskRowViewModel">
-                        <c:TaskCard />
+                      <!-- A slot per card position: a week change points the slots at other tasks and keeps the cards. -->
+                      <DataTemplate x:DataType="w:WeekCardSlot">
+                        <w:WeekCardHost Row="{Binding Row}" />
                       </DataTemplate>
                     </ItemsControl.ItemTemplate>
                   </ItemsControl>

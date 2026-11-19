@@ -449,7 +449,8 @@ public sealed class DobaDatabaseTests : IDisposable
         Assert.Equal(SQLitePCL.raw.SQLITE_BUSY, sqlite.SqliteErrorCode & 0xFF);
         Assert.Single(reported);
 
-        // Once the lock is gone, the queue keeps working.
+        // Once the lock is gone, the queue keeps working, and the refused burst (kept: BUSY is transient) is applied
+        // first, ahead of the new write.
         using (var rollback = blocker.CreateCommand())
         {
             rollback.CommandText = "ROLLBACK;";
@@ -458,8 +459,128 @@ public sealed class DobaDatabaseTests : IDisposable
 
         db.Tasks.Upsert(Item(9, "later"));
         await db.Tasks.FlushAsync(Ct);
-        Assert.Equal([9L], Raw.TaskIds(DbPath));
+        Assert.Equal([1L, 2, 3, 4, 5, 9], Raw.TaskIds(DbPath));
     }
+
+    /// <summary>Holds the database's write lock from another connection until disposed.</summary>
+    private sealed class WriteLock : IDisposable
+    {
+        private readonly SqliteConnection _connection;
+
+        public WriteLock(string path)
+        {
+            _connection = Raw.Open(path);
+            using var begin = _connection.CreateCommand();
+            begin.CommandText = "BEGIN IMMEDIATE;";
+            begin.ExecuteNonQuery();
+        }
+
+        public void Dispose()
+        {
+            using (var rollback = _connection.CreateCommand())
+            {
+                rollback.CommandText = "ROLLBACK;";
+                rollback.ExecuteNonQuery();
+            }
+
+            _connection.Dispose();
+        }
+    }
+
+    [Fact]
+    public async Task A_write_refused_while_locked_is_reported_kept_and_applied_by_the_next_flush_in_order()
+    {
+        await using var db = DobaDatabase.Open(_temp.Location);
+        var reported = new List<Exception>();
+        db.WriteFailed += (_, e) => { lock (reported) { reported.Add(e.Error); } };
+        var store = new Doba.Core.Store.TaskStore([], [], db.Tasks);
+
+        // Written and on disk before the lock.
+        var kept = store.Add(Item(0, "kept"));
+        var gone = store.Add(Item(0, "deleted later"));
+        await db.Tasks.FlushAsync(Ct);
+
+        // Another process holds the write lock: every change made meanwhile is refused (busy timeout 1 s here).
+        StorageWriteException failure;
+        using (var writeLock = new WriteLock(DbPath))
+        {
+            await using (await ParkWriter(db, connection => connection.DefaultTimeout = 1))
+            {
+                store.Update(kept with { Title = "kept, renamed" });
+                var added = store.Add(Item(0, "added while locked"));
+                store.Delete(gone.Id);
+                store.Update(added with { Title = "added, then renamed" }); // the same task twice: order matters
+                store.ToggleDone(kept.Id);
+            }
+
+            // The attempt is reported, and nothing of it reached the disk.
+            failure = await Assert.ThrowsAsync<StorageWriteException>(() => db.Tasks.FlushAsync(Ct));
+            Assert.Equal(SQLitePCL.raw.SQLITE_BUSY, ((SqliteException)failure.InnerException!).SqliteErrorCode & 0xFF);
+            Assert.Equal([1L, 2], Raw.TaskIds(DbPath));
+            Assert.Equal("kept", Raw.Scalar(DbPath, "SELECT title FROM tasks WHERE id = 1;"));
+        }
+
+        Assert.Equal(5, failure.FailedWrites);
+        Assert.Single(reported);
+
+        // Lock released: the next flush applies the kept writes, once each and in their order; the database then equals
+        // the in-memory store.
+        await db.Tasks.FlushAsync(Ct);
+        Assert.Single(reported); // the successful retry reports nothing
+        Assert.Equal([1L, 3], Raw.TaskIds(DbPath));
+        Assert.Equal("added, then renamed", Raw.Scalar(DbPath, "SELECT title FROM tasks WHERE id = 3;"));
+        Assert.Equal(1L, Raw.Number(DbPath, "SELECT done FROM tasks WHERE id = 1;"));
+
+        // Nothing is left to retry: a later flush and later writes behave normally.
+        await db.Tasks.FlushAsync(Ct);
+        store.Add(Item(0, "after"));
+        await db.Tasks.FlushAsync(Ct);
+        Assert.Equal([1L, 3, 4], Raw.TaskIds(DbPath));
+        Assert.Single(reported);
+
+        // Closed and loaded again: the database equals the in-memory store.
+        await db.DisposeAsync();
+        Assert.Equal(store.All.OrderBy(t => t.Id), (await ReopenAndLoad()).Tasks.OrderBy(t => t.Id));
+    }
+
+    [Fact]
+    public async Task A_write_kept_after_a_busy_failure_is_written_by_the_next_burst_without_a_flush()
+    {
+        await using var db = DobaDatabase.Open(_temp.Location);
+        using (new WriteLock(DbPath))
+        {
+            await using (await ParkWriter(db, connection => connection.DefaultTimeout = 1))
+            {
+                db.Tasks.Upsert(Item(1, "first"));
+            }
+
+            await Assert.ThrowsAsync<StorageWriteException>(() => db.Tasks.FlushAsync(Ct));
+        }
+
+        // The next write's burst carries the kept one ahead of it; the flush after it only waits for that burst.
+        db.Tasks.Upsert(Item(2, "second"));
+        db.Tasks.Upsert(Item(1, "first, renamed"));
+        await db.Tasks.FlushAsync(Ct);
+        Assert.Equal([1L, 2], Raw.TaskIds(DbPath));
+        Assert.Equal("first, renamed", Raw.Scalar(DbPath, "SELECT title FROM tasks WHERE id = 1;"));
+    }
+
+    [Theory]
+    [InlineData(SQLitePCL.raw.SQLITE_BUSY, true)]
+    [InlineData(SQLitePCL.raw.SQLITE_LOCKED, true)]
+    [InlineData(SQLitePCL.raw.SQLITE_IOERR, true)]
+    [InlineData(SQLitePCL.raw.SQLITE_IOERR | (4 << 8), true)] // an extended I/O error code
+    [InlineData(SQLitePCL.raw.SQLITE_FULL, true)]
+    [InlineData(SQLitePCL.raw.SQLITE_CONSTRAINT, false)]
+    [InlineData(SQLitePCL.raw.SQLITE_MISUSE, false)]
+    [InlineData(SQLitePCL.raw.SQLITE_READONLY, false)]
+    [InlineData(SQLitePCL.raw.SQLITE_CORRUPT, false)]
+    public void Only_transient_errors_keep_a_write_for_a_retry(int code, bool transient) =>
+        Assert.Equal(transient, WriteBehindWriter.IsTransientError(new SqliteException("test", code)));
+
+    [Fact]
+    public void Errors_outside_SQLite_are_permanent() =>
+        Assert.False(WriteBehindWriter.IsTransientError(new ArgumentException("bad task")));
 
     [Theory]
     [InlineData(SQLitePCL.raw.SQLITE_CONSTRAINT, true)]

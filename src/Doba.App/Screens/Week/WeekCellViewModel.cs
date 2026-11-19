@@ -1,35 +1,46 @@
 using System.Collections.ObjectModel;
-using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Doba.App.Services;
 using Doba.App.ViewModels;
 using Doba.Core.Projections;
-using Doba.Core.Time;
 
 namespace Doba.App.Screens.Week;
 
 /// <summary>
 /// One day column of a week row (keyed by its column, so it lives across week changes): header, progress and the
-/// cards that fit.
+/// cards that fit. Every text comes ready from the projection's <see cref="WeekDayCell"/>.
 /// </summary>
 public sealed partial class WeekCellViewModel : ObservableObject
 {
     private readonly Func<TaskRow, TaskRowViewModel> _createRow;
-    private string? _weekdaySource;
+    private readonly Func<TaskRow, WeekCardSlot> _createSlot;
+    private static readonly Func<TaskRow, long> s_keyOfRow = static r => r.Id;
+    private static readonly Func<WeekCardSlot, long> s_keyOfSlot = static s => s.Row.Id;
+    private static readonly Action<WeekCardSlot, TaskRow> s_updateSlot = static (s, r) => s.Row.Update(r);
 
-    public WeekCellViewModel(WeekDayCell cell, int laneCount, Func<TaskRow, TaskRowViewModel> createRow, int hiddenSpans = 0)
+    public WeekCellViewModel(WeekDayCell cell, int laneCount, Func<TaskRow, TaskRowViewModel> createRow)
     {
         ArgumentNullException.ThrowIfNull(cell);
         _createRow = createRow;
+        _createSlot = r => new WeekCardSlot(_createRow(r));
+        Tasks = new SlotRows(Cards);
         Column = cell.Column;
-        Update(cell, laneCount, hiddenSpans);
+        Update(cell, laneCount);
     }
 
     /// <summary>0-based column (0..3; the row key).</summary>
     public int Column { get; }
 
-    /// <summary>The cards that fit, in display order; updated in place by task id.</summary>
-    public ObservableCollection<TaskRowViewModel> Tasks { get; } = [];
+    /// <summary>
+    /// The card positions the view binds to, in display order. Within one week they are reconciled by task id (a
+    /// completed or re-sorted task keeps its card and its transitions); when the cell moves to another day (a week
+    /// change) they are reused by position: each slot is pointed at the task now in its place, so the cards and their
+    /// containers stay and only the difference in count is added or removed.
+    /// </summary>
+    public ObservableCollection<WeekCardSlot> Cards { get; } = [];
+
+    /// <summary>The tasks of <see cref="Cards"/>, in display order.</summary>
+    public IReadOnlyList<TaskRowViewModel> Tasks { get; }
 
     /// <summary>The day shown.</summary>
     [ObservableProperty] public partial DateOnly Date { get; private set; }
@@ -73,20 +84,12 @@ public sealed partial class WeekCellViewModel : ObservableObject
     /// <summary>Every column but the first draws a 1 px left separator.</summary>
     public bool HasSeparator => Column != 0;
 
-    /// <param name="hiddenSpans">Multi-day bars covering this day in lanes the short row does not show (counted in
-    /// "+N more"; see <see cref="WeekRowViewModel.VisibleLanes"/>).</param>
-    public void Update(WeekDayCell cell, int laneCount, int hiddenSpans = 0)
+    public void Update(WeekDayCell cell, int laneCount)
     {
         ArgumentNullException.ThrowIfNull(cell);
-        if (!string.Equals(_weekdaySource, cell.Weekday, StringComparison.Ordinal))
-        {
-            _weekdaySource = cell.Weekday;
-            Weekday = cell.Weekday.ToUpperInvariant();
-        }
-
         Month = cell.MonthShort;
         IsToday = cell.IsToday;
-        Empty = cell.Empty && hiddenSpans == 0;
+        Empty = cell.Empty;
         LaneCount = laneCount;
 
         // Progress before Date: the header's progress line jumps (no 500 ms sweep) when its day changes.
@@ -95,24 +98,80 @@ public sealed partial class WeekCellViewModel : ObservableObject
         if (dayChanged)
         {
             Date = cell.Date;
-            DayNumber = cell.DayNumber.ToString(CultureInfo.InvariantCulture);
+            DayNumber = cell.DayLabel;
+            Weekday = cell.WeekdayLabel;
         }
 
         if (dayChanged || IsPreview != cell.IsPreview)
         {
             IsPreview = cell.IsPreview;
-            OpenLabel = string.Concat(IsPreview ? "Open next " : "Open ", DateMath.WeekdayLong(Date.DayOfWeek), " ",
-                DayNumber, " ", DateMath.MonthNames[Date.Month - 1]);
+            OpenLabel = cell.OpenLabel;
         }
 
-        var more = cell.MoreCount + hiddenSpans;
-        if (MoreCount != more || MoreLabel.Length == 0)
+        if (MoreCount != cell.MoreCount || MoreLabel.Length == 0)
         {
-            MoreCount = more;
-            MoreLabel = string.Concat("+", more.ToString(CultureInfo.InvariantCulture), " more");
+            MoreCount = cell.MoreCount;
+            MoreLabel = cell.MoreLabel;
         }
 
-        KeyedSync.Apply(Tasks, cell.Tasks, r => r.Id, vm => vm.Id, _createRow, (vm, r) => vm.Update(r));
+        if (dayChanged)
+        {
+            ReuseByPosition(cell.Tasks);
+        }
+        else
+        {
+            KeyedSync.Apply(Cards, cell.Tasks, s_keyOfRow, s_keyOfSlot, _createSlot, s_updateSlot);
+        }
+    }
+
+    /// <summary>
+    /// Another day in this column: point the existing slots at the new day's tasks in order (a slot whose task is the
+    /// same keeps its row view-model), then add or remove slots at the end for the difference in count.
+    /// </summary>
+    private void ReuseByPosition(IReadOnlyList<TaskRow> rows)
+    {
+        var reused = Math.Min(rows.Count, Cards.Count);
+        for (var i = 0; i < reused; i++)
+        {
+            var slot = Cards[i];
+            var row = rows[i];
+            if (slot.Row.Id == row.Id)
+            {
+                slot.Row.Update(row);
+            }
+            else
+            {
+                slot.Row = _createRow(row);
+            }
+        }
+
+        for (var i = Cards.Count - 1; i >= rows.Count; i--)
+        {
+            Cards.RemoveAt(i);
+        }
+
+        for (var i = reused; i < rows.Count; i++)
+        {
+            Cards.Add(_createSlot(rows[i]));
+        }
+    }
+
+    /// <summary>A read-only view of the slots' rows (no copy).</summary>
+    private sealed class SlotRows(ObservableCollection<WeekCardSlot> slots) : IReadOnlyList<TaskRowViewModel>
+    {
+        public TaskRowViewModel this[int index] => slots[index].Row;
+
+        public int Count => slots.Count;
+
+        public IEnumerator<TaskRowViewModel> GetEnumerator()
+        {
+            foreach (var slot in slots)
+            {
+                yield return slot.Row;
+            }
+        }
+
+        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
     }
 
     partial void OnMoreCountChanged(int value) => OnPropertyChanged(nameof(HasMore));

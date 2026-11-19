@@ -32,7 +32,7 @@ public sealed partial class TodayViewModel : ScreenViewModel
     /// <summary>"6 tasks · 4 done · 2 left · 3 overdue".</summary>
     [ObservableProperty] public partial string Summary { get; private set; } = string.Empty;
 
-    /// <summary>0..1 done share of today's single-day tasks.</summary>
+    /// <summary>0..1 done share of today's single-day tasks, in whole percents (from the projection).</summary>
     [ObservableProperty] public partial double Progress { get; private set; }
 
     public ScheduleViewModel Schedule { get; }
@@ -58,8 +58,7 @@ public sealed partial class TodayViewModel : ScreenViewModel
         var model = Projector.Today(Store, ctx);
         TaskGroupSync.Apply([(Groups, model.Groups)], Services.Actions, Services.Commands);
         Summary = model.Summary;
-        // The prototype's bar width is a whole percent (Math.round(done / n · 100) + '%'): 4 of 6 → 67 %, not 66.7 %.
-        Progress = Math.Round(model.Progress * 100, MidpointRounding.AwayFromZero) / 100;
+        Progress = model.Progress;
         Schedule.Update(model.Schedule);
     }
 

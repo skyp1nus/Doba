@@ -27,8 +27,8 @@ public sealed partial class WeekViewModel : ScreenViewModel
     private const double Tolerance = 0.5;
 
     private readonly WeekCardMeasurer _measurer = new();
-    private readonly Dictionary<string, double> _heights = new(StringComparer.Ordinal);
     private readonly Func<string, double> _cardHeight;
+    private readonly Func<Core.Model.TaskItem, double> _taskCardHeight;
     private readonly Func<TaskRow, TaskRowViewModel> _createRow;
     private readonly Action _dropStaleEntrance;
 
@@ -42,6 +42,7 @@ public sealed partial class WeekViewModel : ScreenViewModel
     {
         _createRow = r => new TaskRowViewModel(r, Services.Actions, Services.Commands);
         _cardHeight = CardHeight;
+        _taskCardHeight = TaskCardHeight;
         _dropStaleEntrance = DropStaleEntrance;
         Row1 = new WeekRowViewModel(_createRow);
         Row2 = new WeekRowViewModel(_createRow);
@@ -71,7 +72,10 @@ public sealed partial class WeekViewModel : ScreenViewModel
         }
 
         return new WeekMetrics(row == 0 ? _row1Height : _row2Height, _cardHeight, WeekLayout.CardGap, WeekLayout.MoreReserve,
-            WeekLayout.HeaderHeight, WeekLayout.LaneHeight);
+            WeekLayout.HeaderHeight, WeekLayout.LaneHeight, WeekLayout.ListPaddingTop)
+        {
+            TaskCardHeight = _taskCardHeight,
+        };
     }
 
     /// <summary>
@@ -121,15 +125,15 @@ public sealed partial class WeekViewModel : ScreenViewModel
         }
 
         // Both rows get the same height from WeekRowsPanel, so one projection serves both.
-        PrepareCardHeights(weekStart);
+        ConfigureMeasurer();
         var first = Projector.Week(Store, ctx, anchor, MetricsFor(0));
         var model = Near(_row1Height, _row2Height)
             ? first
             : first with { Rows = [first.Rows[0], Projector.Week(Store, ctx, anchor, MetricsFor(1)).Rows[1]] };
 
         Model = model;
-        Row1.Update(model.Rows[0], _row1Height);
-        Row2.Update(model.Rows[1], _row2Height);
+        Row1.Update(model.Rows[0]);
+        Row2.Update(model.Rows[1]);
         Dispatcher.UIThread.Post(_dropStaleEntrance, DispatcherPriority.Background);
     }
 
@@ -161,29 +165,19 @@ public sealed partial class WeekViewModel : ScreenViewModel
         }
     }
 
-    /// <summary>Measures every single-day task of the shown week and the preview day once per refresh (cached).</summary>
-    private void PrepareCardHeights(DateOnly weekStart)
+    /// <summary>The card width and density the projection's card heights are measured at (the measurer caches per card).</summary>
+    private void ConfigureMeasurer()
     {
         var cardWidth = Math.Floor(_rowWidth / 4) - (2 * WeekLayout.ListPaddingX);
         _measurer.Configure(cardWidth, Services.App.Settings.Current.Density);
-        _heights.Clear();
-        for (var i = 0; i <= 7; i++)
-        {
-            foreach (var t in Store.OnDate(weekStart.AddDays(i)))
-            {
-                var h = _measurer.Height(t.Title, t.Tag, t.Time, t.Priority != Core.Model.Priority.None);
-
-                // Two tasks with the same title: fit with the taller card (the projection asks by title).
-                if (!_heights.TryGetValue(t.Title, out var known) || h > known)
-                {
-                    _heights[t.Title] = h;
-                }
-            }
-        }
     }
 
-    private double CardHeight(string title) =>
-        _heights.TryGetValue(title, out var h) ? h : _measurer.Height(title, null, null, false);
+    /// <summary>A task's card: its title shaped at the width its tag, time and priority leave (WeekMetrics.TaskCardHeight).</summary>
+    private double TaskCardHeight(Core.Model.TaskItem t) =>
+        _measurer.Height(t.Title, t.Tag, t.Time, t.Priority != Core.Model.Priority.None);
+
+    /// <summary>Title-only fallback (WeekMetrics.CardHeight): a card with no tag, time or priority.</summary>
+    private double CardHeight(string title) => _measurer.Height(title, null, null, false);
 
     private static bool Near(double a, double b) => Math.Abs(a - b) < Tolerance;
 }

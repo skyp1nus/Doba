@@ -1,5 +1,6 @@
 using Doba.Core.Model;
 using Doba.Core.Navigation;
+using Doba.Core.Time;
 
 namespace Doba.Core.Projections;
 
@@ -34,7 +35,52 @@ public sealed record TaskRow(
     string Meta,
     bool IsMultiDay,
     bool Dimmed,
-    bool CanMoveToToday = false);
+    bool CanMoveToToday = false)
+{
+    // The accessible names of the row's buttons (prototype rowItem / vis, design-reference lines 1291–1301). Computed on
+    // read, so a projection does not build strings no view asks for.
+
+    /// <summary>Checkbox: "Mark done: …" / "Mark not done: …".</summary>
+    public string ToggleLabel => (Done ? "Mark not done: " : "Mark done: ") + Title;
+
+    /// <summary>Priority button: "Priority: High — change for …" / "Priority: none — change for …".</summary>
+    public string PriorityLabel => "Priority: " + (Priority == Priority.None ? "none" : Priority.DisplayName()) + " — change for " + Title;
+
+    /// <summary>Priority button tooltip: "High priority" / "No priority".</summary>
+    public string PriorityTitle => Priority == Priority.None ? "No priority" : Priority.DisplayName() + " priority";
+
+    /// <summary>"→ Today" button: "Move to today: …".</summary>
+    public string MoveLabel => "Move to today: " + Title;
+}
+
+/// <summary>Display texts shared by the projection records.</summary>
+internal static class Labels
+{
+    private static readonly string[] s_more = BuildMore();
+
+    /// <summary>"+3 more" (cached for small counts).</summary>
+    public static string More(int count) =>
+        (uint)count < (uint)s_more.Length ? s_more[count] : "+" + Number(count) + " more";
+
+    public static string Number(int n) => n.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+    public static string Upper(string text) => text.ToUpperInvariant();
+
+    public static string WeekdayLong(DateOnly d) => DateMath.WeekdayLong(d.DayOfWeek);
+
+    public static string MonthName(DateOnly d) => DateMath.MonthName(d.Month);
+
+    private static string[] BuildMore()
+    {
+        var a = new string[64];
+        for (var i = 0; i < a.Length; i++)
+        {
+            a[i] = "+" + Number(i) + " more";
+        }
+
+        return a;
+    }
+}
 
 /// <summary>Colour role of a group label.</summary>
 public enum GroupTone

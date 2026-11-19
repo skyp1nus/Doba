@@ -578,13 +578,19 @@ public class WeekViewTests
         s.Settle();
         var row = s.ViewModel.Row1;
         var model = row.Model!;
-        Assert.True(model.LaneCount >= 5);
-        Assert.InRange(row.LaneCount, 0, model.LaneCount - 1); // fewer lanes than the projection's
+
+        // The projection decides the lanes (WeekMetrics.VisibleLanes, Core); the row copies them.
+        var allSpans = store.SpansOverlapping(new DateOnly(2026, 11, 9), new DateOnly(2026, 11, 12)).ToList();
+        Assert.True(allSpans.Count >= 7);
+        Assert.Equal(model.LaneCount, row.LaneCount);
+        Assert.InRange(row.LaneCount, 0, 4); // fewer lanes than the 7 the spans need
         var rowView = s.Rows()[0];
         var rowBottom = rowView.Bounds.Height;
 
-        // No bar is cut by the row edge; the shown bars are exactly those in the visible lanes.
-        Assert.Equal(model.Spans.Where(b => b.Lane < row.LaneCount).Select(b => b.Row.Id).Order(), row.Spans.Select(b => b.Id).Order());
+        // No bar is cut by the row edge; the shown bars are exactly the projection's (those in the visible lanes).
+        Assert.Equal(model.Spans.Select(b => b.Row.Id).Order(), row.Spans.Select(b => b.Id).Order());
+        Assert.All(model.Spans, b => Assert.InRange(b.Lane, 0, row.LaneCount - 1));
+        Assert.True(model.Spans.Count < allSpans.Count);
         foreach (var bar in s.Bars(0))
         {
             Assert.True(bar.TranslatePoint(new Point(0, bar.Bounds.Height), rowView)!.Value.Y <= rowBottom + 0.5, "a bar is cut");
@@ -594,10 +600,12 @@ public class WeekViewTests
         var cells = s.Cells(0);
         for (var c = 0; c < 3; c++)
         {
-            var hidden = model.Spans.Count(b => b.Lane >= row.LaneCount && b.Column <= c && c < b.Column + b.ColumnSpan);
+            var day = new DateOnly(2026, 11, 9 + c);
+            var hidden = allSpans.Count(t => t.Date <= day && day <= t.End) - model.Spans.Count(b => b.Column <= c && c < b.Column + b.ColumnSpan);
             Assert.True(hidden > 0);
             var cellVm = row.Cells[c];
-            Assert.Equal(model.Cells[c].MoreCount + hidden, cellVm.MoreCount);
+            Assert.Equal(store.OnDate(day).Count - model.Cells[c].Tasks.Count + hidden, cellVm.MoreCount);
+            Assert.Equal(model.Cells[c].MoreCount, cellVm.MoreCount);
             var more = Scene.More(cells[c]);
             Assert.NotNull(more);
             Assert.Equal("+" + cellVm.MoreCount + " more", more.Content);
@@ -609,23 +617,107 @@ public class WeekViewTests
         s.Window.Width = ScreenHarness.ContentWidth;
         s.Window.Height = ScreenHarness.ContentHeight;
         s.Settle();
-        Assert.Equal(s.ViewModel.Row1.Model!.LaneCount, s.ViewModel.Row1.LaneCount);
-        Assert.Equal(s.ViewModel.Row1.Model.Spans.Count, s.ViewModel.Row1.Spans.Count);
+        Assert.Equal(7, s.ViewModel.Row1.LaneCount);
+        Assert.Equal(allSpans.Count, s.ViewModel.Row1.Spans.Count);
         Assert.All(ids, id => Assert.Contains(s.ViewModel.Row1.Spans, b => b.Id == id));
         for (var c = 0; c < 4; c++)
         {
-            Assert.Equal(s.ViewModel.Row1.Model.Cells[c].MoreCount, s.ViewModel.Row1.Cells[c].MoreCount);
+            Assert.Equal(s.ViewModel.Row1.Model!.Cells[c].MoreCount, s.ViewModel.Row1.Cells[c].MoreCount);
+            var day = new DateOnly(2026, 11, 9 + c);
+            Assert.Equal(store.OnDate(day).Count - s.ViewModel.Row1.Cells[c].Tasks.Count, s.ViewModel.Row1.Cells[c].MoreCount);
         }
     }
 
-    [Theory]
-    [InlineData(3, 403, 3)]   // the design's row: everything fits
-    [InlineData(7, 403, 7)]   // 86 + 7 × 36 = 338 ≤ 403 − 10 − 26
-    [InlineData(8, 403, 7)]
-    [InlineData(5, 254, 3)]   // 1100 × 700: 254 − 86 − 10 − 26 = 132 → 3 lanes
-    [InlineData(2, 100, 0)]   // not even one lane leaves room for "+N more"
-    public void Visible_lanes_leave_room_for_the_more_line(int lanes, double rowHeight, int visible) =>
-        Assert.Equal(visible, WeekRowViewModel.VisibleLanes(lanes, rowHeight));
+    [AvaloniaFact]
+    public void A_week_change_reuses_the_cards_by_position_and_shows_the_new_tasks_at_once()
+    {
+        using var s = new Scene();
+        List<List<TaskCard>> CardsByCell() => [.. Enumerable.Range(0, 2).SelectMany(r => s.Cells(r)).Select(Scene.Cards)];
+        var before = CardsByCell();
+
+        // Monday 9 Nov: its first card is a done task, at rest (strike and colours at their done values).
+        var card = before[0][0];
+        var doneRow = (TaskRowViewModel)card.DataContext!;
+        Assert.True(doneRow.Done);
+        var box = card.GetVisualDescendants().OfType<Border>().Single(b => b.Name == "PART_Box");
+        var title = card.FindControl<Button>("PART_TitleButton")!.GetVisualDescendants().OfType<Avalonia.Controls.Presenters.ContentPresenter>().First();
+        var muted = Doba.App.Tests.DesignSystem.Pixels.Resource("Color.Text.Muted");
+        Assert.True(Doba.App.Tests.DesignSystem.Pump.Until(() => card.TitleText.StrokeColor == muted && ColorOf(box.Background).A == 255,
+            TimeSpan.FromSeconds(3)));
+
+        // Next week: Monday 16 Nov's first task is open. The same card shows it, with the open state at once (no fade
+        // from the done task's strike, fill or title colour).
+        s.ViewModel.Show(new NavState(AppView.Week, DemoToday.AddDays(7)));
+        var openRow = (TaskRowViewModel)card.DataContext!;
+        Assert.NotEqual(doneRow.Id, openRow.Id);
+        Assert.False(openRow.Done);
+        Assert.False(card.TitleText.Struck);
+        Assert.Equal(0, card.TitleText.StrokeColor.A);
+        Assert.Equal(0, ColorOf(box.Background).A);
+        Assert.Equal(Doba.App.Tests.DesignSystem.Pixels.Resource("Color.Text.Primary"), ColorOf(title.Foreground));
+        Assert.DoesNotContain("done", card.FindControl<Button>("PART_TitleButton")!.Classes);
+
+        // Every cell kept its cards by position and shows the new week's projection.
+        s.Settle();
+        var after = CardsByCell();
+        var expected = s.Expected2(DemoToday.AddDays(7));
+        var expectedCells = expected.Rows.SelectMany(r => r.Cells).ToList();
+        var reused = 0;
+        for (var c = 0; c < after.Count; c++)
+        {
+            Assert.Equal(expectedCells[c].Tasks.Select(t => t.Id), after[c].Select(k => ((TaskRowViewModel)k.DataContext!).Id));
+            for (var i = 0; i < Math.Min(before[c].Count, after[c].Count); i++)
+            {
+                Assert.Same(before[c][i], after[c][i]);
+                reused++;
+            }
+        }
+
+        Assert.True(reused >= 10, $"{reused} cards reused");
+
+        // Within the week, completing a task keeps reconciling by id: the card stays with its task and fades.
+        var target = after.SelectMany(k => k).First(k => !((TaskRowViewModel)k.DataContext!).Done);
+        var targetRow = (TaskRowViewModel)target.DataContext!;
+        s.Harness.App.Store.ToggleDone(targetRow.Id);
+        s.Settle();
+        Assert.Same(targetRow, target.DataContext);
+        Assert.True(target.TitleText.Struck);
+
+        static Avalonia.Media.Color ColorOf(Avalonia.Media.IBrush? brush) =>
+            brush is Avalonia.Media.ISolidColorBrush b ? b.Color : default;
+    }
+
+    [AvaloniaFact]
+    public void Card_heights_are_measured_per_task_not_per_title()
+    {
+        // 1100 × 700: 203 px columns, where a tag and a time take enough of a card to wrap a title that fits without them.
+        using var s = new Scene(width: 815, height: 532);
+        var metrics = s.ViewModel.MetricsFor(0);
+        Assert.NotNull(metrics.TaskCardHeight);
+
+        TaskItem Task(string title, string? tag, TimeOnly? time, Priority priority) =>
+            new(0, title, string.Empty, DemoToday, null, time, 30, priority, tag, false);
+
+        // Find a title that is one line on a bare card and two lines next to "#work", "09:00" and a priority.
+        string? title = null;
+        for (var words = 1; words <= 12 && title is null; words++)
+        {
+            var candidate = string.Join(" ", Enumerable.Repeat("Plan", words));
+            if (metrics.CardHeightOf(Task(candidate, "work", new TimeOnly(9, 0), Priority.High)) > metrics.CardHeightOf(Task(candidate, null, null, Priority.None)))
+            {
+                title = candidate;
+            }
+        }
+
+        Assert.NotNull(title);
+
+        // The same title gets two heights: the projection fits each card with its own (the old title-keyed map gave
+        // both tasks the taller one).
+        var tall = metrics.CardHeightOf(Task(title, "work", new TimeOnly(9, 0), Priority.High));
+        var bare = metrics.CardHeightOf(Task(title, null, null, Priority.None));
+        Assert.True(tall > bare, $"{tall} vs {bare}");
+        Assert.Equal(bare, metrics.CardHeight(title));
+    }
 
     [AvaloniaFact]
     public void Screenshot_comfortable() => Capture(null, "week-content");

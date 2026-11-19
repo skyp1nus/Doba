@@ -11,7 +11,8 @@ public sealed record InboxModel(IReadOnlyList<TaskGroup> Left, IReadOnlyList<Tas
 // ---------- Today ----------
 
 /// <param name="Summary">"6 tasks · 4 done · 2 left · 3 overdue".</param>
-/// <param name="Progress">0..1 share of today's single-day tasks that are done.</param>
+/// <param name="Progress">0..1 share of today's single-day tasks that are done, in whole percents as the prototype's bar
+/// (<c>Math.round(done / n · 100)</c>): 4 of 6 → 0.67.</param>
 /// <param name="Groups">Overdue, In progress, Scheduled, Anytime (always present), Done.</param>
 public sealed record TodayModel(string Summary, double Progress, IReadOnlyList<TaskGroup> Groups, ScheduleModel Schedule);
 
@@ -32,8 +33,27 @@ public sealed record DayModel(DateOnly Date, string Progress, IReadOnlyList<Task
 /// <param name="MoreReserve">Space kept for the "+N more" link when more cards follow (design 26).</param>
 /// <param name="HeaderHeight">Day header row (design 86).</param>
 /// <param name="LaneHeight">Multi-day lane (design 36).</param>
-public sealed record WeekMetrics(double RowHeight, Func<string, double> CardHeight, double CardGap = 6, double MoreReserve = 26, double HeaderHeight = 86, double LaneHeight = 36)
+/// <param name="ListPaddingTop">Top padding of the card list below the lanes (design 10).</param>
+public sealed record WeekMetrics(double RowHeight, Func<string, double> CardHeight, double CardGap = 6, double MoreReserve = 26, double HeaderHeight = 86, double LaneHeight = 36,
+    double ListPaddingTop = 10)
 {
+    /// <summary>
+    /// How many of <paramref name="lanes"/> multi-day lanes a row shows: all of them while they leave room under the
+    /// lanes for the card list's top padding and a "+N more" line (always at the design size); in a short row only the
+    /// lanes that leave that room, so no bar is cut by the row edge. An unmeasured row (NaN) shows every lane.
+    /// </summary>
+    public int VisibleLanes(int lanes)
+    {
+        if (double.IsNaN(RowHeight) || lanes == 0)
+        {
+            return lanes;
+        }
+
+        var room = RowHeight - HeaderHeight - ListPaddingTop - MoreReserve;
+        var fit = room / LaneHeight;
+        return fit >= lanes ? lanes : Math.Clamp((int)Math.Floor(fit), 0, lanes);
+    }
+
     /// <summary>
     /// Height of a given task's card. A card's height depends on more than its title (tag, time and priority decide
     /// how much width the title gets), so when this is set it is used instead of <see cref="CardHeight"/>.
@@ -56,13 +76,29 @@ public sealed record WeekMetrics(double RowHeight, Func<string, double> CardHeig
 /// <param name="Weekday">"Mon".</param>
 /// <param name="MonthShort">"Nov".</param>
 /// <param name="IsPreview">The dimmed "Next week" preview cell (last cell of row 2).</param>
-/// <param name="Progress">0..1 done share of single-day tasks.</param>
+/// <param name="Progress">0..1 done share of single-day tasks, in whole percents (prototype <c>Math.round</c>).</param>
 /// <param name="Tasks">Cards that fit; preview cards are rendered dimmer by the view.</param>
-/// <param name="MoreCount">Tasks that did not fit ("+N more"); 0 = none.</param>
-/// <param name="Empty">No single-day tasks ("Nothing here").</param>
-public sealed record WeekDayCell(DateOnly Date, int Column, string Weekday, int DayNumber, string MonthShort, bool IsToday, bool IsPreview, double Progress, IReadOnlyList<TaskRow> Tasks, int MoreCount, bool Empty);
+/// <param name="MoreCount">Tasks that did not fit, plus the multi-day bars covering this day in lanes the row cannot
+/// show ("+N more"); 0 = none.</param>
+/// <param name="Empty">Nothing to show for the day: no single-day tasks and no hidden bars ("Nothing here").</param>
+public sealed record WeekDayCell(DateOnly Date, int Column, string Weekday, int DayNumber, string MonthShort, bool IsToday, bool IsPreview, double Progress, IReadOnlyList<TaskRow> Tasks, int MoreCount, bool Empty)
+{
+    /// <summary>"MON" (the prototype upper-cases the weekday with CSS).</summary>
+    public string WeekdayLabel => Labels.Upper(Weekday);
 
-/// <param name="LaneCount">Number of multi-day lanes in this row.</param>
+    /// <summary>"9".</summary>
+    public string DayLabel => Labels.Number(DayNumber);
+
+    /// <summary>Day header button name: "Open Monday 9 November", or "Open next Monday 16 November" for the preview.</summary>
+    public string OpenLabel => string.Concat(IsPreview ? "Open next " : "Open ", Labels.WeekdayLong(Date), " ", DayLabel, " ", Labels.MonthName(Date));
+
+    /// <summary>"+2 more".</summary>
+    public string MoreLabel => Labels.More(MoreCount);
+}
+
+/// <param name="LaneCount">Multi-day lanes shown in this row: all of the row's lanes, or fewer in a short row
+/// (<see cref="WeekMetrics.VisibleLanes"/>).</param>
+/// <param name="Spans">The bars in the shown lanes; a bar in a hidden lane is counted in "+N more" of each day it covers.</param>
 public sealed record WeekRow(int LaneCount, IReadOnlyList<WeekDayCell> Cells, IReadOnlyList<SpanBar> Spans);
 
 /// <summary>Week view: row 1 = first four days of the week, row 2 = last three days + preview of next week's first day.</summary>
@@ -76,28 +112,103 @@ public sealed record WeekModel(DateOnly WeekStart, IReadOnlyList<WeekRow> Rows);
 public sealed record MonthMetrics(double AvailableHeight = 832, double HeaderHeight = 26, double DayNumberHeight = 34, double LaneHeight = 24, double ItemHeight = 25, double MinListRoom = 26);
 
 /// <param name="Items">Items that fit; when more exist the last slot is used by "+N more".</param>
+/// <param name="MoreCount">Items that did not fit, plus the multi-day spans covering this day that need a third lane
+/// (not drawn in the Month view); 0 = none.</param>
 /// <param name="MoreInHeader">The row has no room for a list line (<see cref="MonthMetrics.MinListRoom"/>): Items is
-/// empty and "+<paramref name="MoreCount"/> more" (every task of the day) goes in the day-number row.</param>
-public sealed record MonthDayCell(DateOnly Date, int DayNumber, bool InMonth, bool IsToday, IReadOnlyList<TaskRow> Items, int MoreCount, bool MoreInHeader = false);
+/// empty and "+<paramref name="MoreCount"/> more" (everything of the day) goes in the day-number row.</param>
+public sealed record MonthDayCell(DateOnly Date, int DayNumber, bool InMonth, bool IsToday, IReadOnlyList<TaskRow> Items, int MoreCount, bool MoreInHeader = false)
+{
+    /// <summary>"15".</summary>
+    public string DayLabel => Labels.Number(DayNumber);
+
+    /// <summary>The cell button's name: "Open Sunday 15 November".</summary>
+    public string OpenLabel => string.Concat("Open ", Labels.WeekdayLong(Date), " ", DayLabel, " ", Labels.MonthName(Date));
+
+    /// <summary>"+3 more" (in the list, or in the day-number row when <see cref="MoreInHeader"/>).</summary>
+    public string MoreLabel => Labels.More(MoreCount);
+}
 
 /// <param name="WeekNumber">Shown as "W46".</param>
 /// <param name="IsCurrent">Contains today (label in accent).</param>
 /// <param name="ZoomTarget">Week view anchor when the week label is clicked (today if current week, else the week start).</param>
 /// <param name="RowHeight">floor((AvailableHeight − header) / weekCount); 0 when that is negative or not a number.</param>
-/// <param name="Spans">At most two lanes; further overlapping spans are not shown (prototype rule).</param>
-public sealed record MonthWeek(DateOnly WeekStart, int WeekNumber, bool IsCurrent, DateOnly ZoomTarget, double RowHeight, int LaneCount, IReadOnlyList<MonthDayCell> Days, IReadOnlyList<SpanBar> Spans);
+/// <param name="Spans">At most two lanes; a span that would need a third lane is not drawn (prototype rule) and is
+/// counted in "+N more" of each day it covers in the week instead.</param>
+public sealed record MonthWeek(DateOnly WeekStart, int WeekNumber, bool IsCurrent, DateOnly ZoomTarget, double RowHeight, int LaneCount, IReadOnlyList<MonthDayCell> Days, IReadOnlyList<SpanBar> Spans)
+{
+    /// <summary>"W46".</summary>
+    public string Label => "W" + Labels.Number(WeekNumber);
+
+    /// <summary>"Open week 46".</summary>
+    public string OpenLabel => "Open week " + Labels.Number(WeekNumber);
+}
 
 /// <param name="WeekdayLabels">"Mon".."Sun" in configured order.</param>
-public sealed record MonthModel(int Year, int Month, IReadOnlyList<string> WeekdayLabels, IReadOnlyList<MonthWeek> Weeks);
+public sealed record MonthModel(int Year, int Month, IReadOnlyList<string> WeekdayLabels, IReadOnlyList<MonthWeek> Weeks)
+{
+    /// <summary>"MON".."SUN" in configured order (the prototype upper-cases the header with CSS).</summary>
+    public IReadOnlyList<string> WeekdayHeaders { get; init; } = [];
+}
 
 // ---------- Year ----------
 
 /// <param name="Stat">"31 tasks · 12 done", or "No tasks".</param>
-/// <param name="Progress">0..1.</param>
-/// <param name="Rows">Key items: multi-day spans (Meta "12–14" or "28 Oct – 2 Nov") then upcoming open tasks (Meta "16 Nov"), at most 4.</param>
-/// <param name="MoreCount">"+N more" spans not listed; 0 = none.</param>
+/// <param name="Progress">0..1 done share of the month's single-day tasks, in whole percents (prototype <c>Math.round</c>).</param>
+/// <param name="Rows">Key items: multi-day spans (Meta "12–14" or "28 Oct – 2 Nov") then upcoming open tasks (Meta "16 Nov"), at most 4
+/// (fewer when <see cref="YearMetrics"/> says the cell has room for fewer).</param>
+/// <param name="MoreCount">"+N more": spans not listed, plus key items the measured cell has no room for; 0 = none.</param>
 /// <param name="ZoomTarget">Month view anchor (today for the current month, else the 1st).</param>
-public sealed record YearMonth(int Month, string Name, bool IsCurrent, bool IsPast, string Stat, double Progress, IReadOnlyList<TaskRow> Rows, int MoreCount, DateOnly ZoomTarget);
+public sealed record YearMonth(int Month, string Name, bool IsCurrent, bool IsPast, string Stat, double Progress, IReadOnlyList<TaskRow> Rows, int MoreCount, DateOnly ZoomTarget)
+{
+    /// <summary>"31 TASKS · 12 DONE" (the prototype upper-cases the stat line with CSS).</summary>
+    public string StatLabel => Labels.Upper(Stat);
+
+    /// <summary>Header button name: "Open November".</summary>
+    public string OpenLabel => "Open " + Name;
+
+    /// <summary>"+3 more".</summary>
+    public string MoreLabel => Labels.More(MoreCount);
+}
+
+/// <summary>
+/// The measured room below a Year cell's header (KICKOFF §2: what fits depends on the measured size). The design's
+/// 1600×1000 cells hold the prototype's four key items plus "+N more"; a smaller window holds fewer, and the key items
+/// that do not fit are counted in "+N more" instead of being cut by the cell edge.
+/// </summary>
+/// <param name="Room">Height left for key items and "+N more" (cell content height − header − gap).</param>
+/// <param name="ItemHeight">One key item (design 28).</param>
+/// <param name="Gap">Gap between items and before "+N more" (design 6).</param>
+/// <param name="MoreHeight">The "+N more" link's height.</param>
+public sealed record YearMetrics(double Room, double ItemHeight, double Gap, double MoreHeight)
+{
+    /// <summary>
+    /// How many of <paramref name="rows"/> key items to show and the "+N more" count: everything when it fits; otherwise
+    /// the most items that fit together with the "+N more" line, which then also counts the hidden items.
+    /// </summary>
+    public (int Shown, int More) Fit(int rows, int more)
+    {
+        if (!(Need(rows, more > 0) > Room))
+        {
+            return (rows, more); // fits (or an unmeasured room: NaN shows everything, as without metrics)
+        }
+
+        var shown = rows - 1;
+        while (shown > 0 && Need(shown, withMore: true) > Room)
+        {
+            shown--;
+        }
+
+        shown = Math.Max(0, shown);
+        return (shown, more + rows - shown);
+    }
+
+    private double Need(int items, bool withMore)
+    {
+        var height = (items * ItemHeight) + (Math.Max(0, items - 1) * Gap);
+        // The items list stays in the cell's stack even when empty, so the gap before "+N more" is always there.
+        return withMore ? height + Gap + MoreHeight : height;
+    }
+}
 
 public sealed record YearModel(int Year, IReadOnlyList<YearMonth> Months);
 

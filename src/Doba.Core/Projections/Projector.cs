@@ -248,7 +248,7 @@ public static class Projector
         var total = dayTasks.Count;
         var summary = string.Concat(Count(total), " tasks · ", Count(done.Count), " done · ", Count(total - done.Count), " left")
             + (overdue.Count > 0 ? " · " + Count(overdue.Count) + " overdue" : string.Empty);
-        var progress = total == 0 ? 0 : (double)done.Count / total;
+        var progress = WholePercent(done.Count, total);
 
         var all = dayTasks.ToList();
         all.Sort(ByTime);
@@ -317,8 +317,31 @@ public static class Projector
             spans.Add(new SpanBar(Row(t, ctx, meta), DateMath.DaysBetween(rs, st), DateMath.DaysBetween(st, en) + 1, lane, clipL, clipR));
         }
 
-        var lanes = laneEnds.Count;
-        var avail = metrics.RowHeight - metrics.HeaderHeight - lanes * metrics.LaneHeight - 10;
+        // A short row shows only the lanes that leave room for the list padding and a "+N more" line; a bar in a hidden
+        // lane is counted in "+N more" of every day it covers in this row (the Day view shows it).
+        var lanes = metrics.VisibleLanes(laneEnds.Count);
+        Span<int> hidden = stackalloc int[4];
+        if (lanes < laneEnds.Count)
+        {
+            var shown = new List<SpanBar>(spans.Count);
+            foreach (var bar in spans)
+            {
+                if (bar.Lane < lanes)
+                {
+                    shown.Add(bar);
+                    continue;
+                }
+
+                for (var c = bar.Column; c < bar.Column + bar.ColumnSpan && c < dayCount; c++)
+                {
+                    hidden[c]++;
+                }
+            }
+
+            spans = shown;
+        }
+
+        var avail = metrics.RowHeight - metrics.HeaderHeight - lanes * metrics.LaneHeight - metrics.ListPaddingTop;
         if (double.IsNaN(avail))
         {
             avail = 0; // unmeasured or broken metrics: no card fits (every comparison with NaN would let all of them in)
@@ -327,18 +350,19 @@ public static class Projector
         var cells = new List<WeekDayCell>(4);
         for (var c = 0; c < dayCount; c++)
         {
-            cells.Add(WeekCell(store, ctx, ws.AddDays(first + c), c, false, avail, metrics));
+            cells.Add(WeekCell(store, ctx, ws.AddDays(first + c), c, false, avail, metrics, hidden[c]));
         }
 
         if (r == 1)
         {
-            cells.Add(WeekCell(store, ctx, ws.AddDays(7), 3, true, avail, metrics));
+            cells.Add(WeekCell(store, ctx, ws.AddDays(7), 3, true, avail, metrics, 0));
         }
 
         return new WeekRow(lanes, cells, spans);
     }
 
-    private static WeekDayCell WeekCell(ITaskReader store, ProjectionContext ctx, DateOnly d, int column, bool preview, double avail, WeekMetrics metrics)
+    private static WeekDayCell WeekCell(ITaskReader store, ProjectionContext ctx, DateOnly d, int column, bool preview, double avail, WeekMetrics metrics,
+        int hiddenSpans)
     {
         var list = store.OnDate(d).ToList();
         list.Sort(ByTime);
@@ -351,7 +375,7 @@ public static class Projector
             }
         }
 
-        var showN = Fit(list, avail, metrics);
+        var showN = Fit(list, avail, metrics, hiddenSpans > 0);
         var rows = new TaskRow[showN];
         for (var k = 0; k < showN; k++)
         {
@@ -359,20 +383,23 @@ public static class Projector
         }
 
         // The preview's progress bar is always empty in the prototype.
-        var progress = preview || list.Count == 0 ? 0 : (double)doneN / list.Count;
+        var progress = preview ? 0 : WholePercent(doneN, list.Count);
         return new WeekDayCell(d, column, DateMath.WeekdayShort(d.DayOfWeek), d.Day, DateMath.MonthAbbrev(d.Month),
-            !preview && d == ctx.Today, preview, progress, rows, list.Count - showN, list.Count == 0);
+            !preview && d == ctx.Today, preview, progress, rows, list.Count - showN + hiddenSpans, list.Count == 0 && hiddenSpans == 0);
     }
 
-    /// <summary>The prototype's <c>fit</c>: how many cards fit, keeping room for "+N more" while more follow.</summary>
-    private static int Fit(List<TaskItem> list, double avail, WeekMetrics m)
+    /// <summary>
+    /// The prototype's <c>fit</c>: how many cards fit, keeping room for "+N more" while more follow (or while bars of the
+    /// day are hidden, which "+N more" counts too).
+    /// </summary>
+    private static int Fit(List<TaskItem> list, double avail, WeekMetrics m, bool moreAnyway)
     {
         double used = 0;
         var n = 0;
         for (var k = 0; k < list.Count; k++)
         {
             var h = m.CardHeightOf(list[k]) + m.CardGap;
-            var reserve = k < list.Count - 1 ? m.MoreReserve : 0;
+            var reserve = moreAnyway || k < list.Count - 1 ? m.MoreReserve : 0;
             if (used + h + reserve > avail + m.CardGap)
             {
                 break;
@@ -405,12 +432,14 @@ public static class Projector
         }
 
         var weeks = new List<MonthWeek>(weekCount);
+        Span<int> hidden = stackalloc int[7]; // spans of the week that need a third lane, per day
         for (var w = 0; w < weekCount; w++)
         {
             var ws = gs.AddDays(w * 7);
             var we = ws.AddDays(6);
             var laneEnds = new List<DateOnly>(2);
             var spans = new List<SpanBar>();
+            hidden.Clear();
             foreach (var t in store.SpansOverlapping(ws, we))
             {
                 var start = t.Date!.Value;
@@ -420,6 +449,14 @@ public static class Projector
                 var lane = FreeLane(laneEnds, st);
                 if (lane > 1)
                 {
+                    // The prototype drops a span that needs a third lane (`if (lane > 1) return`). Doba counts it in
+                    // "+N more" of every day it covers in this week, so the task never vanishes from the Month view;
+                    // the cell leads to the Day view, which lists it. Like the prototype, it does not take a lane.
+                    for (var c = DateMath.DaysBetween(ws, st); c <= DateMath.DaysBetween(ws, en); c++)
+                    {
+                        hidden[c]++;
+                    }
+
                     continue;
                 }
 
@@ -430,7 +467,7 @@ public static class Projector
             var lanes = laneEnds.Count;
             var room = rowHeight - metrics.DayNumberHeight - lanes * metrics.LaneHeight;
 
-            // No room for even one list line below the lanes: every task goes to "+N more" in the day-number row.
+            // No room for even one list line below the lanes: everything goes to "+N more" in the day-number row.
             var headerOnly = !(room >= metrics.MinListRoom);
             var cap = Math.Max(1, (int)Math.Floor((room - 8) / metrics.ItemHeight));
             var cells = new List<MonthDayCell>(7);
@@ -439,15 +476,18 @@ public static class Projector
                 var d = ws.AddDays(i);
                 var list = store.OnDate(d).ToList();
                 list.Sort(ByTime);
-                var showN = headerOnly ? 0 : (list.Count > cap ? cap - 1 : list.Count);
+
+                // A hidden span needs the "+N more" line like an item that does not fit (with none, as the prototype).
+                var total = list.Count + hidden[i];
+                var showN = headerOnly ? 0 : (total > cap ? Math.Min(list.Count, cap - 1) : list.Count);
                 var items = new TaskRow[showN];
                 for (var k = 0; k < showN; k++)
                 {
                     items[k] = Row(list[k], ctx);
                 }
 
-                cells.Add(new MonthDayCell(d, d.Day, d.Year == first.Year && d.Month == first.Month, d == today, items, list.Count - showN,
-                    headerOnly && list.Count > 0));
+                cells.Add(new MonthDayCell(d, d.Day, d.Year == first.Year && d.Month == first.Month, d == today, items, total - showN,
+                    headerOnly && total > 0));
             }
 
             var current = ws <= today && today <= we;
@@ -455,12 +495,14 @@ public static class Projector
         }
 
         var labels = DateMath.WeekdayOrder(ctx.WeekStart).Select(DateMath.WeekdayShort).ToArray();
-        return new MonthModel(first.Year, first.Month, labels, weeks);
+        return new MonthModel(first.Year, first.Month, labels, weeks) { WeekdayHeaders = Array.ConvertAll(labels, Labels.Upper) };
     }
 
     // ---------- Year ----------
 
-    public static YearModel Year(ITaskReader store, ProjectionContext ctx, int year)
+    /// <param name="metrics">The measured room of each month's cell (by month 1..12), or null for none: then every key
+    /// item is listed, as in the prototype. With room for fewer, the items that do not fit are counted in "+N more".</param>
+    public static YearModel Year(ITaskReader store, ProjectionContext ctx, int year, Func<int, YearMetrics?>? metrics = null)
     {
         ArgumentNullException.ThrowIfNull(store);
         ArgumentNullException.ThrowIfNull(ctx);
@@ -511,8 +553,19 @@ public static class Projector
                 rows.Add(Row(t, ctx, DateMath.DayMonth(t.Date!.Value)));
             }
 
+            if (metrics?.Invoke(m) is { } room)
+            {
+                var (fit, more) = room.Fit(rows.Count, extra);
+                if (fit < rows.Count)
+                {
+                    rows.RemoveRange(fit, rows.Count - fit);
+                }
+
+                extra = more;
+            }
+
             var stat = singleN > 0 ? string.Concat(Count(singleN), " tasks · ", Count(doneN), " done") : "No tasks";
-            months.Add(new YearMonth(m, DateMath.MonthName(m), isCur, isPast, stat, singleN == 0 ? 0 : (double)doneN / singleN,
+            months.Add(new YearMonth(m, DateMath.MonthName(m), isCur, isPast, stat, WholePercent(doneN, singleN),
                 rows, extra, isCur ? today : first));
         }
 
@@ -655,6 +708,13 @@ public static class Projector
     private static string TimeText(TaskItem t) => t.Time is { } tm ? DateMath.Hhmm(tm) : string.Empty;
 
     private static string Count(int n) => n.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+    /// <summary>
+    /// <paramref name="done"/> / <paramref name="total"/> as the prototype's progress bars draw it: a whole percent
+    /// (<c>Math.round(done / n · 100) + '%'</c>), as a 0..1 share; 0 when there is nothing.
+    /// </summary>
+    internal static double WholePercent(int done, int total) =>
+        total <= 0 ? 0 : DateMath.RoundHalfUp((double)done / total * 100) / 100.0;
 
     private static string DaysText(DateOnly start, DateOnly end) => Count(DateMath.DaysBetween(start, end) + 1) + " days";
 

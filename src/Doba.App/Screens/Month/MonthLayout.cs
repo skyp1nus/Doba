@@ -45,5 +45,5 @@ public static class MonthLayout
     /// projection divides <paramref name="bodyHeight"/> − <see cref="PrototypeBodySlack"/> into week rows.
     /// </summary>
     public static MonthMetrics Metrics(double bodyHeight) =>
-        new(bodyHeight - PrototypeBodySlack, HeaderHeight, DayNumberHeight, LaneHeight, ItemPitch);
+        new(bodyHeight - PrototypeBodySlack, HeaderHeight, DayNumberHeight, LaneHeight, ItemPitch, MinListRoom);
 }

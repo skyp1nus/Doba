@@ -329,21 +329,6 @@ public class YearViewTests
         Assert.All(s.ViewModel.Months, m => Assert.False(m.IsPast));
     }
 
-    [Theory]
-    [InlineData(4, 0, 1000, 4, 0)]          // room to spare: all four
-    [InlineData(3, 2, 200, 3, 2)]           // three items + "+2 more": 3×28 + 2×6 + 6 + 20 = 122 fits
-    [InlineData(4, 0, 125, 3, 1)]           // four items, no more: 4×28 + 3×6 = 130 > 125 …
-    [InlineData(4, 0, 130, 4, 0)]           // … exactly 130 fits
-    [InlineData(4, 0, 129, 3, 1)]           // 129: three items (96) + 6 + 20 = 122, the fourth counted in "+1 more"
-    [InlineData(3, 2, 87, 1, 4)]            // two items (62) + 6 + 20 = 88 > 87 → one item …
-    [InlineData(3, 2, 88, 2, 3)]            // … 88 fits two; the third span joins "+N more"
-    [InlineData(2, 0, 40, 0, 2)]            // not even one item with the link: only "+2 more"
-    public void Year_room_shows_the_items_that_fit_and_counts_the_rest(int rows, int more, double height, int shown, int counted)
-    {
-        var room = new YearRoom(height, ItemHeight: 28, Gap: 6, MoreHeight: 20);
-        Assert.Equal((shown, counted), room.Fit(rows, more));
-    }
-
     [AvaloniaFact]
     public void At_1100x700_no_key_item_is_cut_and_hidden_items_are_counted_in_more()
     {
@@ -381,6 +366,18 @@ public class YearViewTests
         }
 
         Assert.True(fewer > 0, "at 1100×700 some months hold fewer than the design's four key items");
+
+        // The fit is the projection's (Core's YearMetrics with the measured rooms); the view-model only copies it.
+        var fitted = Projector.Year(s.Harness.App.Store, new ProjectionContext(s.Harness.App.DayClock.Today, s.Harness.App.DayClock.Now,
+            s.Harness.App.Settings.Current.WeekStart, s.Harness.FilterTag), 2026, s.ViewModel.RoomOf);
+        Assert.All(s.ViewModel.Months, m => Assert.NotNull(s.ViewModel.RoomOf(m.Month)));
+        foreach (var month in s.ViewModel.Months)
+        {
+            var e = fitted.Months[month.Month - 1];
+            Assert.Equal(e.Rows, month.Model.Rows);
+            Assert.Equal(e.Rows, month.Rows.Select(r => r.Row));
+            Assert.Equal((e.MoreCount, e.MoreLabel), (month.MoreCount, month.MoreLabel));
+        }
 
         // Back at the design size, every month shows the projection as is again.
         s.Window.Width = ScreenHarness.ContentWidth;

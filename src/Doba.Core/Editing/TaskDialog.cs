@@ -191,13 +191,6 @@ public static class TaskDialog
             : d with { Date = null, Days = 1, Open = DraftPopover.None };
     }
 
-    /// <summary>‹ / › next to the date: one day back or forward (no-op when undated).</summary>
-    public static TaskDraft StepDate(TaskDraft d, int direction)
-    {
-        ArgumentNullException.ThrowIfNull(d);
-        return d.Date is { } v ? d with { Date = v.AddDays(Math.Sign(direction)) } : d;
-    }
-
     /// <summary>
     /// "Lasts N days" stepper, clamped to 1..14. A longer span (an imported one) is never cut by a step: "+" leaves it
     /// as it is and "−" shortens it by one day.
@@ -208,19 +201,74 @@ public static class TaskDialog
         return d with { Days = Math.Clamp(d.Days + Math.Sign(direction), 1, Math.Max(MaxDays, d.Days)) };
     }
 
-    /// <summary>‹ / › next to the time: ±15 minutes, clamped to 00:00..23:45.</summary>
-    public static TaskDraft StepTime(TaskDraft d, int direction)
-    {
-        ArgumentNullException.ThrowIfNull(d);
-        var m = Math.Clamp(DateMath.Minutes(d.Time) + 15 * Math.Sign(direction), 0, 23 * 60 + 45);
-        return d with { Time = new TimeOnly(m / 60, m % 60) };
-    }
-
     /// <summary>Mini calendar ‹ / ›: the previous or next month.</summary>
     public static TaskDraft ShiftCalendarMonth(TaskDraft d, int direction)
     {
         ArgumentNullException.ThrowIfNull(d);
         return d with { CalendarMonth = DateMath.FirstOfMonth(d.CalendarMonth).AddMonths(direction) };
+    }
+
+    /// <summary>The mini calendar's "Today" (prototype <c>calToday</c>): shows the current month; the date and the
+    /// popover stay as they are.</summary>
+    public static TaskDraft ShowTodayMonth(TaskDraft d, DateOnly today)
+    {
+        ArgumentNullException.ThrowIfNull(d);
+        var month = DateMath.FirstOfMonth(today);
+        return d.CalendarMonth == month ? d : d with { CalendarMonth = month };
+    }
+
+    /// <summary>A pill (prototype <c>pill().toggle</c>): opens its popover, or closes it when it is the open one; any
+    /// other open popover closes.</summary>
+    public static TaskDraft TogglePopover(TaskDraft d, DraftPopover popover)
+    {
+        ArgumentNullException.ThrowIfNull(d);
+        return d with { Open = d.Open == popover ? DraftPopover.None : popover };
+    }
+
+    /// <summary>Closes the open popover (Esc, Done, focus in the title or notes); the same draft when none is open.</summary>
+    public static TaskDraft ClosePopover(TaskDraft d)
+    {
+        ArgumentNullException.ThrowIfNull(d);
+        return d.Open == DraftPopover.None ? d : d with { Open = DraftPopover.None };
+    }
+
+    /// <summary>
+    /// The popover that is actually shown: the Time popover cannot stay open once its pill is gone ("Lasts 2 days" or
+    /// "No date" picked while it was open), so it shows as closed.
+    /// </summary>
+    public static DraftPopover VisiblePopover(TaskDraft d)
+    {
+        ArgumentNullException.ThrowIfNull(d);
+        return d.Open == DraftPopover.Time && !d.ShowTime ? DraftPopover.None : d.Open;
+    }
+
+    /// <summary>"Any time" / "Set time" (prototype <c>modeOpts</c>); the same draft when nothing changes.</summary>
+    public static TaskDraft SetTimed(TaskDraft d, bool timed)
+    {
+        ArgumentNullException.ThrowIfNull(d);
+        return d.Timed == timed ? d : d with { Timed = timed };
+    }
+
+    /// <summary>A duration chip (prototype <c>durOpts.pick</c>): sets the duration and also switches on "Set time".</summary>
+    public static TaskDraft PickDuration(TaskDraft d, int minutes)
+    {
+        ArgumentNullException.ThrowIfNull(d);
+        return d.DurationMinutes == minutes && d.Timed ? d : d with { DurationMinutes = minutes, Timed = true };
+    }
+
+    /// <summary>A row of the Priority popover (prototype <c>prioOpts2.pick</c>): sets the priority and closes the popover.</summary>
+    public static TaskDraft PickPriority(TaskDraft d, Priority priority)
+    {
+        ArgumentNullException.ThrowIfNull(d);
+        return d with { Priority = priority, Open = DraftPopover.None };
+    }
+
+    /// <summary>A row of the Tag popover (prototype <c>listOpts.pick</c>): sets the tag (null = "No tag") and closes the
+    /// popover.</summary>
+    public static TaskDraft PickTag(TaskDraft d, string? tag)
+    {
+        ArgumentNullException.ThrowIfNull(d);
+        return d with { Tag = tag, Open = DraftPopover.None };
     }
 
     /// <summary>"November 2026".</summary>

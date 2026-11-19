@@ -1,10 +1,8 @@
 using System.Collections.ObjectModel;
-using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Doba.App.Services;
 using Doba.App.ViewModels;
 using Doba.Core.Projections;
-using Doba.Core.Time;
 
 namespace Doba.App.Screens.Month;
 
@@ -17,13 +15,12 @@ public sealed partial class MonthDayViewModel : ObservableObject
     private readonly Func<TaskRow, TaskRowViewModel> _createRow;
     private readonly Action<TaskRowViewModel, TaskRow> _updateRow = static (vm, r) => vm.Update(r);
 
-    public MonthDayViewModel(int column, MonthDayCell cell, int laneCount, Func<TaskRow, TaskRowViewModel> createRow,
-        double rowHeight = double.PositiveInfinity)
+    public MonthDayViewModel(int column, MonthDayCell cell, int laneCount, Func<TaskRow, TaskRowViewModel> createRow)
     {
         ArgumentNullException.ThrowIfNull(cell);
         Column = column;
         _createRow = createRow;
-        Update(cell, laneCount, rowHeight);
+        Update(cell, laneCount);
     }
 
     /// <summary>0-based column in the week (row key).</summary>
@@ -68,20 +65,18 @@ public sealed partial class MonthDayViewModel : ObservableObject
     /// </summary>
     [ObservableProperty] public partial bool MoreInHeader { get; private set; }
 
-    /// <summary>"+5 more" for <see cref="MoreInHeader"/>: the shown items and the hidden ones.</summary>
+    /// <summary>"+5 more" for <see cref="MoreInHeader"/>: everything of the day (from the projection).</summary>
     [ObservableProperty] public partial string HeaderMoreLabel { get; private set; } = string.Empty;
 
-    /// <param name="rowHeight">The week row's height (the list gets what the day number and the lanes leave).</param>
-    public void Update(MonthDayCell cell, int laneCount, double rowHeight = double.PositiveInfinity)
+    public void Update(MonthDayCell cell, int laneCount)
     {
         ArgumentNullException.ThrowIfNull(cell);
         Model = cell;
         if (Date != cell.Date || DayNumber.Length == 0)
         {
             Date = cell.Date;
-            DayNumber = cell.DayNumber.ToString(CultureInfo.InvariantCulture);
-            OpenLabel = string.Concat("Open ", DateMath.WeekdayLong(cell.Date.DayOfWeek), " ", DayNumber, " ",
-                DateMath.MonthNames[cell.Date.Month - 1]);
+            DayNumber = cell.DayLabel;
+            OpenLabel = cell.OpenLabel;
         }
 
         InMonth = cell.InMonth;
@@ -90,18 +85,18 @@ public sealed partial class MonthDayViewModel : ObservableObject
         if (MoreCount != cell.MoreCount || MoreLabel.Length == 0)
         {
             MoreCount = cell.MoreCount;
-            MoreLabel = string.Concat("+", cell.MoreCount.ToString(CultureInfo.InvariantCulture), " more");
+            MoreLabel = cell.MoreLabel;
         }
 
         KeyedSync.Apply(Items, cell.Items, static r => r.Id, static vm => vm.Id, _createRow, _updateRow);
         HasItems = Items.Count > 0;
 
-        var total = cell.Items.Count + cell.MoreCount;
-        var room = rowHeight - MonthLayout.DayNumberHeight - (laneCount * MonthLayout.LaneHeight);
-        MoreInHeader = total > 0 && room < MonthLayout.MinListRoom;
+        // The projection decides when the row has no room for a list line (MonthMetrics.MinListRoom): then it lists
+        // nothing and counts every task of the day, shown in the day-number row.
+        MoreInHeader = cell.MoreInHeader;
         if (MoreInHeader)
         {
-            HeaderMoreLabel = string.Concat("+", total.ToString(CultureInfo.InvariantCulture), " more");
+            HeaderMoreLabel = cell.MoreLabel;
         }
     }
 

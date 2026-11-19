@@ -37,7 +37,7 @@ public class TodayScreenTests
         Assert.Equal(model.Groups.Select(g => g.Key), vm.Groups.Select(g => g.Key));
         Assert.Equal(model.Groups.Select(g => g.Items.Count), vm.Groups.Select(g => g.Items.Count));
         Assert.Equal(model.Summary, vm.Summary);
-        Assert.Equal(Math.Round(model.Progress * 100, MidpointRounding.AwayFromZero) / 100, vm.Progress); // whole percent, as the prototype
+        Assert.Equal(model.Progress, vm.Progress); // the projection's whole percent, copied
         Assert.Equal(0.67, vm.Progress);
         Assert.Equal(model.Schedule.Blocks.Select(b => b.Row.Id), vm.Schedule.Blocks.Select(b => b.Id));
 

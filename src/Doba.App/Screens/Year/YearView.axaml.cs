@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.Presenters;
 using Avalonia.Interactivity;
 using Doba.App.Screens.Week;
+using Doba.Core.Projections;
 
 namespace Doba.App.Screens.Year;
 
@@ -24,16 +25,16 @@ public partial class YearView : UserControl
     internal Point? OriginOf(Control source) => ZoomOrigin.Of(this, source);
 
     /// <summary>
-    /// After the grid is arranged, every month cell learns how much room it has below its header
-    /// (<see cref="YearMonthViewModel.SetRoom"/>), so a short window shows fewer key items and counts the rest in
-    /// "+N more" instead of cutting rows at the cell edge. A change re-runs layout once; the header does not depend on the
-    /// items, so it settles.
+    /// After the grid is arranged, the view-model learns how much room each month cell has below its header
+    /// (<see cref="YearViewModel.SetRooms"/>), and the projection fits the key items to it (<see cref="YearMetrics"/>),
+    /// so a short window shows fewer key items and counts the rest in "+N more" instead of cutting rows at the cell edge.
+    /// A change re-runs layout once; the header does not depend on the items, so it settles.
     /// </summary>
     protected override Size ArrangeOverride(Size finalSize)
     {
         var size = base.ArrangeOverride(finalSize);
         var itemHeight = this.TryFindResource("Year.ItemHeight", ActualThemeVariant, out var value) && value is double h ? h : 0;
-        if (itemHeight <= 0)
+        if (itemHeight <= 0 || DataContext is not YearViewModel year)
         {
             return size;
         }
@@ -52,6 +53,7 @@ public partial class YearView : UserControl
             }
         }
 
+        var rooms = new List<(int Month, YearMetrics Room)>(cells.Count);
         foreach (var (month, cell, stack) in cells)
         {
             var content = cell.Bounds.Height - cell.Padding.Top - cell.Padding.Bottom - cell.BorderThickness.Top - cell.BorderThickness.Bottom;
@@ -61,9 +63,10 @@ public partial class YearView : UserControl
             }
 
             var room = content - stack.Children[0].DesiredSize.Height - stack.Spacing;
-            month.SetRoom(new YearRoom(room, itemHeight, stack.Spacing, _moreHeight > 0 ? _moreHeight : itemHeight));
+            rooms.Add((month.Month, new YearMetrics(room, itemHeight, stack.Spacing, _moreHeight > 0 ? _moreHeight : itemHeight)));
         }
 
+        year.SetRooms(rooms);
         return size;
     }
 

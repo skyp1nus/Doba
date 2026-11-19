@@ -2,14 +2,13 @@
   Year view (design-reference.dc.html lines 425–454, yearData 1432–1467): twelve months in a 4 × 3 grid filling the
   content area. Each cell: header button (stat "N TASKS · M DONE" + "● NOW", 24 px light month name, progress line)
   → Month view; up to four key items (28 px, 12 px checkbox, title 12.5/500, mono 10.5 meta) that toggle done on
-  click — fewer when the cell is short (YearRoom, measured in YearView.ArrangeOverride) — and "+N more" → Month view. Cell rules and paddings: the prototype's per-position `cell` string, as classes
+  click — fewer when the cell is short (measured in YearView.ArrangeOverride, fitted by Core's YearMetrics) — and "+N more" → Month view. Cell rules and paddings: the prototype's per-position `cell` string, as classes
   (first / last column, top row) over the Space.Year.Cell* tokens.
 -->
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:c="using:Doba.App.Controls"
              xmlns:m="using:Doba.App.Motion"
-             xmlns:t="using:Doba.App.Theme"
              xmlns:vm="using:Doba.App.ViewModels"
              xmlns:y="using:Doba.App.Screens.Year"
              xmlns:w="using:Doba.App.Screens.Week"
@@ -125,7 +124,7 @@
                 <Grid ColumnDefinitions="*,Auto" Height="{DynamicResource Year.StatLineHeight}">
                   <!-- Trimmed in a narrow cell instead of running under "● NOW". -->
                   <TextBlock Name="PART_Stat" Classes="stat" TextTrimming="CharacterEllipsis"
-                             Text="{Binding Stat, Converter={x:Static t:ThemeConverters.Upper}}" />
+                             Text="{Binding StatLabel}" />
                   <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="{DynamicResource Year.NowGap}" IsVisible="{Binding IsCurrent}">
                     <Ellipse Width="{DynamicResource Size.Year.Dot}"
                              Height="{DynamicResource Size.Year.Dot}"

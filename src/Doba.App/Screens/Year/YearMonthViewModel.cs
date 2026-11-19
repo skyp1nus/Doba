@@ -58,8 +58,11 @@ public sealed partial class YearMonthViewModel : ObservableObject
 
     [ObservableProperty] public partial bool IsPast { get; private set; }
 
-    /// <summary>"31 tasks · 12 done" / "No tasks" (upper-cased by the view).</summary>
+    /// <summary>"31 tasks · 12 done" / "No tasks".</summary>
     [ObservableProperty] public partial string Stat { get; private set; } = string.Empty;
+
+    /// <summary>"31 TASKS · 12 DONE" / "NO TASKS" (what the view shows; the prototype upper-cases it with CSS).</summary>
+    [ObservableProperty] public partial string StatLabel { get; private set; } = string.Empty;
 
     /// <summary>0..1 done share of the month's single-day tasks.</summary>
     [ObservableProperty] public partial double Progress { get; private set; }
@@ -71,65 +74,43 @@ public sealed partial class YearMonthViewModel : ObservableObject
     public bool HasMore => MoreCount > 0;
 
     /// <summary>"+3 more".</summary>
-    public string MoreLabel => "+" + MoreCount.ToString(System.Globalization.CultureInfo.InvariantCulture) + " more";
+    [ObservableProperty] public partial string MoreLabel { get; private set; } = string.Empty;
 
     /// <summary>Header button accessible name ("Open November").</summary>
-    public string OpenLabel => "Open " + Name;
+    [ObservableProperty] public partial string OpenLabel { get; private set; } = string.Empty;
 
-    /// <summary>Key items: spans, then upcoming open tasks; at most four.</summary>
+    /// <summary>Key items: spans, then upcoming open tasks; at most four, fewer when the measured cell holds fewer.</summary>
     public ObservableCollection<TaskRowViewModel> Rows { get; } = [];
 
     /// <summary>The record last pushed in.</summary>
     public YearMonth Model { get; private set; } = null!;
-
-    /// <summary>The measured room for key items in this cell (null until the view's first arrange: everything shown).</summary>
-    public YearRoom? Room { get; private set; }
 
     public void Update(YearMonth month)
     {
         ArgumentNullException.ThrowIfNull(month);
         Model = month;
         Name = month.Name;
+        OpenLabel = month.OpenLabel;
         IsCurrent = month.IsCurrent;
         IsPast = month.IsPast;
-        Stat = month.Stat;
+        if (!string.Equals(Stat, month.Stat, StringComparison.Ordinal))
+        {
+            Stat = month.Stat;
+            StatLabel = month.StatLabel;
+        }
+
         Progress = month.Progress;
         ZoomTarget = month.ZoomTarget;
-        OnPropertyChanged(nameof(OpenLabel));
-        ApplyFit();
-    }
-
-    /// <summary>
-    /// The cell's measured room changed (window resize): show as many key items as fit, the rest counted in "+N more".
-    /// Returns true when that changed what the cell shows.
-    /// </summary>
-    public bool SetRoom(YearRoom room)
-    {
-        if (Room == room)
+        if (MoreCount != month.MoreCount || MoreLabel.Length == 0)
         {
-            return false;
+            MoreCount = month.MoreCount;
+            MoreLabel = month.MoreLabel;
         }
 
-        var before = (Rows.Count, MoreCount);
-        Room = room;
-        ApplyFit();
-        return before != (Rows.Count, MoreCount);
+        KeyedSync.Apply(Rows, month.Rows, r => r.Id, vm => vm.Id, r => new TaskRowViewModel(r, _actions, _commands), (vm, r) => vm.Update(r));
     }
 
-    private void ApplyFit()
-    {
-        var month = Model;
-        var (shown, more) = Room is { } room ? room.Fit(month.Rows.Count, month.MoreCount) : (month.Rows.Count, month.MoreCount);
-        if (MoreCount != more)
-        {
-            MoreCount = more;
-            OnPropertyChanged(nameof(HasMore));
-            OnPropertyChanged(nameof(MoreLabel));
-        }
-
-        IReadOnlyList<TaskRow> rows = shown == month.Rows.Count ? month.Rows : [.. month.Rows.Take(shown)];
-        KeyedSync.Apply(Rows, rows, r => r.Id, vm => vm.Id, r => new TaskRowViewModel(r, _actions, _commands), (vm, r) => vm.Update(r));
-    }
+    partial void OnMoreCountChanged(int value) => OnPropertyChanged(nameof(HasMore));
 
     /// <summary>Month header or "+N more": zoom into the Month view.</summary>
     /// <param name="origin">Clicked element's centre relative to the Year content area (0..1), or null for keyboard.</param>

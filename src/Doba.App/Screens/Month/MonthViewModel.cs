@@ -43,7 +43,7 @@ public sealed partial class MonthViewModel : ScreenViewModel
         _createWeek = w => new MonthWeekViewModel(_indexOf(w), w, _createRow);
     }
 
-    /// <summary>"MON" … "SUN" in the configured week order (the prototype upper-cases them with CSS).</summary>
+    /// <summary>"MON" … "SUN" in the configured week order (the projection's <see cref="MonthModel.WeekdayHeaders"/>).</summary>
     public ObservableCollection<string> WeekdayLabels { get; } = [];
 
     /// <summary>The five or six week rows, top to bottom.</summary>
@@ -102,7 +102,7 @@ public sealed partial class MonthViewModel : ScreenViewModel
         Model = model;
         Year = model.Year;
         Month = model.Month;
-        SyncLabels(model.WeekdayLabels);
+        SyncLabels(model.WeekdayHeaders);
         _firstWeekStart = model.Weeks[0].WeekStart;
         KeyedSync.Apply(Weeks, model.Weeks, _indexOf, static vm => vm.Index, _createWeek, _updateWeek);
     }
@@ -126,14 +126,13 @@ public sealed partial class MonthViewModel : ScreenViewModel
         _labelSource = labels;
         for (var i = 0; i < labels.Count; i++)
         {
-            var upper = labels[i].ToUpperInvariant();
             if (i == WeekdayLabels.Count)
             {
-                WeekdayLabels.Add(upper);
+                WeekdayLabels.Add(labels[i]);
             }
-            else if (!string.Equals(WeekdayLabels[i], upper, StringComparison.Ordinal))
+            else if (!string.Equals(WeekdayLabels[i], labels[i], StringComparison.Ordinal))
             {
-                WeekdayLabels[i] = upper;
+                WeekdayLabels[i] = labels[i];
             }
         }
     }

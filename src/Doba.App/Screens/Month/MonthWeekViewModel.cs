@@ -1,5 +1,4 @@
 using System.Collections.ObjectModel;
-using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Doba.App.Services;
 using Doba.App.ViewModels;
@@ -28,8 +27,8 @@ public sealed partial class MonthWeekViewModel : ObservableObject
         _createRow = createRow;
         _createSpan = s => new MonthSpanViewModel(s, _createRow(s.Row));
         _columnOf = c => c.Date.DayNumber - WeekStart.DayNumber;
-        _createDay = c => new MonthDayViewModel(_columnOf(c), c, LaneCount, _createRow, RowHeight);
-        _updateDay = (vm, c) => vm.Update(c, LaneCount, RowHeight);
+        _createDay = c => new MonthDayViewModel(_columnOf(c), c, LaneCount, _createRow);
+        _updateDay = (vm, c) => vm.Update(c, LaneCount);
         Update(week);
     }
 
@@ -71,9 +70,8 @@ public sealed partial class MonthWeekViewModel : ObservableObject
         if (_weekNumber != week.WeekNumber)
         {
             _weekNumber = week.WeekNumber;
-            var n = week.WeekNumber.ToString(CultureInfo.InvariantCulture);
-            Label = "W" + n;
-            OpenLabel = "Open week " + n;
+            Label = week.Label;
+            OpenLabel = week.OpenLabel;
         }
 
         IsCurrent = week.IsCurrent;

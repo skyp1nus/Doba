@@ -160,11 +160,6 @@ public class TaskDialogTests
         Assert.Equal(1, TaskDialog.StepDays(d, -1).Days);
         Assert.Equal(14, TaskDialog.StepDays(d with { Days = 14 }, 1).Days);
         Assert.Equal(2, TaskDialog.StepDays(d, 1).Days);
-        Assert.Equal(new TimeOnly(23, 45), TaskDialog.StepTime(d with { Time = new TimeOnly(23, 45) }, 1).Time);
-        Assert.Equal(new TimeOnly(0, 0), TaskDialog.StepTime(d with { Time = new TimeOnly(0, 10) }, -1).Time);
-        Assert.Equal(new TimeOnly(10, 15), TaskDialog.StepTime(d, 1).Time);
-        Assert.Equal(Today.AddDays(-1), TaskDialog.StepDate(d, -1).Date);
-        Assert.Null(TaskDialog.StepDate(Draft(), 1).Date);
         Assert.Equal(new DateOnly(2026, 12, 1), TaskDialog.ShiftCalendarMonth(d, 1).CalendarMonth);
         Assert.Equal(new DateOnly(2025, 12, 1), TaskDialog.ShiftCalendarMonth(d with { CalendarMonth = new DateOnly(2026, 1, 1) }, -1).CalendarMonth);
 
@@ -172,6 +167,77 @@ public class TaskDialogTests
         Assert.Equal((new DateOnly(2027, 2, 9), new DateOnly(2027, 2, 1), DraftPopover.None, 4), (picked.Date!.Value, picked.CalendarMonth, picked.Open, picked.Days));
         var none = TaskDialog.PickDate(d with { Days = 4 }, null);
         Assert.Equal((null, 1), (none.Date, none.Days));
+    }
+
+    [Fact]
+    public void Picking_a_duration_also_switches_on_set_time()
+    {
+        // Prototype durOpts.pick: setP({ dur, timed: true }).
+        var untimed = Draft(Today, timed: false, dur: 60);
+        var picked = TaskDialog.PickDuration(untimed, 30);
+        Assert.Equal((30, true), (picked.DurationMinutes, picked.Timed));
+
+        // The current chip on a timed draft changes nothing.
+        var timed = Draft(Today, timed: true, dur: 60);
+        Assert.Same(timed, TaskDialog.PickDuration(timed, 60));
+
+        // The current chip on an untimed draft still switches on "Set time".
+        Assert.True(TaskDialog.PickDuration(untimed, 60).Timed);
+    }
+
+    [Fact]
+    public void Time_mode_switch_sets_or_clears_timed()
+    {
+        var d = Draft(Today, timed: false);
+        Assert.True(TaskDialog.SetTimed(d, true).Timed);
+        Assert.Same(d, TaskDialog.SetTimed(d, false));
+        Assert.False(TaskDialog.SetTimed(d with { Timed = true }, false).Timed);
+    }
+
+    [Fact]
+    public void Picking_a_priority_or_a_tag_closes_its_popover()
+    {
+        var d = Draft(Today) with { Open = DraftPopover.Priority };
+        var p = TaskDialog.PickPriority(d, Priority.Asap);
+        Assert.Equal((Priority.Asap, DraftPopover.None), (p.Priority, p.Open));
+
+        var t = TaskDialog.PickTag(d with { Open = DraftPopover.Tag }, "work");
+        Assert.Equal(("work", DraftPopover.None), (t.Tag, t.Open));
+        var none = TaskDialog.PickTag(t with { Open = DraftPopover.Tag }, null);
+        Assert.Equal(((string?)null, DraftPopover.None), (none.Tag, none.Open));
+    }
+
+    [Fact]
+    public void A_pill_toggles_its_popover_and_closes_any_other()
+    {
+        var d = Draft(Today);
+        var date = TaskDialog.TogglePopover(d, DraftPopover.Date);
+        Assert.Equal(DraftPopover.Date, date.Open);
+        Assert.Equal(DraftPopover.None, TaskDialog.TogglePopover(date, DraftPopover.Date).Open);   // same pill: closes
+        Assert.Equal(DraftPopover.Tag, TaskDialog.TogglePopover(date, DraftPopover.Tag).Open);     // another: replaces
+
+        Assert.Equal(DraftPopover.None, TaskDialog.ClosePopover(date).Open);
+        Assert.Same(d, TaskDialog.ClosePopover(d));
+    }
+
+    [Fact]
+    public void Calendar_today_shows_the_current_month_and_keeps_the_date_and_popover()
+    {
+        // Prototype calToday: setP({ calMonth: T.slice(0, 7) + '-01' }).
+        var d = Draft(new DateOnly(2027, 2, 14)) with { CalendarMonth = new DateOnly(2027, 2, 1), Open = DraftPopover.Date };
+        var shown = TaskDialog.ShowTodayMonth(d, Today);
+        Assert.Equal((new DateOnly(2026, 11, 1), (DateOnly?)new DateOnly(2027, 2, 14), DraftPopover.Date), (shown.CalendarMonth, shown.Date, shown.Open));
+        Assert.Same(shown, TaskDialog.ShowTodayMonth(shown, Today.AddDays(3)));
+    }
+
+    [Fact]
+    public void A_time_popover_whose_pill_is_gone_shows_as_closed()
+    {
+        var open = Draft(Today) with { Open = DraftPopover.Time };
+        Assert.Equal(DraftPopover.Time, TaskDialog.VisiblePopover(open));
+        Assert.Equal(DraftPopover.None, TaskDialog.VisiblePopover(open with { Days = 2 }));  // "Lasts 2 days"
+        Assert.Equal(DraftPopover.None, TaskDialog.VisiblePopover(open with { Date = null })); // "No date"
+        Assert.Equal(DraftPopover.Date, TaskDialog.VisiblePopover(open with { Days = 2, Open = DraftPopover.Date }));
     }
 
     [Fact]

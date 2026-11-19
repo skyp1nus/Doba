@@ -85,15 +85,124 @@ public class ProjectionTests
         var week = m.Weeks.Single(w => w.WeekStart <= d && d <= w.WeekStart.AddDays(6));
         Assert.Equal(2, week.LaneCount);
         Assert.Equal([1L, 2], week.Spans.Select(s => s.Row.Id));
-        // 5 weeks in June 2026 (Monday start): H = floor(806/5) = 161, cap = floor((161 − 34 − 48 − 8)/25) = 2 → 1 item + "+8 more".
+        // 5 weeks in June 2026 (Monday start): H = floor(806/5) = 161, cap = floor((161 − 34 − 48 − 8)/25) = 2 → 1 item +
+        // "+9 more": the 8 items that do not fit and s3, which needs a third lane (DECISIONS "Month third lane").
         var cell = week.Days.Single(x => x.Date == d);
         Assert.Single(cell.Items);
-        Assert.Equal(8, cell.MoreCount);
+        Assert.Equal(9, cell.MoreCount);
 
         var tall = Projector.Month(store, Ctx(), d, new MonthMetrics(AvailableHeight: 1600));
         var tallCell = tall.Weeks.Single(w => w.WeekStart <= d && d <= w.WeekStart.AddDays(6)).Days.Single(x => x.Date == d);
         Assert.True(tallCell.Items.Count > cell.Items.Count);
-        Assert.Equal(9, tallCell.Items.Count + tallCell.MoreCount);
+        Assert.Equal(9 + 1, tallCell.Items.Count + tallCell.MoreCount);
+    }
+
+    [Fact]
+    public void Month_counts_a_span_that_needs_a_third_lane_in_more_of_each_day_it_covers()
+    {
+        // Wed 10 – Fri 12 June 2026: three overlapping spans; s3 gets no lane (the prototype drops it silently).
+        var d = new DateOnly(2026, 6, 10);
+        var store = new TaskStore(
+        [
+            T(1, "s1", d, d.AddDays(2)),
+            T(2, "s2", d.AddDays(-1), d.AddDays(1)),
+            T(3, "s3", d, d.AddDays(4)),        // Wed 10 – Sun 14: covers five days of the week
+            T(4, "later", d.AddDays(3), d.AddDays(4)), // Sat 13 – Sun 14: lane 0 is free again there
+            T(10, "item", d),
+        ], [], NullTaskPersistence.Instance);
+        var week = Projector.Month(store, Ctx(), d, new MonthMetrics()).Weeks.Single(w => w.WeekStart <= d && d <= w.WeekStart.AddDays(6));
+        Assert.Equal(2, week.LaneCount);
+        Assert.Equal([2L, 1, 4], week.Spans.Select(s => s.Row.Id)); // byDate: s2 (9th) first
+        Assert.DoesNotContain(week.Spans, s => s.Row.Id == 3);
+
+        // Mon 8 – Sun 14: s3 is counted on Wed–Sun only; Wed also has its item, which still fits (cap 2: 1 item + "+1 more").
+        Assert.Equal([0, 0, 1, 1, 1, 1, 1], week.Days.Select(c => c.MoreCount));
+        var wednesday = week.Days[2];
+        Assert.Equal(["item"], wednesday.Items.Select(r => r.Title));
+        Assert.Equal("+1 more", wednesday.MoreLabel);
+        Assert.Empty(week.Days[3].Items);
+
+        // A row with no list line counts it in the day-number row.
+        var tiny = Projector.Month(store, Ctx(), d, new MonthMetrics(AvailableHeight: 26 + (5 * 90))).Weeks
+            .Single(w => w.WeekStart <= d && d <= w.WeekStart.AddDays(6));
+        Assert.Equal((true, 2, 0), (tiny.Days[2].MoreInHeader, tiny.Days[2].MoreCount, tiny.Days[2].Items.Count));
+        Assert.Equal((true, 1), (tiny.Days[3].MoreInHeader, tiny.Days[3].MoreCount));
+        Assert.False(tiny.Days[0].MoreInHeader);
+
+        // With two lanes or fewer nothing changes (the golden month cases are the prototype's output).
+        var two = new TaskStore([T(1, "s1", d, d.AddDays(2)), T(2, "s2", d, d.AddDays(1)), T(10, "item", d)], [], NullTaskPersistence.Instance);
+        var plain = Projector.Month(two, Ctx(), d, new MonthMetrics()).Weeks.Single(w => w.WeekStart <= d && d <= w.WeekStart.AddDays(6));
+        Assert.All(plain.Days, c => Assert.Equal(0, c.MoreCount));
+    }
+
+    [Fact]
+    public void Week_row_shows_the_lanes_that_fit_and_counts_hidden_bars_in_more()
+    {
+        // Mon 8 – Tue 9 June 2026: five overlapping spans; one single-day task on Wednesday.
+        var d = new DateOnly(2026, 6, 8);
+        var tasks = Enumerable.Range(1, 5).Select(i => T(i, "span " + i, d, d.AddDays(1))).ToList();
+        tasks.Add(T(20, "wednesday", d.AddDays(2)));
+        var store = new TaskStore(tasks, [], NullTaskPersistence.Instance);
+
+        // 264 px rows: 264 − 86 − 10 − 26 = 142 → 3 lanes of 36.
+        var metrics = WeekMetrics.Design(264);
+        Assert.Equal(3, metrics.VisibleLanes(5));
+        var row = Projector.Week(store, Ctx(), d, metrics).Rows[0];
+        Assert.Equal(3, row.LaneCount);
+        Assert.Equal([1L, 2, 3], row.Spans.Select(s => s.Row.Id));
+        Assert.All(row.Spans, s => Assert.InRange(s.Lane, 0, 2));
+
+        // Two hidden bars on Mon–Tue: counted in "+N more"; those days have no task but are not "Nothing here".
+        Assert.Equal([2, 2, 0, 0], row.Cells.Select(c => c.MoreCount));
+        Assert.Equal([false, false, false, true], row.Cells.Select(c => c.Empty));
+        Assert.Equal("+2 more", row.Cells[0].MoreLabel);
+
+        // The card list gets the room of the visible lanes only: avail = 264 − 86 − 3 × 36 − 10 = 60, so Wednesday's
+        // card fits (with all five lanes, 264 − 86 − 180 − 10 < 0, it would not).
+        Assert.Equal(["wednesday"], row.Cells[2].Tasks.Select(t => t.Title));
+
+        // At the design size every lane fits and nothing is counted.
+        var design = Projector.Week(store, Ctx(), d, WeekMetrics.Design()).Rows[0];
+        Assert.Equal(5, design.LaneCount);
+        Assert.Equal(5, design.Spans.Count);
+        Assert.Equal([0, 0, 0, 0], design.Cells.Select(c => c.MoreCount));
+        Assert.Equal([true, true, false, true], design.Cells.Select(c => c.Empty));
+    }
+
+    [Theory]
+    [InlineData(3, 403, 3)]   // the design's row: everything fits
+    [InlineData(7, 403, 7)]   // 86 + 7 × 36 = 338 ≤ 403 − 10 − 26
+    [InlineData(8, 403, 7)]
+    [InlineData(5, 254, 3)]   // 1100 × 700: 254 − 86 − 10 − 26 = 132 → 3 lanes
+    [InlineData(2, 100, 0)]   // not even one lane leaves room for "+N more"
+    [InlineData(4, double.NaN, 4)] // unmeasured: every lane
+    [InlineData(0, 100, 0)]
+    public void Visible_lanes_leave_room_for_the_more_line(int lanes, double rowHeight, int visible) =>
+        Assert.Equal(visible, WeekMetrics.Design(rowHeight).VisibleLanes(lanes));
+
+    [Fact]
+    public void A_hidden_bar_keeps_room_for_more_below_the_last_card()
+    {
+        // Three spans on Mon–Tue and one card on Monday, in a 205 px row: lanes floor((205 − 122) / 36) = 2 of 3, so one
+        // bar is hidden; avail = 205 − 86 − 2 × 36 − 10 = 37. The card alone would fit (42 ≤ 37 + 6), but not with the
+        // "+N more" line the hidden bar needs (42 + 26 > 43): it goes behind "+2 more" instead of pushing the link out.
+        var d = new DateOnly(2026, 6, 8);
+        var tasks = Enumerable.Range(1, 3).Select(i => T(i, "span " + i, d, d.AddDays(1))).ToList();
+        tasks.Add(T(10, "card", d));
+        var store = new TaskStore(tasks, [], NullTaskPersistence.Instance);
+
+        var row = Projector.Week(store, Ctx(), d, WeekMetrics.Design(205)).Rows[0];
+        Assert.Equal(2, row.LaneCount);
+        var monday = row.Cells[0];
+        Assert.Empty(monday.Tasks);
+        Assert.Equal(2, monday.MoreCount);
+        Assert.False(monday.Empty);
+
+        // Without a hidden bar the same card fits (the prototype's rule: no reserve after the last card).
+        var two = new TaskStore([.. tasks.Where(t => t.Id != 3)], [], NullTaskPersistence.Instance);
+        var plain = Projector.Week(two, Ctx(), d, WeekMetrics.Design(205)).Rows[0].Cells[0];
+        Assert.Equal(["card"], plain.Tasks.Select(t => t.Title));
+        Assert.Equal(0, plain.MoreCount);
     }
 
     [Fact]
@@ -414,6 +523,100 @@ public class ProjectionTests
         var perTask = Cell(new WeekMetrics(403, _ => 54) { TaskCardHeight = t => t.Tag is null ? 36 : 54 });
         Assert.Equal(7, perTask.Tasks.Count);
         Assert.Equal(0, perTask.MoreCount);
+    }
+
+    [Theory]
+    [InlineData(4, 0, 1000, 4, 0)]          // room to spare: all four
+    [InlineData(3, 2, 200, 3, 2)]           // three items + "+2 more": 3×28 + 2×6 + 6 + 20 = 122 fits
+    [InlineData(4, 0, 125, 3, 1)]           // four items, no more: 4×28 + 3×6 = 130 > 125 …
+    [InlineData(4, 0, 130, 4, 0)]           // … exactly 130 fits
+    [InlineData(4, 0, 129, 3, 1)]           // 129: three items (96) + 6 + 20 = 122, the fourth counted in "+1 more"
+    [InlineData(3, 2, 87, 1, 4)]            // two items (62) + 6 + 20 = 88 > 87 → one item …
+    [InlineData(3, 2, 88, 2, 3)]            // … 88 fits two; the third span joins "+N more"
+    [InlineData(2, 0, 40, 0, 2)]            // not even one item with the link: only "+2 more"
+    [InlineData(4, 1, double.NaN, 4, 1)]    // unmeasured: as without metrics
+    public void Year_metrics_show_the_items_that_fit_and_count_the_rest(int rows, int more, double room, int shown, int counted)
+    {
+        var metrics = new YearMetrics(room, ItemHeight: 28, Gap: 6, MoreHeight: 20);
+        Assert.Equal((shown, counted), metrics.Fit(rows, more));
+    }
+
+    [Fact]
+    public void Year_projection_fits_key_items_to_the_measured_room()
+    {
+        var store = DemoStore();
+        var plain = Projector.Year(store, Ctx(), 2026);
+
+        // Without metrics, or with room to spare, the prototype's rows (the golden cases check these).
+        var roomy = Projector.Year(store, Ctx(), 2026, _ => new YearMetrics(1000, 28, 6, 20));
+        Assert.Equal(plain.Months.Select(m => (m.Rows.Count, m.MoreCount)), roomy.Months.Select(m => (m.Rows.Count, m.MoreCount)));
+        Assert.Equal(plain.Months[11].Rows, roomy.Months[11].Rows);
+
+        // December lists four key items ("21–27", "1 Dec", "3 Dec", "5 Dec"); room for two plus "+N more" (88 px) shows the
+        // first two and counts the other two. Months without metrics are untouched.
+        var fitted = Projector.Year(store, Ctx(), 2026, m => m == 12 ? new YearMetrics(88, 28, 6, 20) : null);
+        var dec = fitted.Months[11];
+        Assert.Equal(plain.Months[11].Rows.Take(2), dec.Rows);
+        Assert.Equal(2, dec.MoreCount);
+        Assert.Equal("+2 more", dec.MoreLabel);
+        Assert.Equal(plain.Months[10].Rows, fitted.Months[10].Rows);
+        Assert.Equal(plain.Months[10].MoreCount, fitted.Months[10].MoreCount);
+    }
+
+    [Fact]
+    public void Progress_is_a_whole_percent_like_the_prototypes_bars()
+    {
+        var store = DemoStore();
+
+        // Today: 4 of 6 done → Math.round(66.67) = 67 % (the bar's width), not 0.6667.
+        Assert.Equal(0.67, Projector.Today(store, Ctx()).Progress);
+
+        // Week cells and Year months: whole percents too (prototype weekData / yearData `pct`).
+        var d = new DateOnly(2026, 6, 10);
+        var thirds = new TaskStore([T(1, "a", d, done: true), T(2, "b", d), T(3, "c", d)], [], NullTaskPersistence.Instance);
+        var cell = Projector.Week(thirds, Ctx(), d, WeekMetrics.Design()).Rows.SelectMany(r => r.Cells).Single(c => c.Date == d && !c.IsPreview);
+        Assert.Equal(0.33, cell.Progress);
+        Assert.Equal(0.33, Projector.Year(thirds, Ctx(), 2026).Months[5].Progress);
+        var twoThirds = new TaskStore([T(1, "a", d, done: true), T(2, "b", d, done: true), T(3, "c", d)], [], NullTaskPersistence.Instance);
+        Assert.Equal(0.67, Projector.Year(twoThirds, Ctx(), 2026).Months[5].Progress);
+        Assert.Equal(0.5, Projector.WholePercent(1, 2));
+        Assert.Equal(0.01, Projector.WholePercent(1, 200)); // 0.5 % rounds up, as Math.round does
+        Assert.Equal(0, Projector.WholePercent(0, 0));
+    }
+
+    [Fact]
+    public void Records_carry_the_display_labels()
+    {
+        var store = DemoStore();
+        var week = Projector.Week(store, Ctx(), Today, WeekMetrics.Design());
+        var monday = week.Rows[0].Cells[0];
+        Assert.Equal(("MON", "9", "Open Monday 9 November"), (monday.WeekdayLabel, monday.DayLabel, monday.OpenLabel));
+        var preview = week.Rows[1].Cells[3];
+        Assert.Equal("Open next Monday 16 November", preview.OpenLabel);
+        Assert.Equal("+2 more", week.Rows[1].Cells[2].MoreLabel);
+
+        var month = Projector.Month(store, Ctx(), Today, new MonthMetrics());
+        Assert.Equal(["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"], month.WeekdayHeaders);
+        Assert.Equal(["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"], Projector.Month(store, Ctx(weekStart: DayOfWeek.Sunday), Today, new MonthMetrics()).WeekdayLabels);
+        var w46 = month.Weeks[2];
+        Assert.Equal(("W46", "Open week 46"), (w46.Label, w46.OpenLabel));
+        var sunday = w46.Days[6];
+        Assert.Equal(("15", "Open Sunday 15 November"), (sunday.DayLabel, sunday.OpenLabel));
+        Assert.Equal("+" + sunday.MoreCount + " more", sunday.MoreLabel);
+
+        var november = Projector.Year(store, Ctx(), 2026).Months[10];
+        Assert.Equal(("Open November", "+3 more"), (november.OpenLabel, november.MoreLabel));
+        Assert.Equal(november.Stat.ToUpperInvariant(), november.StatLabel);
+        Assert.Equal("NO TASKS", Projector.Year(store, Ctx(), 2030).Months[0].StatLabel);
+
+        // Row buttons (prototype rowItem / vis).
+        var row = new TaskRow(1, "Call mom", false, Priority.High, "", "", "", false, false);
+        Assert.Equal("Mark done: Call mom", row.ToggleLabel);
+        Assert.Equal("Mark not done: Call mom", (row with { Done = true }).ToggleLabel);
+        Assert.Equal("Priority: High — change for Call mom", row.PriorityLabel);
+        Assert.Equal("Priority: none — change for Call mom", (row with { Priority = Priority.None }).PriorityLabel);
+        Assert.Equal(("High priority", "No priority"), (row.PriorityTitle, (row with { Priority = Priority.None }).PriorityTitle));
+        Assert.Equal("Move to today: Call mom", row.MoveLabel);
     }
 
     [Fact]
