@@ -18,7 +18,10 @@ internal static class McpTools
     /// or on Doba's settings; Doba checks the access level per call).</summary>
     private static readonly TimeSpan ListTimeToLive = TimeSpan.FromDays(1);
 
-    public static McpServerOptions CreateOptions(BridgeClient client, string version)
+    /// <param name="client">The bridge to the running Doba.</param>
+    /// <param name="version">Doba.Mcp's version for <c>serverInfo</c>.</param>
+    /// <param name="shutdown">Cancelled when the server exits: ends the calls still waiting for Doba.</param>
+    public static McpServerOptions CreateOptions(BridgeClient client, string version, CancellationToken shutdown)
     {
         var tools = ToolCatalog.All.Select(ToSdkTool).ToList();
         return new McpServerOptions
@@ -33,7 +36,7 @@ internal static class McpTools
                     TimeToLive = ListTimeToLive,
                     CacheScope = CacheScope.Public,
                 }),
-                CallToolHandler = (request, cancellationToken) => CallAsync(client, request.Params, cancellationToken),
+                CallToolHandler = (request, cancellationToken) => CallAsync(client, request.Params, shutdown, cancellationToken),
             },
         };
     }
@@ -59,7 +62,7 @@ internal static class McpTools
     }
 
     private static async ValueTask<CallToolResult> CallAsync(BridgeClient client, CallToolRequestParams? request,
-        CancellationToken cancellationToken)
+        CancellationToken shutdown, CancellationToken cancellationToken)
     {
         var name = request?.Name ?? "";
         if (ToolCatalog.Find(name) is null)
@@ -69,11 +72,12 @@ internal static class McpTools
         }
 
         BridgeResponse response;
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, shutdown);
         try
         {
-            response = await client.CallAsync(name, request!.Arguments, cancellationToken).ConfigureAwait(false);
+            response = await client.CallAsync(name, request!.Arguments, linked.Token).ConfigureAwait(false);
         }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        catch (OperationCanceledException) when (linked.IsCancellationRequested)
         {
             throw;
         }

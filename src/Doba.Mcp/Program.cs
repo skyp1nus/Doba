@@ -31,18 +31,47 @@ internal static class Program
             stop.Cancel();
         };
 
-        var options = McpTools.CreateOptions(new BridgeClient(dataFolder), Version());
-        await using var server = McpServer.Create(new StdioServerTransport(options), options);
+        var version = Version();
+        var client = new BridgeClient(dataFolder) { ClientName = "Doba.Mcp " + version };
+        var options = McpTools.CreateOptions(client, version, stop.Token);
+
+        // The stdio transport by hand: a stdin that reports its end at once (StdinStream), so a client that goes away
+        // in the middle of a call does not leave the process waiting for Doba's answer.
+        var transport = new StreamServerTransport(
+            new StdinStream(Console.OpenStandardInput(), () => CancelQuietly(stop)),
+            Console.OpenStandardOutput(),
+            "doba");
+        await using var server = McpServer.Create(transport, options);
         try
         {
             await server.RunAsync(stop.Token).ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (stop.IsCancellationRequested)
         {
-            // Ctrl+C: a normal exit.
+            // stdin ended (the client closed it or went away) or Ctrl+C: a normal exit.
+        }
+        finally
+        {
+            // stdin closed (the client is gone) or Ctrl+C: calls still waiting for Doba end now, so disposing the
+            // server does not wait for them.
+            await stop.CancelAsync().ConfigureAwait(false);
         }
 
         return 0;
+    }
+
+    /// <summary>Cancels <paramref name="stop"/> unless <c>Main</c> already disposed it (the end of input can be seen
+    /// while the server shuts down).</summary>
+    private static void CancelQuietly(CancellationTokenSource stop)
+    {
+        try
+        {
+            stop.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+            // Main is past its last await: nothing is left to cancel.
+        }
     }
 
     /// <summary>Accepts no arguments (the default data folder) or exactly <c>--data &lt;folder&gt;</c>.</summary>
