@@ -125,23 +125,24 @@
     <Style Selector="Panel.block.done Border#PART_GripBar">
       <Setter Property="Background" Value="{DynamicResource Brush.Border.Check}" />
     </Style>
-    <!-- Drag states (ScheduleViewModel.BeginDrag). At rest: no shadow, no dashed outline. -->
+    <!-- Drag states (ScheduleViewModel.BeginDrag). At rest: no shadow, no dashed outline. The shadow is also shown while a
+         block lands (.landing, set by ScheduleTimeline.Motion.cs while it fades out). -->
     <Style Selector="Panel.block Border#PART_Shadow">
       <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector="Panel.block.landing Border#PART_Shadow">
+      <Setter Property="IsVisible" Value="True" />
     </Style>
     <Style Selector="Panel.block ContentControl#PART_Dash">
       <Setter Property="IsVisible" Value="False" />
     </Style>
-    <!-- The origin of a move: the frame gives way to the dashed accent 35 % outline, the content is hidden (the copy
-         shows the task at its new slot). -->
+    <!-- The origin of a move: the frame gives way to the dashed accent 35 % outline; its content fades out (130 ms,
+         ScheduleTimeline.Motion.cs: the copy shows the task at its new slot). -->
     <Style Selector="Panel.block.origin Border#PART_Frame">
       <Setter Property="IsVisible" Value="False" />
     </Style>
     <Style Selector="Panel.block.origin ContentControl#PART_Dash">
       <Setter Property="IsVisible" Value="True" />
-    </Style>
-    <Style Selector="Panel.block.origin Border#PART_ContentBox">
-      <Setter Property="Opacity" Value="0" />
     </Style>
     <Style Selector="Panel.block.origin Border#PART_Hover">
       <Setter Property="Opacity" Value="0" />
@@ -162,10 +163,6 @@
     </Style>
     <Style Selector="Panel.block.resizing Border#PART_Hover">
       <Setter Property="Opacity" Value="0" />
-    </Style>
-    <!-- Under the dragged copy (or the growing block): the body at 0.55, times the root's tag-filter dim. -->
-    <Style Selector="Panel.block.under Panel#PART_Body">
-      <Setter Property="Opacity" Value="{StaticResource Opacity.Schedule.Under}" />
     </Style>
     <!-- Titles: 12.5 Medium Text.Primary; done Text.Muted with StrikeText's crisp line. StrikeText is styled as TextBlock. -->
     <Style Selector="TextBlock.block-title">
@@ -234,7 +231,9 @@
         </ItemsControl>
 
         <!-- Blocks (.sb): root at x / top / w / h; layers: shadow (resize / landing only), body (frame, hover layer,
-             content — the neighbour dim during a drag), the open button, the checkbox button and the grip. -->
+             content), the open button, the checkbox button and the grip. Motion (ScheduleTimeline.Motion.cs, composition):
+             the item container takes the FLIP translation and the landing scale, the body the 0.55 dim under the dragged
+             copy, the content box the origin's fade-out, the shadow its fades; the root keeps the tag-filter dim. -->
         <ItemsControl Name="PART_Blocks" ItemsSource="{Binding Blocks}">
           <ItemsControl.ItemsPanel>
             <ItemsPanelTemplate>
@@ -433,7 +432,8 @@
           <Border Grid.Column="2" Height="1" Background="{DynamicResource Brush.Accent}" VerticalAlignment="Top" Margin="{StaticResource Space.Schedule.Line}" />
         </Grid>
 
-        <!-- The dragged copy (layer 3): outer = position (it steps between slots), lift = scale 1.02 + shadow; accent 16 %
+        <!-- The dragged copy (layer 3): outer = position (it steps between slots: a render translation at the slot, glided
+             by composition), lift = scale 1.02 + shadow fade-in (composition; neither with OS animations off); accent 16 %
              over Schedule.CopyBase, accent 45 % ring, the range with its length in Text.Secondary. Hidden at rest. -->
         <Panel Name="PART_Copy"
                IsVisible="{Binding Copy.IsVisible}"

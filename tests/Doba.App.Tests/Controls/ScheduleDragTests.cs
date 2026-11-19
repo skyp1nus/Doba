@@ -7,6 +7,7 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.VisualTree;
 using Doba.App.Controls;
+using Doba.App.Motion;
 using Doba.App.Screens.Day;
 using Doba.App.Screens.Today;
 using Doba.App.Tests.Support;
@@ -704,22 +705,25 @@ public class ScheduleDragTests
         Assert.True(bVm.IsUnderCopy);
         Assert.False(s.BlockVm(d).IsUnderCopy);
         Assert.False(s.BlockVm(a).IsUnderCopy); // never the dragged block itself
-        Assert.Equal(0.55, bBody.Opacity);
-        Assert.Equal(1, dBody.Opacity);
-        Assert.Equal(1, s.Root(b).Opacity); // the tag-filter dim stays on the root, so the two multiply
+        // The dim is a composition opacity on the body (ScheduleTimeline.Motion.cs); the body's own opacity stays 1 and
+        // the tag-filter dim stays on the root, so the two multiply.
+        Assert.Equal(0.55, Animator.Destination(bBody).Opacity, 6);
+        Assert.Equal(1, Animator.Destination(dBody).Opacity);
+        Assert.Equal(1, bBody.Opacity);
+        Assert.Equal(1, s.Root(b).Opacity);
 
         s.Move(p + new Point(0, 144)); // 12:00
         Assert.Equal(Minutes(12, 0), s.Schedule.Copy.Slot.Start);
         Assert.False(bVm.IsUnderCopy);
         Assert.True(s.BlockVm(d).IsUnderCopy);
-        Assert.Equal(1, bBody.Opacity);
-        Assert.Equal(0.55, dBody.Opacity);
+        Assert.Equal(1, Animator.Destination(bBody).Opacity);
+        Assert.Equal(0.55, Animator.Destination(dBody).Opacity, 6);
         Assert.Equal(bGeometry, (bVm.X, bVm.Width, bVm.Top)); // neighbours are not re-laid out during the drag
 
         s.Up(p + new Point(0, 144));
         Assert.Equal(new TimeOnly(12, 0), s.Task(a).Time);
         Assert.All(s.Schedule.Blocks, x => Assert.False(x.IsUnderCopy));
-        Assert.Equal(1, dBody.Opacity);
+        Assert.Equal(1, Animator.Destination(dBody).Opacity);
         Assert.NotEqual(bGeometry.Width, bVm.Width); // after the drop B has the column to itself
     }
 
@@ -759,7 +763,7 @@ public class ScheduleDragTests
         // The origin: dashed outline, frame and content hidden, still at 09:00.
         Assert.True(Part<ContentControl>(root, "PART_Dash").IsVisible);
         Assert.False(Part<Border>(root, "PART_Frame").IsVisible);
-        Assert.Equal(0, Part<Border>(root, "PART_ContentBox").Opacity);
+        Assert.Equal(0, Animator.Destination(Part<Border>(root, "PART_ContentBox")).Opacity); // fading out (composition)
         Assert.Equal(TopOf(Minutes(9, 0)), root.TranslatePoint(default, s.Timeline.GridPanel)!.Value.Y);
 
         // The chip: "10:00" on the 10:00 line, in the hour column.
@@ -776,7 +780,7 @@ public class ScheduleDragTests
         s.Key(Key.Escape);
         Assert.False(Part<ContentControl>(root, "PART_Dash").IsVisible);
         Assert.True(Part<Border>(root, "PART_Frame").IsVisible);
-        Assert.Equal(1, Part<Border>(root, "PART_ContentBox").Opacity);
+        Assert.Equal(MotionState.Rest, Animator.Shown(Part<Border>(root, "PART_ContentBox"))); // back at once
         s.Up(p + new Point(0, 60));
     }
 

@@ -50,6 +50,7 @@ public static class MotionTimes
     public static TimeSpan Snap => Motion.Ms(Motion.Snap);
     public static TimeSpan Lift => Motion.Ms(Motion.Lift);
     public static TimeSpan Land => Motion.Ms(Motion.Land);
+    public static TimeSpan Fade => Motion.Ms(Motion.Fade);
 
     /// <summary>The time chip's hold after an arrow-key step: not an animation, so never zeroed (see <see cref="Motion.ChipHold"/>).</summary>
     public static TimeSpan ChipHold => TimeSpan.FromMilliseconds(Motion.ChipHold);

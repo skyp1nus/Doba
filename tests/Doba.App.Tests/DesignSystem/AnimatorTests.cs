@@ -7,6 +7,7 @@ using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Doba.App.Controls;
 using Doba.App.Motion;
+using Doba.App.Tests.MotionChecks;
 using AppMotion = Doba.App.Motion.Motion;
 
 namespace Doba.App.Tests.DesignSystem;
@@ -232,6 +233,130 @@ public class AnimatorTests
         Assert.True(first.WasCancelled);
         Assert.Equal(AppMotion.SegStep, ((TranslateTransform)indicator.RenderTransform!).X, 1);
         Assert.InRange(second.From.X, -AppMotion.SegStep - 0.5, AppMotion.SegStep + 0.5);
+        window.Close();
+    }
+
+    // ---- Retarget / Shown / Destination ------------------------------------------------------------------------------
+
+    private static readonly MotionState s_dimmed = new(0.55, 0, 0, 1, 1);
+
+    [AvaloniaFact]
+    public void Shown_and_destination_follow_the_last_animation()
+    {
+        var (window, target) = Scene();
+        Assert.Equal(MotionState.Rest, Animator.Shown(target));
+        Assert.Equal(MotionState.Rest, Animator.Destination(target));
+
+        var exit = Animator.FadeOut(target);
+        Assert.Equal(MotionState.Hidden, Animator.Destination(target));
+        Assert.InRange(Animator.Shown(target).Opacity, 0, 1);
+
+        exit.Complete(); // a finished exit stays hidden on the render thread
+        Assert.Equal(MotionState.Hidden, Animator.Shown(target));
+        Assert.Equal(MotionState.Hidden, Animator.Destination(target));
+        Assert.True(Hidden(window));
+
+        Animator.Reset(target);
+        Assert.Equal(MotionState.Rest, Animator.Shown(target));
+        Assert.True(Visible(window));
+
+        Animator.SlideTo(target, 0, AppMotion.SectionExitY).Cancel(); // cancel shows the element at rest
+        Assert.Equal(MotionState.Rest, Animator.Shown(target));
+        window.Close();
+    }
+
+    [AvaloniaFact]
+    public void Retarget_continues_from_the_end_state_of_the_last_animation()
+    {
+        var (window, target) = Scene();
+        var dim = Animator.Retarget(target, s_dimmed, AppMotion.Fade, AppMotion.EaseOut);
+        Transit.Is(dim, MotionState.Rest, s_dimmed, AppMotion.Fade, AppMotion.EaseOut);
+        dim.Complete();
+        Assert.Equal(s_dimmed, Animator.Shown(target));
+        Assert.False(Visible(window)); // drawn at 0.55, not at rest
+        Assert.False(Hidden(window));
+        Assert.Equal(1.0, target.Opacity); // the UI-side opacity is never touched
+
+        var back = Animator.Retarget(target, MotionState.Rest, AppMotion.Fade, AppMotion.EaseOut);
+        Transit.Is(back, s_dimmed, MotionState.Rest, AppMotion.Fade, AppMotion.EaseOut);
+        back.Complete();
+        Assert.True(Visible(window));
+        window.Close();
+    }
+
+    [AvaloniaFact]
+    public void Retarget_continues_from_where_a_running_animation_is()
+    {
+        var (window, target) = Scene();
+        var slide = Animator.Animate(target, MotionState.Rest, MotionState.Offset(0, 48), AppMotion.Land, AppMotion.EaseOut);
+        Pixels.At(window, 0, 0); // a frame between the two
+        var back = Animator.Retarget(target, MotionState.Rest, AppMotion.Snap, AppMotion.EaseOut);
+
+        Assert.True(slide.WasCancelled); // superseded
+        Assert.True(back.IsAnimating);
+        Assert.InRange(back.From.Y, 0, 48);
+        Assert.Equal(MotionState.Rest, back.To);
+        Assert.Equal(TimeSpan.FromMilliseconds(AppMotion.Snap), back.Duration);
+        back.Complete();
+        Assert.Equal(MotionState.Rest, Animator.Shown(target));
+        window.Close();
+    }
+
+    [AvaloniaFact]
+    public void Retarget_to_where_it_is_going_or_already_is_starts_nothing_new()
+    {
+        var (window, target) = Scene();
+        var calls = 0;
+        var still = Animator.Retarget(target, MotionState.Rest, AppMotion.Fade, AppMotion.EaseOut, onFinished: _ => calls++);
+        Assert.False(still.IsAnimating); // already at rest: finished at once
+        Assert.Equal(1, calls);
+
+        var dim = Animator.Retarget(target, s_dimmed, AppMotion.Fade, AppMotion.EaseOut);
+        Assert.Same(dim, Animator.Retarget(target, s_dimmed, AppMotion.Fade, AppMotion.EaseOut));
+        Assert.True(dim.IsAnimating);
+        dim.Complete();
+
+        var again = Animator.Retarget(target, s_dimmed, AppMotion.Fade, AppMotion.EaseOut);
+        Assert.False(again.IsAnimating);
+        Assert.Equal(s_dimmed, Animator.Shown(target));
+        window.Close();
+    }
+
+    [AvaloniaFact]
+    public void Retarget_is_instant_with_os_animations_off()
+    {
+        var (window, target) = Scene();
+        var animations = AppMotion.SystemAnimationsEnabled;
+        AppMotion.SystemAnimationsEnabled = false;
+        try
+        {
+            var dim = Animator.Retarget(target, s_dimmed, AppMotion.Fade, AppMotion.EaseOut);
+            Assert.False(dim.IsAnimating);
+            Assert.Equal(s_dimmed, Animator.Shown(target));
+            var back = Animator.Retarget(target, MotionState.Rest, AppMotion.Fade, AppMotion.EaseOut);
+            Assert.False(back.IsAnimating);
+            Assert.Equal(s_dimmed, back.From);
+            Assert.True(Visible(window));
+        }
+        finally
+        {
+            AppMotion.SystemAnimationsEnabled = animations;
+            window.Close();
+        }
+    }
+
+    [AvaloniaFact]
+    public void A_recreated_visual_is_shown_at_rest()
+    {
+        var (window, target) = Scene();
+        Animator.Retarget(target, s_dimmed, AppMotion.Fade, AppMotion.EaseOut).Complete();
+        Assert.Equal(s_dimmed, Animator.Shown(target));
+
+        window.Content = null; // detached: its composition visual goes; attached again it gets a new one at rest
+        window.Content = target;
+        window.UpdateLayout();
+        Assert.Equal(MotionState.Rest, Animator.Shown(target));
+        Assert.True(Visible(window));
         window.Close();
     }
 }

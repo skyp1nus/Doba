@@ -23,10 +23,6 @@ internal enum ScheduleDragState
 
     /// <summary>The block's bottom edge is being dragged: the block grows or shrinks in place.</summary>
     Resizing,
-
-    /// <summary>Reserved for the landing animation after a drop or a cancel (the motion stage); a drag in this state takes
-    /// no input.</summary>
-    Landing,
 }
 
 /// <summary>
@@ -461,7 +457,9 @@ internal sealed class ScheduleDrag
     }
 }
 
-/// <summary>The timeline's side of the drag: the controller, the copy's translation and the motion stage's hooks.</summary>
+/// <summary>The timeline's side of the drag: the controller, the copy's translation and the hooks the motion
+/// (ScheduleTimeline.Motion.cs) implements. A landing never blocks input: a new press can start the next drag at once
+/// (the landing then ends where it is going).</summary>
 public partial class ScheduleTimeline
 {
     private readonly TranslateTransform _copyShift = new();

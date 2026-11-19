@@ -40,6 +40,7 @@ public partial class ScheduleTimeline : UserControl
         InitializeComponent();
         _scroll = new ScheduleScroll(PART_Scroll, this);
         InitDrag();
+        InitMotion();
         AddHandler(PointerPressedEvent, OnAnyPointerPressed, RoutingStrategies.Bubble, handledEventsToo: true);
         PART_Grid.AddHandler(KeyDownEvent, OnPreviewKeyDown, RoutingStrategies.Tunnel);
         PART_Grid.AddHandler(KeyUpEvent, OnPreviewKeyUp, RoutingStrategies.Tunnel);
@@ -107,6 +108,7 @@ public partial class ScheduleTimeline : UserControl
         }
 
         AttachDrag(_vm);
+        AttachMotion(_vm);
         ShowList();
     }
 
