@@ -458,6 +458,25 @@ public class OverlayMotionTests
     }
 
     [AvaloniaFact]
+    public void Backspace_during_the_entrance_takes_back_typed_text_and_Enter_does_nothing()
+    {
+        using var shell = new AnimatedShell(AppView.Week);
+        var count = shell.App.Store.All.Count;
+        shell.Key(Key.N);
+        var view = Assert.IsType<TaskDialogView>(shell.Overlays.OverlayView);
+        shell.Window.KeyTextInput("Buyx");
+        shell.Key(Key.Back);
+        shell.Key(Key.Enter);                                                    // still entering: not a save
+        Assert.False(view.TitleBox.IsFocused);
+
+        shell.Settle();
+        Assert.True(view.TitleBox.IsFocused);
+        Assert.Equal("Buy", view.TitleBox.Text);
+        Assert.IsType<TaskDialogViewModel>(shell.Vm.Overlay);
+        Assert.Equal(count, shell.App.Store.All.Count);
+    }
+
+    [AvaloniaFact]
     public void Text_typed_right_after_Ctrl_K_reaches_the_search_query()
     {
         using var shell = new AnimatedShell(AppView.Week);

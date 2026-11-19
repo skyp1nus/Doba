@@ -75,7 +75,7 @@
                   AutomationProperties.Name="{Binding DateLabel}">
             <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space.Dialog.PillContentGap}">
               <c:Icon Data="{StaticResource Icon.Date}" Size="{DynamicResource Size.Dialog.PillIcon}" StrokeWidth="1.7" />
-              <TextBlock Text="{Binding DateLabel}" VerticalAlignment="Center" />
+              <TextBlock Text="{Binding DateLabel}" VerticalAlignment="Center" Margin="{DynamicResource Space.Dialog.Raise}" />
             </StackPanel>
           </c:Pill>
         </p:PopoverAnchor>
@@ -93,7 +93,7 @@
                   AutomationProperties.Name="{Binding TimeLabel}">
             <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space.Dialog.PillContentGap}">
               <c:Icon Data="{StaticResource Icon.Clock}" Size="{DynamicResource Size.Dialog.PillIcon}" StrokeWidth="1.7" />
-              <TextBlock Text="{Binding TimeLabel}" VerticalAlignment="Center" />
+              <TextBlock Text="{Binding TimeLabel}" VerticalAlignment="Center" Margin="{DynamicResource Space.Dialog.Raise}" />
             </StackPanel>
           </c:Pill>
         </p:PopoverAnchor>
@@ -110,7 +110,7 @@
                   AutomationProperties.Name="{Binding PriorityLabel}">
             <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space.Dialog.PillContentGap}">
               <c:PriorityIcon Priority="{Binding Priority}" VerticalAlignment="Center" />
-              <TextBlock Text="{Binding PriorityLabel}" VerticalAlignment="Center" />
+              <TextBlock Text="{Binding PriorityLabel}" VerticalAlignment="Center" Margin="{DynamicResource Space.Dialog.Raise}" />
             </StackPanel>
           </c:Pill>
         </p:PopoverAnchor>
@@ -126,8 +126,8 @@
                   CommandParameter="{x:Static e:DraftPopover.Tag}"
                   AutomationProperties.Name="{Binding TagLabel}">
             <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space.Dialog.PillContentGap}">
-              <TextBlock Classes="mono muted" Text="#" VerticalAlignment="Center" />
-              <TextBlock Text="{Binding TagLabel}" VerticalAlignment="Center" />
+              <TextBlock Classes="mono muted" Text="#" VerticalAlignment="Center" Margin="{DynamicResource Space.Dialog.Raise}" />
+              <TextBlock Text="{Binding TagLabel}" VerticalAlignment="Center" Margin="{DynamicResource Space.Dialog.Raise}" />
             </StackPanel>
           </c:Pill>
         </p:PopoverAnchor>
@@ -147,13 +147,14 @@
                     Content="Delete"
                     IsVisible="{Binding IsEdit}"
                     Command="{Binding DeleteCommand}" />
-            <TextBlock Name="PART_Hint" Classes="meta" Text="{Binding KeyHint}" VerticalAlignment="Center" />
+            <TextBlock Name="PART_Hint" Classes="meta" Text="{Binding KeyHint}" VerticalAlignment="Center" Margin="{DynamicResource Space.Dialog.Lift}" />
           </StackPanel>
           <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="{DynamicResource Space.Dialog.Gap}">
             <Button Name="PART_Cancel"
                     Theme="{StaticResource Button.Outline}"
-                    Content="Cancel"
-                    Command="{Binding CancelCommand}" />
+                    Command="{Binding CancelCommand}">
+              <TextBlock Text="Cancel" Margin="{DynamicResource Space.Dialog.Raise}" />
+            </Button>
             <Button Name="PART_Commit"
                     Theme="{StaticResource Button.DialogPrimary}"
                     Classes.inactive="{Binding !CanSave}"

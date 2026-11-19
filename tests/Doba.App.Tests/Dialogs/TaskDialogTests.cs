@@ -4,6 +4,7 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.Input;
+using Avalonia.Media;
 using Avalonia.VisualTree;
 using Doba.App.Controls;
 using Doba.App.Dialogs;
@@ -496,6 +497,86 @@ public class TaskDialogTests
         var day = Days(date).First(d => ((CalendarDayItem)d.DataContext!).Date == new DateOnly(2026, 11, 25));
         shell.Click(day);
         Assert.Equal(new DateOnly(2026, 11, 25), dialog.Vm.Draft.Date);
+    }
+
+    [AvaloniaFact]
+    public void Many_tags_scroll_inside_a_Tag_popover_that_stays_in_a_small_window()
+    {
+        using var shell = ShellFixture.Open(AppView.Week, width: 1100, height: 700);
+        for (var i = 0; i < 26; i++)
+        {
+            Assert.NotNull(shell.App.Store.AddTag($"tag{i:00}"));
+        }
+
+        var count = shell.App.Store.Tags.Count + 1;                                 // "No tag" + every tag
+        var dialog = DialogKit.Open(shell, DialogKit.DemoDraft());
+        dialog.ClickPill(dialog.TagAnchor);
+        var popover = DialogKit.Dialog.OpenPopover(dialog.TagAnchor);
+        shell.Settle();
+        var at = popover.TranslatePoint(default, shell.Window)!.Value;
+        var rect = new Rect(at, popover.Bounds.Size);
+        Assert.True(new Rect(0, 0, 1100, 700).Deflate(8).Contains(rect), $"Tag popover at {rect}");
+
+        var scroll = DialogKit.Part<ScrollViewer>(popover, "PART_Scroll");
+        Assert.True(scroll.Extent.Height > scroll.Viewport.Height);
+        var rows = popover.GetVisualDescendants().OfType<Button>().Where(b => b.DataContext is TagOptionItem).ToList();
+        Assert.Equal(count, rows.Count);
+
+        // Tab walks the rows; the focused row is scrolled into view, down to the last tag.
+        var pill = DialogKit.Dialog.Pill(dialog.TagAnchor);
+        Assert.True(pill.Focus(NavigationMethod.Tab));
+        for (var i = 0; i < rows.Count; i++)
+        {
+            shell.Key(Key.Tab);
+            Assert.True(rows[i].IsFocused, $"row {i}");
+        }
+
+        Assert.True(scroll.Offset.Y > 0);
+        var last = rows[^1].TranslatePoint(default, scroll)!.Value;
+        Assert.True(last.Y >= -0.5 && last.Y + rows[^1].Bounds.Height <= scroll.Viewport.Height + 0.5, $"last row at {last.Y}");
+
+        shell.Key(Key.Enter);                                                      // the last tag can be picked
+        Assert.Equal(shell.App.Store.Tags[^1], dialog.Vm.Draft.Tag);
+    }
+
+    [AvaloniaFact]
+    public void The_selected_day_square_is_filled_to_its_edges()
+    {
+        using var shell = ShellFixture.Open(AppView.Week);
+        var dialog = DialogKit.Open(shell, DialogKit.DemoDraft());
+        dialog.ClickPill(dialog.DateAnchor);
+        var date = DialogKit.Dialog.OpenPopover(dialog.DateAnchor);
+        var day = Days(date).Single(d => d.Classes.Contains("marked"));
+        var dot = day.GetVisualDescendants().OfType<Border>().Single(b => b.Name == "PART_Dot");
+        Assert.Equal(new Size(32, 32), dot.Bounds.Size);
+        var at = dot.TranslatePoint(default, shell.Window)!.Value;
+        Assert.Equal(Math.Round(at.X), at.X, 3);                                   // on whole pixels, so every edge row is crisp
+        Assert.Equal(Math.Round(at.Y), at.Y, 3);
+
+        shell.Settle();
+        AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+        using var frame = shell.Window.CaptureRenderedFrame()!;
+        var accent = Doba.App.Tests.DesignSystem.Pixels.Resource("Color.Accent");
+        int x = (int)at.X, y = (int)at.Y;
+        foreach (var (px, py) in new[] { (x + 16, y), (x + 16, y + 31), (x, y + 16), (x + 31, y + 16) })
+        {
+            var c = Doba.App.Tests.DesignSystem.Pixels.At(frame, px, py);
+            Assert.True(Doba.App.Tests.DesignSystem.Pixels.Near(accent, c, 6), $"({px}, {py}) is {c}, not the accent {accent}");
+        }
+    }
+
+    [AvaloniaFact]
+    public void A_long_tag_name_ends_in_an_ellipsis_in_the_Tag_popover()
+    {
+        using var shell = ShellFixture.Open(AppView.Week, width: 1100, height: 700);
+        Assert.NotNull(shell.App.Store.AddTag("extremely-long-tag-name-for-testing"));
+        var dialog = DialogKit.Open(shell, DialogKit.DemoDraft());
+        dialog.ClickPill(dialog.TagAnchor);
+        var popover = DialogKit.Dialog.OpenPopover(dialog.TagAnchor);
+        var label = popover.GetVisualDescendants().OfType<TextBlock>()
+            .Single(t => t.Name == "PART_Label" && t.Text == "extremely-long-tag-name-for-testing");
+        Assert.Equal(TextTrimming.CharacterEllipsis, label.TextTrimming);
+        Assert.True(label.TextLayout.TextLines.Single().HasCollapsed);
     }
 
     [AvaloniaFact]

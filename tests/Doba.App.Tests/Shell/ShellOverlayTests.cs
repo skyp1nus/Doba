@@ -267,6 +267,77 @@ public class ShellOverlayTests
         Assert.True(shell.Window.Header.NewTaskButton.IsFocused);
     }
 
+    /// <summary>The title button of the first Week card that is on screen.</summary>
+    private static Button FirstCardTitle(ShellFixture shell) =>
+        shell.Window.ScreenHost.GetVisualDescendants().OfType<Doba.App.Controls.TaskCard>().First(c => c.IsEffectivelyVisible)
+            .GetVisualDescendants().OfType<Button>().Single(b => b.Name == "PART_TitleButton");
+
+    private static bool FocusVisible(Control c) => c.Classes.Contains(":focus-visible");
+
+    [AvaloniaFact]
+    public void Deleting_the_task_the_dialog_was_opened_from_returns_focus_to_New_task()
+    {
+        using var shell = ShellFixture.Open(AppView.Week);
+        var title = FirstCardTitle(shell);
+        var row = Assert.IsType<Doba.App.ViewModels.TaskRowViewModel>(title.DataContext);
+        Assert.True(title.Focus(NavigationMethod.Tab));                         // reached with the keyboard
+        shell.Key(Key.Enter);
+        var dialog = Assert.IsType<TaskDialogViewModel>(shell.Vm.Overlay);
+        Assert.Equal(row.Id, dialog.Draft.EditId);
+
+        var delete = shell.Window.Overlays.OverlayView!.GetVisualDescendants().OfType<Button>().Single(b => b.Name == "PART_Delete");
+        shell.Click(delete);
+        Assert.Null(shell.Vm.Overlay);
+        Assert.Null(shell.App.Store.Get(row.Id));                               // the card (and the opener) are gone
+        var newTask = shell.Window.Header.NewTaskButton;
+        Assert.True(newTask.IsFocused);
+        Assert.True(FocusVisible(newTask));                                     // opened from the keyboard: the ring shows
+    }
+
+    [AvaloniaFact]
+    public void Saving_a_new_date_that_moves_the_card_returns_focus_to_New_task()
+    {
+        using var shell = ShellFixture.Open(AppView.Week);
+        var title = FirstCardTitle(shell);
+        var row = Assert.IsType<Doba.App.ViewModels.TaskRowViewModel>(title.DataContext);
+        shell.Click(title);
+        var dialog = Assert.IsType<TaskDialogViewModel>(shell.Vm.Overlay);
+        var date = shell.App.Store.Get(row.Id)!.Date!.Value;
+        var moved = date.DayOfWeek == DayOfWeek.Sunday ? date.AddDays(-1) : date.AddDays(1);
+        dialog.Draft = TaskDialog.PickDate(dialog.Draft, moved);
+        dialog.CommitCommand.Execute(null);
+        shell.Settle();
+        Assert.Null(shell.Vm.Overlay);
+        Assert.Equal(moved, shell.App.Store.Get(row.Id)!.Date);
+        Assert.False(title.IsFocused);
+        var newTask = shell.Window.Header.NewTaskButton;
+        Assert.True(newTask.IsFocused);
+        Assert.False(FocusVisible(newTask));                                    // opened with the pointer: no ring
+    }
+
+    [AvaloniaFact]
+    public void Focus_returns_with_a_visible_ring_to_an_opener_reached_with_the_keyboard()
+    {
+        using var shell = ShellFixture.Open(AppView.Week);
+        var title = FirstCardTitle(shell);
+        Assert.True(title.Focus(NavigationMethod.Tab));
+        Assert.True(FocusVisible(title));
+        shell.Key(Key.Enter);
+        Assert.IsType<TaskDialogViewModel>(shell.Vm.Overlay);
+        shell.Key(Key.Escape);
+        Assert.Null(shell.Vm.Overlay);
+        Assert.True(title.IsFocused);
+        Assert.True(FocusVisible(title));
+
+        // Opened with the pointer: focus comes back without the ring.
+        Assert.True(shell.Window.Header.TodayButton.Focus(NavigationMethod.Pointer));
+        shell.Click(title);
+        Assert.IsType<TaskDialogViewModel>(shell.Vm.Overlay);
+        shell.Key(Key.Escape);
+        Assert.True(title.IsFocused);
+        Assert.False(FocusVisible(title));
+    }
+
     [AvaloniaFact]
     public void N_opens_the_new_task_dialog_for_the_current_view()
     {

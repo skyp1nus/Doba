@@ -38,6 +38,11 @@ public sealed partial class TaskDialogViewModel : OverlayViewModel
     private PendingAction _pending;
     private TaskDraft? _closingDraft;
 
+    // The day the labels were last projected for, and the date fields as the dialog was given them (or as a day change
+    // moved them): equal to the draft's when the user has not touched the date.
+    private DateOnly _today;
+    private (DateOnly? Date, int Days) _givenDate;
+
     // Inputs of the mini calendar last pushed into CalendarDays / DateOptions (they are rebuilt only when these change).
     private (DateOnly Month, DateOnly? Date, int Days, DateOnly Today, DayOfWeek WeekStart)? _calendarKey;
     private (DateOnly? Date, DateOnly Today, DayOfWeek WeekStart)? _optionsKey;
@@ -63,8 +68,11 @@ public sealed partial class TaskDialogViewModel : OverlayViewModel
             PriorityOptions.Add(new PriorityOptionItem(priority, label, PickPriority));
         }
 
+        _today = Today;
+        _givenDate = (draft.Date, draft.Days);
         Draft = draft;
         RefreshTags();
+        services.App.DayClock.DayChanged += OnDayChanged;
     }
 
     /// <summary>What closing the dialog will do: nothing decided yet, save, delete, just close; Closed = done.</summary>
@@ -359,6 +367,7 @@ public sealed partial class TaskDialogViewModel : OverlayViewModel
         var pending = _pending;
         var draft = _closingDraft ?? Draft;
         _pending = PendingAction.Closed;
+        Services.App.DayClock.DayChanged -= OnDayChanged;
         var store = Services.App.Store;
         switch (pending)
         {
@@ -367,7 +376,15 @@ public sealed partial class TaskDialogViewModel : OverlayViewModel
                 {
                     if (store.Get(id) is { } existing)
                     {
-                        store.Update(TaskDialog.ToTask(draft, existing));
+                        var task = TaskDialog.ToTask(draft, existing);
+                        if (IsDateUntouched(draft) && draft.Days == 1 && existing.End is null)
+                        {
+                            // The user did not change the date: keep the stored one, which carry-over may have moved to
+                            // the new today while the dialog was open (saving the old date would make it overdue again).
+                            task = task with { Date = existing.Date };
+                        }
+
+                        store.Update(task);
                     }
                 }
                 else
@@ -381,6 +398,32 @@ public sealed partial class TaskDialogViewModel : OverlayViewModel
                 store.Delete(deleteId);
                 break;
         }
+    }
+
+    /// <summary>The date and span are still the ones the dialog was given (or a day change moved them to).</summary>
+    private bool IsDateUntouched(TaskDraft d) => d.Date == _givenDate.Date && d.Days == _givenDate.Days;
+
+    /// <summary>Midnight while the dialog is open: a new task still on the old today (its default date, untouched) moves
+    /// to the new today, like carry-over; the labels ("Today", "Tomorrow") and the calendar's today follow.</summary>
+    private void OnDayChanged(object? sender, DateOnly today)
+    {
+        var previous = _today;
+        _today = today;
+        if (_pending != PendingAction.None)
+        {
+            return;
+        }
+
+        var d = Draft;
+        if (d.EditId is null && d.Date == previous && today > previous && IsDateUntouched(d))
+        {
+            var month = d.CalendarMonth == DateMath.FirstOfMonth(previous) ? DateMath.FirstOfMonth(today) : d.CalendarMonth;
+            _givenDate = (today, d.Days);
+            Draft = d with { Date = today, CalendarMonth = month };
+            return;
+        }
+
+        Project(d);
     }
 
     // ---- Projection of the draft ---------------------------------------------------------------------------------------

@@ -62,6 +62,37 @@ public class SearchPaletteTests
     }
 
     [AvaloniaFact]
+    public void More_matches_than_the_listed_50_say_so_under_the_list_until_the_query_narrows()
+    {
+        using var shell = ShellFixture.Open(AppView.Week);
+        for (var i = 0; i < 60; i++)
+        {
+            shell.App.Store.Add(new TaskItem(0, $"zz bulk {i:00}", string.Empty, null, null,
+                null, 0, Priority.None, null, false));
+        }
+
+        var (vm, view) = Open(shell);
+        var more = DialogKit.Part<TextBlock>(view, "PART_More");
+        Type(shell, "zz");
+        Assert.Equal(SearchPaletteViewModel.Limit, vm.Hits.Count);
+        Assert.Equal(Expected(shell, "zz").Select(h => h.Row.Id), vm.Hits.Select(h => h.Id));   // the same 50 as before
+        Assert.True(vm.HasMore);
+        Assert.True(more.IsEffectivelyVisible);
+        Assert.Equal("More than 50 matches · keep typing to narrow", more.Text);
+        var moreAt = more.TranslatePoint(default, view)!.Value.Y;
+        var scrollEnd = view.HitScroll.TranslatePoint(new Point(0, view.HitScroll.Bounds.Height), view)!.Value.Y;
+        Assert.True(moreAt >= scrollEnd, "under the list");
+
+        Type(shell, " bulk 0");                                                   // "zz bulk 0" → ten tasks
+        Assert.Equal(10, vm.Hits.Count);
+        Assert.False(vm.HasMore);
+        Assert.False(more.IsEffectivelyVisible);
+
+        shell.Key(Key.Back);                                                      // back to 60 matches
+        Assert.True(vm.HasMore);
+    }
+
+    [AvaloniaFact]
     public void The_title_bar_search_button_opens_it()
     {
         using var shell = ShellFixture.Open(AppView.Week);

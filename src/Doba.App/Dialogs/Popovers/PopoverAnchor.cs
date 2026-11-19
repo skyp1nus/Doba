@@ -45,6 +45,7 @@ public sealed class PopoverAnchor : Panel
 
     private Vector _shift;
     private bool _listening;
+    private double _measuredMaxHeight = double.PositiveInfinity;
 
     static PopoverAnchor()
     {
@@ -130,7 +131,10 @@ public sealed class PopoverAnchor : Panel
         {
             if (ReferenceEquals(child, Popover))
             {
-                child.Measure(Size.Infinity);
+                // No taller than the window inside its edges: a long list (the Tag popover) scrolls instead of running
+                // off the bottom. The fixed-size popovers are far below this at the smallest window.
+                _measuredMaxHeight = MaxPopoverHeight();
+                child.Measure(new Size(double.PositiveInfinity, _measuredMaxHeight));
                 continue;
             }
 
@@ -225,7 +229,19 @@ public sealed class PopoverAnchor : Panel
 
     private void OnLayoutUpdated(object? sender, EventArgs e)
     {
-        if (Popover is not { } popover || !IsShowing || ComputeShift(popover.DesiredSize) is not { } shift)
+        if (Popover is not { } popover || !IsShowing)
+        {
+            return;
+        }
+
+        var maxHeight = MaxPopoverHeight();
+        if (maxHeight != _measuredMaxHeight)
+        {
+            InvalidateMeasure(); // the window was resized: the popover's height limit changed
+            return;
+        }
+
+        if (ComputeShift(popover.DesiredSize) is not { } shift)
         {
             return;
         }
@@ -236,6 +252,11 @@ public sealed class PopoverAnchor : Panel
             InvalidateArrange();
         }
     }
+
+    /// <summary>The tallest a popover may be: the window's height less <see cref="Edge"/> above and below (infinite when
+    /// not in a window).</summary>
+    private double MaxPopoverHeight() =>
+        TopLevel.GetTopLevel(this) is { } top ? Math.Max(0, top.ClientSize.Height - (2 * Edge)) : double.PositiveInfinity;
 
     /// <summary>The move that keeps a popover of <paramref name="size"/> inside the window, or null when not in a window.</summary>
     private Vector? ComputeShift(Size size)

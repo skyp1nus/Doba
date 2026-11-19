@@ -9,6 +9,8 @@
                  The scrollbar is drawn over the list's right padding (ScrollViewer.Search), so rows keep 12 px on
                  both sides and the bar stays clear of the rule and the panel edge.
                  A query without hits shows one muted "No tasks found" line; an empty query shows no list at all.
+                 More matches than the 50 listed: one muted "More than 50 matches · keep typing to narrow" line under
+                 the list (outside the scroller, so it is always in view).
     footer       the dialog footer (Bg.DialogFooter, 1 px Border.Subtle rule, r 0 0 12 12, padding 12 14 12 20) with the
                  mono hint "↑↓ move · ↵ open · Esc close".
   ClipToBounds is off: UserControls here clip to their bounds unless told otherwise (it is true at run time on every
@@ -46,7 +48,7 @@
               BorderBrush="{DynamicResource Brush.Border.Subtle}"
               BorderThickness="{DynamicResource Thickness.Search.Rule}"
               IsVisible="{Binding HasQuery}">
-        <Panel>
+        <StackPanel>
           <ScrollViewer Name="PART_Scroll"
                         Theme="{StaticResource ScrollViewer.Search}"
                         MaxHeight="{DynamicResource Size.Search.List}"
@@ -59,7 +61,7 @@
                           Classes.done="{Binding Done}"
                           Command="{Binding OpenCommand}"
                           AutomationProperties.Name="{Binding AccessibleName}">
-                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{DynamicResource Space.Search.RowGap}">
+                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{DynamicResource Space.Search.RowGap}" Margin="{DynamicResource Space.Dialog.Raise}">
                       <Panel Width="{DynamicResource Size.Search.Glyph}">
                         <c:PriorityIcon Priority="{Binding Priority}" HorizontalAlignment="Center" VerticalAlignment="Center" />
                       </Panel>
@@ -91,7 +93,18 @@
                        VerticalAlignment="Center"
                        Text="No tasks found" />
           </Border>
-        </Panel>
+          <Border Margin="{DynamicResource Space.Search.More}"
+                  Height="{DynamicResource Size.NavItem}"
+                  Padding="{DynamicResource Space.Search.Empty}"
+                  IsVisible="{Binding HasMore}">
+            <TextBlock Name="PART_More"
+                       Classes="muted"
+                       FontSize="{DynamicResource FontSize.12}"
+                       VerticalAlignment="Center"
+                       TextTrimming="CharacterEllipsis"
+                       Text="{Binding MoreLabel}" />
+          </Border>
+        </StackPanel>
       </Border>
 
       <Border Name="PART_Footer"

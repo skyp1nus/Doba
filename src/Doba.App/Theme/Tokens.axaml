@@ -519,6 +519,11 @@
   <Thickness x:Key="Space.Dialog.Lift">0,0,0,1</Thickness>
   <Thickness x:Key="Space.Dialog.Lift2">0,0,0,2</Thickness>
   <Thickness x:Key="Space.Dialog.Chip">10,0,10,2</Thickness>        <!-- chip padding 0 10px + the lift -->
+  <!-- The same lift for the single-line labels of the pills, Cancel and the popover / search rows, measured against
+       dialog-priority.png and dialog-tag.png: there the whole label (and a row's glyph and tick) sat 1 px low inside a
+       box that is exact. Raise moves the element up by exactly 1 px without changing its size, so it does not depend
+       on how a centring offset rounds. The footer hint, whose centring offset ends in a half pixel, takes Lift. -->
+  <Thickness x:Key="Space.Dialog.Raise">0,-1,0,1</Thickness>
 
   <!-- == TimeWheel == -->
   <!-- Time popover wheel (design lines 731-743). Band colour = Brush.Overlay.Edge, radius = Radius.Card,
@@ -550,6 +555,7 @@
   <x:Double x:Key="Space.Search.RowGap">10</x:Double>                <!-- popover row gap: glyph ↔ title ↔ meta -->
   <x:Double x:Key="Space.Search.MetaGap">12</x:Double>               <!-- #tag ↔ context (list row meta gap) -->
   <Thickness x:Key="Space.Search.Empty">32,0,8,0</Thickness>        <!-- "No tasks found" on the row titles' x -->
+  <Thickness x:Key="Space.Search.More">12,0,12,6</Thickness>        <!-- "More than 50 matches" line under the list -->
   <Thickness x:Key="Thickness.Search.Rule">0,1,0,0</Thickness>      <!-- 1 px Border.Subtle above the list and the footer -->
   <CornerRadius x:Key="Radius.Search.Footer">0,0,12,12</CornerRadius> <!-- footer: border-radius 0 0 12px 12px -->
 

@@ -74,6 +74,8 @@ public partial class OverlayHost : UserControl
     private MainViewModel? _vm;
     private OverlayViewModel? _shown;
     private IInputElement? _returnFocus;
+    private bool _returnFocusVisible;
+    private bool _restorePending;
     private bool _closing;
     private bool _focusedShown;
     private bool _replaceTurn;
@@ -85,6 +87,7 @@ public partial class OverlayHost : UserControl
     {
         InitializeComponent();
         PART_Panel.AddHandler(TextInputEvent, OnParkedTextInput);
+        PART_Panel.AddHandler(KeyDownEvent, OnParkedKeyDown);
     }
 
     /// <summary>The overlay animations (<see cref="AnimatedOverlayTransitions"/>; tests may hold or replace them).</summary>
@@ -254,16 +257,26 @@ public partial class OverlayHost : UserControl
             }
 
             ApplyBlur(0);
-            RestoreFocus();
+
+            // MainViewModel.CloseOverlay removes the overlay before OnClosed writes the store (a save or delete), and the
+            // screen refreshes at once: the element focus returns to may be removed by that write (the edited card,
+            // deleted or moved to another day). So focus returns right after this turn, before any frame or input.
+            _restorePending = true;
+            Dispatcher.UIThread.Post(RestorePendingFocus, DispatcherPriority.Send);
             return;
         }
 
         var replacing = _replaceTurn;
         _replaceTurn = false;
-        if (!wasOpen && !replacing)
+        if (!wasOpen && !replacing && !_restorePending)
         {
-            _returnFocus = TopLevel.GetTopLevel(this)?.FocusManager?.GetFocusedElement();
+            var focused = TopLevel.GetTopLevel(this)?.FocusManager?.GetFocusedElement();
+            _returnFocus = focused;
+            _returnFocusVisible = focused is StyledElement { Classes: var classes } && classes.Contains(":focus-visible");
         }
+
+        // An overlay opened before focus went back keeps the element focus was to return to.
+        _restorePending = false;
 
         var view = CreateView(overlay);
         view.DataContext = overlay;
@@ -350,6 +363,27 @@ public partial class OverlayHost : UserControl
         e.Handled = true;
     }
 
+    /// <summary>Backspace while focus is parked on the panel takes back the last character typed during the entrance.
+    /// Other keys there are not replayed: Esc goes on to the window and closes the overlay; Enter, arrows and the rest
+    /// do nothing until the first input has focus.</summary>
+    private void OnParkedKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Back || e.KeyModifiers != KeyModifiers.None || _shown is null || _closing || _focusedShown
+            || !ReferenceEquals(e.Source, PART_Panel))
+        {
+            return;
+        }
+
+        var length = _typedDuringEntrance.Length;
+        if (length > 0)
+        {
+            var cut = length > 1 && char.IsSurrogatePair(_typedDuringEntrance[length - 2], _typedDuringEntrance[length - 1]) ? 2 : 1;
+            _typedDuringEntrance.Length = length - cut;
+        }
+
+        e.Handled = true;
+    }
+
     /// <summary>Hands the text typed during the entrance to the input focused now, as if it had been typed there.</summary>
     private void ReplayTypedText()
     {
@@ -430,19 +464,38 @@ public partial class OverlayHost : UserControl
         }
     }
 
+    private void RestorePendingFocus()
+    {
+        if (!_restorePending)
+        {
+            return;
+        }
+
+        _restorePending = false;
+        if (_shown is null)
+        {
+            RestoreFocus();
+        }
+    }
+
+    /// <summary>Focus goes back to the element that had it, or to <see cref="FallbackFocus"/> when that is gone. It
+    /// shows the focus ring (keyboard focus) only if the element had it when the overlay opened, as PopoverAnchor does
+    /// for its pill.</summary>
     private void RestoreFocus()
     {
         var target = _returnFocus as Control;
+        var method = _returnFocusVisible ? NavigationMethod.Tab : NavigationMethod.Pointer;
         _returnFocus = null;
+        _returnFocusVisible = false;
         if (target is not null && CanFocus(target))
         {
-            target.Focus();
+            target.Focus(method);
             return;
         }
 
         if (FallbackFocus is { } fallback && CanFocus(fallback))
         {
-            fallback.Focus();
+            fallback.Focus(method);
         }
     }
 

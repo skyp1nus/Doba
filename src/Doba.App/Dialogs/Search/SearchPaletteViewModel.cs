@@ -11,7 +11,8 @@ namespace Doba.App.Dialogs.Search;
 /// <summary>
 /// The Ctrl+K search palette: query box and hits from the Core search projection (<see cref="Projector.Search"/>:
 /// case-insensitive substring on titles across all tasks, open first, at most <see cref="Limit"/>). Every query change
-/// re-runs the projection and reconciles <see cref="Hits"/> in place; the first hit is then selected. ↑/↓ move the
+/// re-runs the projection and reconciles <see cref="Hits"/> in place; the first hit is then selected. When more tasks
+/// match than are listed, <see cref="HasMore"/> says so (a muted line under the list: keep typing). ↑/↓ move the
 /// selection (clamped). Picking a hit always opens that task's edit dialog (<c>IAppCommands.EditTask</c>, which
 /// replaces this overlay); the palette never navigates and never changes a task.
 /// </summary>
@@ -48,6 +49,12 @@ public sealed partial class SearchPaletteViewModel : OverlayViewModel
 
     /// <summary>At least one hit.</summary>
     public bool HasHits => Hits.Count > 0;
+
+    /// <summary>More tasks match than the <see cref="Limit"/> listed: the user should keep typing to reach the others.</summary>
+    [ObservableProperty] public partial bool HasMore { get; private set; }
+
+    /// <summary>The muted line shown under a capped list.</summary>
+    public string MoreLabel { get; } = $"More than {Limit} matches · keep typing to narrow";
 
     /// <summary>A query without hits: the muted "No tasks found" line.</summary>
     public bool ShowsNoResults => HasQuery && Hits.Count == 0;
@@ -106,7 +113,9 @@ public sealed partial class SearchPaletteViewModel : OverlayViewModel
 
         var app = Services.App;
         var ctx = new ProjectionContext(app.DayClock.Today, app.DayClock.Now, app.Settings.Current.WeekStart, Services.FilterTag());
-        var hits = Projector.Search(app.Store, ctx, Query, Limit);
+        // One hit past the cap tells whether more tasks match (the projection returns no total).
+        var found = Projector.Search(app.Store, ctx, Query, Limit + 1);
+        IReadOnlyList<SearchHit> hits = found.Count > Limit ? [.. found.Take(Limit)] : found;
         var selectedId = keepSelection ? Selected?.Id : null;
 
         KeyedSync.Apply(Hits, hits, static h => h.Row.Id, static vm => vm.Id, h => new SearchHitViewModel(h, Open), static (vm, h) => vm.Update(h));
@@ -126,6 +135,7 @@ public sealed partial class SearchPaletteViewModel : OverlayViewModel
         }
 
         Select(Hits.Count == 0 ? -1 : index, force: true);
+        HasMore = found.Count > Limit;
         OnPropertyChanged(nameof(HasHits));
         OnPropertyChanged(nameof(ShowsNoResults));
     }
