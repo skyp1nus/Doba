@@ -42,6 +42,10 @@ jobs:
       - name: Publish NativeAOT win-x64
         run: dotnet publish src/Doba.App -c Release -r win-x64 -o artifacts/doba-win-x64 -warnaserror
 
+      # The MCP server Claude starts (Doba.Mcp.exe), next to Doba.exe in the same folder.
+      - name: Publish Doba.Mcp NativeAOT win-x64
+        run: dotnet publish src/Doba.Mcp -c Release -r win-x64 -o artifacts/doba-win-x64 -warnaserror
+
       # The two steps below run the real executable with demo data. They are informational:
       # a hosted runner has no GPU, no Mica and may have no notification area, so their
       # results are printed but do not fail the job. Neither touches real data or the Run key.

@@ -599,6 +599,7 @@ public sealed class SettingsScreenTests
         Click(window, claudeSwitch);
         Assert.True(f.App.Settings.Current.ClaudeAccess); // unchanged: the click went nowhere
         Assert.Equal([1, 1, 1, Disabled(f.View), Disabled(f.View), Disabled(f.View)], RowTextOpacities(f.View));
+        Assert.Equal(Disabled(f.View), LevelGroup(f.View).Opacity);
         window.Close();
     }
 
@@ -616,6 +617,9 @@ public sealed class SettingsScreenTests
         Assert.True(ClaudeSwitch(f.View).IsEffectivelyEnabled);
         Assert.All(ClaudeButtons(f.View), b => Assert.False(b.IsEffectivelyEnabled));
         Assert.Equal([1, 1, 1, 1, Disabled(f.View), Disabled(f.View)], RowTextOpacities(f.View));
+        // The level group fades as a whole (track included), once: its items keep full opacity inside it.
+        Assert.Equal(Disabled(f.View), LevelGroup(f.View).Opacity);
+        Assert.All(SegmentItems(f.View, "Read", "Read & edit"), i => Assert.Equal(1, i.Opacity));
         var switches = f.View.GetVisualDescendants().OfType<ToggleSwitch>().ToList();
         Assert.Equal(2, switches.Count); // Daily backup, Claude access
         Assert.Equal([true, false], switches.Select(s => s.IsChecked == true));
@@ -625,6 +629,7 @@ public sealed class SettingsScreenTests
         Assert.All(rows, r => Assert.True(r.IsEnabled));
         Assert.All(ClaudeButtons(f.View), b => Assert.True(b.IsEffectivelyEnabled));
         Assert.All(RowTextOpacities(f.View), o => Assert.Equal(1, o));
+        Assert.Equal(1, LevelGroup(f.View).Opacity);
 
         Click(window, SegmentItems(f.View, "Read & edit").Single());
         Assert.Equal(ClaudeAccessLevel.ReadWrite, f.App.Settings.Current.ClaudeAccessLevel);
@@ -634,6 +639,7 @@ public sealed class SettingsScreenTests
         Click(window, ClaudeSwitch(f.View));
         Assert.False(f.App.Settings.Current.ClaudeAccess);
         Assert.Equal([true, true, true, true, false, false], rows.Select(r => r.IsEnabled));
+        Assert.Equal(Disabled(f.View), LevelGroup(f.View).Opacity);
         window.Close();
     }
 
@@ -785,6 +791,10 @@ public sealed class SettingsScreenTests
 
     private static List<ListBoxItem> SegmentItems(Control view, params string[] labels) =>
         [.. view.GetVisualDescendants().OfType<ListBoxItem>().Where(i => labels.Contains(i.Content as string))];
+
+    /// <summary>The "Claude can" segmented group.</summary>
+    private static ListBox LevelGroup(Control view) =>
+        view.GetVisualDescendants().OfType<ListBox>().Single(l => l.DataContext is SegmentRow { Key: "claudeLevel" });
 
     /// <summary>Opacity of each visible row's label + description column, in row order.</summary>
     private static List<double> RowTextOpacities(Control view) =>

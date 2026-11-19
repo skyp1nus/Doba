@@ -5,7 +5,9 @@ A minimal, dark, local-only daily planner for Windows — from the year view to 
 Doba keeps an **Inbox** for undated tasks, a **Today** screen with a schedule timeline, and a **Calendar** that zooms
 Year → Month → Week → Day. A task has a title, optional notes, an optional date (or a multi-day span of up to 14 days),
 an optional time with a duration, a priority (none / low / medium / high / ASAP) and at most one tag.
-There are no accounts, no sync, no telemetry and no network calls: everything stays on your PC.
+There are no accounts, no sync, no telemetry and no network calls: everything stays on your PC. (Optionally, Claude
+Desktop or Claude Code can read and edit your tasks while you allow it; what Claude reads then goes to Anthropic as part
+of your conversation. Doba itself still makes no network calls. See [Claude (MCP)](#claude-mcp).)
 
 Built with .NET 11, [Avalonia 12](https://avaloniaui.net/) (12.1.6), CommunityToolkit.Mvvm and SQLite
 (Microsoft.Data.Sqlite), published as a self-contained NativeAOT executable for Windows x64.
@@ -30,7 +32,7 @@ All commands are PowerShell, run from the repository root.
 $env:DOTNET_CLI_TELEMETRY_OPTOUT='1'; $env:DOTNET_NOLOGO='1'; $env:AVALONIA_TELEMETRY_OPTOUT='1'
 
 dotnet build -warnaserror                        # whole solution; warnings are errors, trim + AOT analyzers on
-dotnet test                                      # all three test projects (Microsoft Testing Platform, xunit v3)
+dotnet test                                      # all four test projects (Microsoft Testing Platform, xunit v3)
 dotnet test --project tests/Doba.Core.Tests      # one project
 dotnet run --project src/Doba.App -- --demo      # the app with the design's demo data; nothing is written to disk
 ```
@@ -44,18 +46,28 @@ Run `dotnet run --project src/Doba.App` without flags only when you mean it: tha
 
 ```powershell
 dotnet publish src/Doba.App -c Release -r win-x64 -o artifacts\doba-win-x64 -warnaserror
+dotnet publish src/Doba.Mcp -c Release -r win-x64 -o artifacts\doba-win-x64 -warnaserror
 .\artifacts\doba-win-x64\Doba.exe --demo
 ```
 
-The publish reports 0 warnings. ILC also prints two informational "will always throw" lines about Avalonia.Win32
+Both publishes report 0 warnings. ILC also prints two informational "will always throw" lines about Avalonia.Win32
 DComposition interop; they are not warnings and come from Avalonia.
 
 The output is `Doba.exe` (about 20 MB) plus the native libraries it loads from the same folder: `e_sqlite3.dll`
-(SQLite), `libSkiaSharp.dll` and `libHarfBuzzSharp.dll` (rendering and text shaping) and `av_libglesv2.dll` (ANGLE).
-Keep the folder together. Copy it wherever you like; "Launch at startup" stores the path of the exe that wrote it.
+(SQLite), `libSkiaSharp.dll` and `libHarfBuzzSharp.dll` (rendering and text shaping) and `av_libglesv2.dll` (ANGLE),
+and `Doba.Mcp.exe` (about 10 MB), the MCP server Claude starts (see [Claude (MCP)](#claude-mcp)). Keep the folder together.
+Copy it wherever you like; "Launch at startup" stores the path of the exe that wrote it, and the Claude connection
+stores the path of `Doba.Mcp.exe` (copy the connection again after moving the folder).
+
+The tests that start `Doba.Mcp.exe` (`tests/Doba.Bridge.Tests` and the Claude end-to-end test in
+`tests/Doba.App.Tests`) use the build output, or the published NativeAOT server when `DOBA_MCP_EXE` names it:
+
+```powershell
+$env:DOBA_MCP_EXE="$PWD\artifacts\doba-win-x64\Doba.Mcp.exe"; dotnet test --project tests/Doba.Bridge.Tests
+```
 
 CI (`.github/workflows/ci.yml`, one `windows-latest` job) builds in Release with `-warnaserror`, runs the tests,
-publishes this build, prints the `--perf` startup line and uploads the folder as the `doba-win-x64` artifact. It runs
+publishes both executables, prints the `--perf` startup line and uploads the folder as the `doba-win-x64` artifact. It runs
 only on `workflow_dispatch` or on a pull request into `main` (changes to docs, `*.md` and `tools/` only are skipped).
 
 ## Command line
@@ -158,6 +170,105 @@ To start over, quit Doba (tray menu › Quit) and delete or rename the folder. T
 - **Carry over unfinished tasks** (Settings › Tasks, on by default): after the first frame and after midnight, open
   single-day tasks dated before today move to today. **Completion sound** is off by default.
 
+## Claude (MCP)
+
+Claude Desktop and Claude Code can read your tasks and, if you allow it, change them, through the
+[Model Context Protocol](https://modelcontextprotocol.io/). Claude starts `Doba.Mcp.exe` (published next to
+`Doba.exe`) and talks to it over stdin/stdout; `Doba.Mcp.exe` never opens the database itself but passes each call to
+the running Doba over a local named pipe. Doba runs it on its UI thread against the tasks you see, so the screen
+updates at once and the change is saved exactly like one you made yourself.
+
+**It is off by default.** Turn it on in **Settings › Data**:
+
+- **Claude access** — the switch. While it is off Doba does not listen at all (the pipe does not exist).
+- **Claude can** — **Read** (the default) or **Read & edit**. Editing includes deleting tasks. The level is checked on
+  every call, so a change here applies to the next call.
+- **Connect Claude** — copies what each client needs (below). The row shows the path of `Doba.Mcp.exe`.
+
+**Doba must be running.** The server never starts Doba; when it is not running Claude gets an error that says so.
+Two reasons: Claude Desktop from the Microsoft Store runs as a packaged (MSIX) app, and a Doba started by it would write
+part of its files into the package's private copy of AppData, apart from your real data; and Claude Code ends the
+server's whole process tree when it stops it, which would close Doba with it. Keeping Doba in the tray (Settings ›
+Windows) is enough. `--demo` never listens, so for Claude a demo Doba is "not running".
+
+### Connect Claude Desktop
+
+1. In Doba: Settings › Data › turn on **Claude access**, then **Copy for Claude Desktop**. The clipboard now holds an
+   `mcpServers` entry like this (`args` appear only when Doba runs on a `--data` folder):
+
+   ```json
+   { "mcpServers": { "doba": { "command": "C:\\…\\Doba.Mcp.exe", "args": ["--data", "D:\\…\\my-data"] } } }
+   ```
+
+2. In Claude Desktop: Settings › Developer › **Edit Config** opens `claude_desktop_config.json`. Merge the `doba`
+   entry into its `mcpServers` object (create the object if the file has none) and save.
+3. Quit Claude Desktop completely (tray icon › Quit; closing the window is not enough) and start it again.
+4. In a chat, **+** › **Connectors** lists `doba` with its tools.
+
+If `doba` does not appear: the Microsoft Store (MSIX) build of Claude Desktop may read its config from a different
+place than the file you edited; Edit Config opens the one it uses. Claude Desktop writes a log per MCP server
+(`mcp*.log`) in its `logs` folder, which says whether `Doba.Mcp.exe` started and why it stopped.
+<!-- lead: confirm the MSIX config and logs paths on the owner's PC and write them here. -->
+
+### Connect Claude Code
+
+1. In Doba: turn on **Claude access**, then **Copy for Claude Code**. The clipboard holds a command like:
+
+   ```powershell
+   claude mcp add --scope user doba -- "C:\…\Doba.Mcp.exe" --data "D:\…\my-data"
+   ```
+
+2. Run it in a terminal. `claude mcp list` then shows `doba` as connected; inside a session `/mcp` shows its state and
+   tools.
+3. Claude Code asks before each tool call. To stop being asked for some tools, allow them with `/permissions`, using
+   names like `mcp__doba__get_today` or `mcp__doba__list_tasks`.
+
+### Tools
+
+Every answer that reads tasks includes `today`. Dates are `YYYY-MM-DD` in Doba's local calendar, times `HH:mm`,
+priorities `none | low | medium | high | asap`.
+
+| Tool | Level | What it does |
+|---|---|---|
+| `get_today` | Read | Today's date, weekday, time, UTC offset and week start, and the tasks on the Today screen. |
+| `list_tasks` | Read | Tasks from `from` to `to` (at most 92 days), done ones only with `include_done`, paged. |
+| `list_inbox` | Read | Undated (Inbox) tasks in Inbox order, paged. |
+| `search_tasks` | Read | Tasks whose title contains the text (titles only), at most 50. |
+| `list_tags` | Read | Your tags and how many open tasks each has. |
+| `get_task` | Read | One task by id, with its full notes (lists cut notes at 200 characters). |
+| `create_task` | Read & edit | A new task; without `date` it goes to the Inbox. Only existing tags. |
+| `update_task` | Read & edit | Changes the given fields; a missing field stays as it is, `clear: [...]` empties `notes`, `time`, `tag` or `date`. |
+| `set_task_done` | Read & edit | Marks a task done or not done. |
+| `move_task` | Read & edit | Moves a task to a date or to `"inbox"`; a multi-day task moves as a whole. |
+| `delete_task` | Read & edit | Deletes a task. |
+
+Tags are created only in Doba; Claude can use the existing ones. A task that is open in Doba's edit dialog cannot be
+changed by Claude until the dialog is closed (otherwise saving the dialog would overwrite Claude's change).
+
+### Privacy
+
+The tasks Claude reads (titles, notes, dates, tags, everything a tool returns) are sent to Anthropic as part of your
+conversation, like anything else you show Claude. Doba itself still makes no network calls: `Doba.exe` never opens a
+network listener, the pipe exists only while Claude access is on, it is local and only your Windows user can open it,
+and connections from other computers are refused. Export and import never carry the Claude access settings, so an
+imported file cannot turn access on.
+
+### Errors you may see
+
+Claude shows these as the tool's answer; it can usually act on them itself.
+
+| Message starts with | Meaning |
+|---|---|
+| Doba is not running (data folder: …) | No Doba runs on that folder: start it (or the copied command points at another folder: copy it again). |
+| Doba is running, but Claude access is off | Turn on Settings › Data › Claude access (or Doba is still starting: try again). |
+| Claude access is off in Doba / Doba is closing, or Claude access was just turned off | The switch was turned off, or Doba was quitting, while the call was on its way. |
+| Doba lets Claude read tasks only | The level is Read: set Claude can › Read & edit to allow changes. |
+| Task N is open in Doba's editor | Close the edit dialog in Doba, then ask again. |
+| Doba and Claude run as different users or privilege levels | One of them runs as administrator (or as another user): run both the same way. |
+| Doba did not answer in time / Doba closed the connection before answering | The change may or may not have been applied; Claude should check with `get_task` or `search_tasks` before retrying. |
+| Doba speaks bridge protocol … | `Doba.exe` and `Doba.Mcp.exe` come from different versions: keep them from the same build, in one folder. |
+| Anything about an argument (e.g. `'time' …`, an unknown tag with the list of tags) | Claude sent something Doba does not accept; nothing was changed. |
+
 ## Screenshots and performance
 
 Headless UI tests render the real window with the demo data at 1600×1000. By default the PNGs go to the git-ignored
@@ -188,10 +299,13 @@ frames.
 Doba.sln
 src/Doba.Core/          Pure domain: task model, date math, in-memory store, projections, navigation, dialog rules, DemoData
 src/Doba.Storage/       SQLite (hand-written SQL, WAL, write-behind writer), daily backup, JSON export / import
+src/Doba.Bridge/        The Claude bridge: tool catalog, ToolExecutor (tool calls → Doba.Core), named-pipe host and client
+src/Doba.Mcp/           Doba.Mcp.exe: the MCP stdio server Claude starts; passes every call to the running Doba
 src/Doba.App/           Avalonia app (assembly "Doba"): shell, screens, dialogs, controls, theme tokens, motion,
-                        Windows platform services, startup, diagnostics
+                        Windows platform services (Claude bridge included), startup, diagnostics
 tests/Doba.Core.Tests/     Unit tests, golden tests against the prototype's own script, projection timing
 tests/Doba.Storage.Tests/  Database, writer, backup and import / export tests on temp folders
+tests/Doba.Bridge.Tests/   Tool executor, pipe host / client, and Doba.Mcp.exe end to end over stdio
 tests/Doba.App.Tests/      Headless UI tests (real Skia rendering), screenshots, keyboard, motion, lifecycle, perf
 docs/                   ARCHITECTURE, DECISIONS, PROGRESS, HANDOFF, MOTION-REVIEW, design-system, KICKOFF,
                         design/ (prototype, motion spec, reference renders), screenshots/ (our renders)

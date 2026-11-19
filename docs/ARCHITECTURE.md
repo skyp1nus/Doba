@@ -15,10 +15,16 @@ src/Doba.Core/        Pure domain: model, date math, in-memory store, carry-over
                       dialog rules, DemoData. No package references.
 src/Doba.Storage/     SQLite (hand-written SQL, WAL), write-behind writer, settings persistence, daily backup,
                       JSON export / import (source-generated).
+src/Doba.Bridge/      The Claude bridge (library): BridgeNames (instance key, mutex and pipe names), ToolCatalog (the
+                      11 MCP tools), ToolExecutor (tool call → Doba.Core), BridgeHost / BridgeClient (named pipe),
+                      Wire/ (pipe messages, source-generated JSON).
+src/Doba.Mcp/         Doba.Mcp.exe (console, NativeAOT, no Avalonia): the MCP stdio server Claude starts; passes
+                      every tool call to the running Doba through BridgeClient.
 src/Doba.App/         Avalonia app (assembly "Doba", WinExe): startup, composition, shell, screens, dialogs, controls,
-                      theme, motion, platform services, lifecycle services, diagnostics.
+                      theme, motion, platform services (Claude bridge included), lifecycle services, diagnostics.
 tests/Doba.Core.Tests/     Unit tests, golden tests against the prototype's script, projection timing.
 tests/Doba.Storage.Tests/  Database / writer / backup / JSON tests on temp folders.
+tests/Doba.Bridge.Tests/   ToolExecutor, pipe host / client, ACL, Doba.Mcp.exe end to end over stdio.
 tests/Doba.App.Tests/      Headless UI tests (Avalonia.Headless.XUnit + real Skia), screenshots, perf data.
 scripts/perf.ps1      Performance measurement of the NativeAOT build.
 tools/design-render/  Renders the prototype to docs/design/screens (Node + Playwright; not part of the build).
@@ -26,7 +32,9 @@ docs/                 ARCHITECTURE, DECISIONS, PROGRESS, HANDOFF, MOTION-REVIEW,
                       design/, screenshots/.
 ```
 
-Dependency direction: `App → Storage → Core`, `App → Core`. Shared build settings are in `Directory.Build.props`
+Dependency direction: `App → Storage → Core`, `App → Core`, `App → Bridge → Core`, `Mcp → Bridge → Core`. `Doba.Mcp`
+and `Doba.Bridge` never reference `Doba.App` or `Doba.Storage` and never start a process (an architecture test checks
+both). Shared build settings are in `Directory.Build.props`
 (net11.0, C# 15, nullable, warnings as errors, `latest-recommended` analyzers, invariant globalization; trim, AOT and
 single-file analyzers on for every non-test project) and versions in `Directory.Packages.props`.
 
@@ -308,15 +316,16 @@ public interface IOverlayView { void FocusInitial(); }
 
 ```csharp
 public sealed partial record PlatformServices(IAutostart Autostart, IGlobalHotkey Hotkey,
-    ISystemPreferences Preferences, IShellIntegration Shell, ITrayIcon Tray)
+    ISystemPreferences Preferences, IShellIntegration Shell, ITrayIcon Tray, IClaudeBridge Bridge)
 {
     public static PlatformServices Create(PlatformPlan plan);      // Windows parts the plan allows, no-ops otherwise
     public static PlatformServices ForLaunch(bool demo, bool customDataFolder);
     public static PlatformServices NoOp();                          // tests, headless, non-Windows
 }
-public sealed record PlatformPlan(bool Autostart, bool Hotkey, bool Tray)
+public sealed record PlatformPlan(bool Autostart, bool Hotkey, bool Tray, bool Bridge)
 {
-    // --demo / --selfcheck: none; --data: hotkey + tray, never the Run key; default location: all three.
+    // --demo / --selfcheck: none; --data: hotkey + tray + bridge, never the Run key; default location: all four.
+    // All off (tests): new PlatformPlan(false, false, false, false).
     public static PlatformPlan For(bool demo, bool customDataFolder);
 }
 ```
@@ -329,11 +338,46 @@ public sealed record PlatformPlan(bool Autostart, bool Hotkey, bool Tray)
 * Windows code is in `Platform/Windows/*`, uses `DllImport` with blittable signatures only, and receives `WM_HOTKEY`,
   `WM_SETTINGCHANGE` and `WM_TIMECHANGE` on Doba's own hidden `PlatformWindow`.
 * `SelfCheck` (`--selfcheck`): nine checks on a demo window (HANDOFF §2). `StartupError`: stderr + native message box.
+* `IClaudeBridge` (`Platform/ClaudeBridge.cs`, a `BridgeHost` on the data folder's pipe; no-op in `NoOp()` and in
+  demo): see §5.10.
+
+### 5.10 Claude bridge (MCP)
+
+```
+Claude Desktop / Claude Code
+   │ stdio, JSON-RPC (MCP)                       the client starts the process
+Doba.Mcp.exe  (ModelContextProtocol.Core handlers → BridgeClient)
+   │ named pipe \\.\pipe\Doba-<key>-mcp           one connection per call
+Doba.exe: BridgeHost (pool threads) → Dispatcher.UIThread → ToolExecutor → ITaskStore → write-behind writer → doba.db
+```
+
+* **Processes.** Claude starts `Doba.Mcp.exe [--data <folder>]` (§6). It never opens the database and never starts
+  Doba: every `tools/call` becomes one `BridgeClient.CallAsync` to the Doba that holds the folder's single-instance
+  mutex. `tools/list` is static (`ToolCatalog.All`); the access level is checked by Doba per call.
+* **Pipe.** Name `Doba-<key>-mcp`, where `<key>` is `BridgeNames.InstanceKey(folder)` (the same key as the mutex
+  `Local\Doba-<key>`). ACL: the current user (ReadWrite, CreateNewInstance, Synchronize) and Deny NETWORK; the client
+  connects with `PipeOptions.CurrentUserOnly`. The host keeps one free listening instance, at most 8 connections and
+  1 MB per message. It exists only while Settings › Data › Claude access is on (`ClaudeAccessService`), never in demo.
+  Without a pipe the client tells "access off" (the mutex exists; retried for 1 s while Doba starts) from "not running".
+* **Wire format.** UTF-8 JSON, one line each way per connection (`Wire/BridgeMessages.cs`, snake_case, source-generated):
+  `{"protocol":1,"client":"Doba.Mcp 0.1.0","tool":"create_task","args":{…}}` →
+  `{"ok":true,"result":{"today":"…",…}}` or `{"ok":false,"error":{"code":"read_only","message":"…"}}`. Codes from Doba:
+  `read_only`, `invalid_args`, `not_found`, `conflict`, `closing`, `protocol_mismatch`, `internal`; from the client:
+  `not_running`, `access_off`, `unauthorized`, `timeout` (10 s). `Doba.Mcp` turns every failure into a tool result
+  with `isError: true` and the message as text; a success is the JSON as text plus `structuredContent`.
+* **Threading.** `BridgeHost` accepts and reads on pool threads and hands each request to `ClaudeBridge`, which queues
+  it with `Dispatcher.UIThread.InvokeAsync` (cancelled with the connection). On the UI thread a closing gate is checked
+  first, then `ClaudeAccessService.Execute` runs `ToolExecutor.Execute(request, new ToolContext(store, settings now,
+  clock, id of the task open in the editor))`. `ToolExecutor` is pure Core calls: argument checks (`TaskEdits`), the
+  level, `conflict` with the open editor, then exactly one store mutation (one `Changed` event, one write).
+* **Lifecycle.** `AppLifecycle` starts `ClaudeAccessService` after the first frame, after carry-over; it follows
+  `Settings.Changed`. `Stop()` runs first in `DisposeAsync` (Exit) and in `OnShutdownRequested` (session end): the gate
+  closes, so requests still queued answer `closing`; nothing waits for them.
 
 ### 5.8 Services
 
 * `AppLifecycle`: tray and close-to-tray, `--minimized` start, hotkey registration after `Opened`, after the first
-  frame: `DataMaintenance.Start`, autostart reconcile (default location only), tray icon; flush on hide-to-tray, Quit,
+  frame: `DataMaintenance.Start`, `ClaudeAccessService.Start` (§5.10), autostart reconcile (default location only), tray icon; flush on hide-to-tray, Quit,
   Exit and session end (3 s bound); `ShowWindow`, `QuickAdd`; `ClockChanged` → `TimeZoneInfo.ClearCachedData()` +
   `DayClock.Check()`.
 * `DataMaintenance`: carry-over (UI thread, one `Batch`) and daily backup (background, serialised, failures to Trace)
@@ -368,6 +412,12 @@ value that is itself a flag, an empty `--data` or an out-of-range number is an e
 Exit codes: 0 normal or handed over to the running instance, 1 self-check failure, 2 bad command line, 3 the data
 folder could not be opened (`StartupFailedException`; nothing in the folder is changed).
 
+`Doba.Mcp.exe` takes no arguments (the default folder, `%LOCALAPPDATA%\Doba`) or exactly `--data <folder>` (the folder
+of the Doba to talk to, made a full path). Anything else: usage to stderr, exit 2, nothing on stdout. Otherwise it
+serves MCP on stdin/stdout until stdin ends (exit 0). stdout carries only JSON-RPC (`Console.Out` is redirected to
+stderr, which MCP clients log). Tests and local runs pass `--data <folder under artifacts\ or %TEMP%>`, never no
+arguments.
+
 ## 7. Testing and verification
 
 * Gates: `dotnet build -warnaserror` and `dotnet test` (Microsoft Testing Platform per `global.json`; xunit.v3 3.2.2,
@@ -379,10 +429,19 @@ folder could not be opened (`StartupFailedException`; nothing in the folder is c
   tasks, average under 20 ms (5 ms × 4 margin), one-character Search median under 5 ms and under 32 KB per call.
 * **Doba.Storage.Tests**: database round trips, migrations, writer bursts and failures (a parked writer forces one
   burst), backup rotation, JSON import / export validation, load / persist timing.
+* **Doba.Bridge.Tests**: `ToolExecutor` per tool and rule, the tool catalog, the wire format, the pipe host and client
+  (ACL read back from the pipe, busy / stopped host, timeouts), architecture rules, and `Doba.Mcp.exe` end to end: the
+  test runs the exe as a child process with `--data <temp folder>` against a real `BridgeHost` + `TaskStore` (both
+  protocol eras, all 11 tools, parallel sessions, stdin EOF, stdout hygiene). The exe is the build output (a
+  `ReferenceOutputAssembly="false"` project reference plus an `AssemblyMetadata` path), or `DOBA_MCP_EXE` (e.g. the
+  published NativeAOT exe).
 * **Doba.App.Tests**: headless UI with real Skia rendering. `Support/ShellFixture` opens the real `MainWindow` on
   `AppServices.CreateDemo(settings, PlatformServices.NoOp())` (never a plan that allows autostart, hotkey or tray) and
   drives keys, clicks and render ticks. Folders: Controls, DesignSystem, Dialogs, Keyboard, Lifecycle (on fake platform
-  services), Motion, Performance, Platform, Screens, Services, Shell.
+  services), Motion, Performance, Platform, Screens, Services, Shell. `Platform/ClaudePipeTests` and
+  `ClaudeMcpEndToEndTests` run a real `ClaudeBridge` (on `PlatformServices.NoOp()` otherwise) on a `%TEMP%` folder,
+  pumping the UI thread while `BridgeClient` or `Doba.Mcp.exe` (same `DOBA_MCP_EXE` rule; `McpProcess.cs` and
+  `TestPaths.cs` are linked from Doba.Bridge.Tests) waits.
 * **Screenshots**: tests render 1600×1000 with DemoData (plus a few 1100×700 and content-only renders) into the
   git-ignored `artifacts/screenshots/`; `DOBA_SCREENSHOTS=1` writes the tracked `docs/screenshots/` instead. Reference
   renders of the prototype are in `docs/design/screens/` (made with `tools/design-render`).

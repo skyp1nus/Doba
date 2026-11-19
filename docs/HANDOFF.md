@@ -28,14 +28,15 @@ request for its result. That run (pull request #1, 2026-11-19) was green: Releas
 | §10 CI on `windows-latest` builds, tests, publishes NativeAOT, uploads | Workflow in `.github/workflows/ci.yml`; its steps were run locally in the same configuration (Release build, Release tests, AOT publish, `--perf`, `--selfcheck`). It runs once, on the pull request into `main`. |
 | §10 README and HANDOFF | This file and `README.md`. |
 
-**Tests.** 1088 tests, all green on the final `dev`, in Debug and in Release (`dotnet test -c Release`, as CI runs
-them):
+**Tests.** 1347 tests, all green on `feature/mcp` with the Claude (MCP) feature (Debug, `dotnet test`, 2026-11-19;
+the `dev → main` run above had 1088, before the feature):
 
 | Project | Tests | Covers |
 |---|---|---|
-| `Doba.Core.Tests` | 246 | store, date math, projections (incl. the week lane cap, year fit, labels), navigation, dialog rules, carry-over, golden fixtures, projection timing |
-| `Doba.Storage.Tests` | 123 | database, write-behind writer incl. failure handling and transient retry, backup, JSON import / export, load timing |
-| `Doba.App.Tests` | 719 | headless UI: screens, shell, overlays, keyboard, motion, lifecycle, platform plan, single instance, screenshots, performance |
+| `Doba.Core.Tests` | 286 | store, date math, projections (incl. the week lane cap, year fit, labels), navigation, dialog rules, carry-over, Claude's task edits (`TaskEdits`, `TaskQueries`), golden fixtures, projection timing |
+| `Doba.Storage.Tests` | 129 | database, write-behind writer incl. failure handling and transient retry, backup, JSON import / export (Claude access never in the file), load timing |
+| `Doba.Bridge.Tests` | 160 | tool executor per tool and rule, tool catalog, wire format, pipe host / client and its ACL, architecture rules, `Doba.Mcp.exe` end to end over stdio (also green against the published NativeAOT exe with `DOBA_MCP_EXE`) |
+| `Doba.App.Tests` | 772 | headless UI: screens, shell, overlays, keyboard, motion, lifecycle, platform plan, single instance, Claude bridge on a real pipe and end to end through `Doba.Mcp.exe`, Settings › Data Claude rows, screenshots, performance |
 
 The counts are from the test runner's own summary of the final run.
 **Gates used for every package and fix.** `dotnet build -warnaserror` (0 warnings; trim and AOT analyzers on),
@@ -134,6 +135,7 @@ Everything below needs a person at the Windows PC. Use the published build:
 
 ```powershell
 dotnet publish src/Doba.App -c Release -r win-x64 -o artifacts\doba-win-x64 -warnaserror
+dotnet publish src/Doba.Mcp -c Release -r win-x64 -o artifacts\doba-win-x64 -warnaserror
 ```
 
 Most steps use a scratch data folder so your real data is not touched, e.g.
@@ -255,6 +257,24 @@ Write the outcome next to each item.
     fades show frames well over 20 ms there, the blur can be dropped (`DECISIONS.md` "Backdrop blur behind overlays").
     Also open and close the task dialog by hand (N, Esc) and judge whether it stutters.
 
+**Claude (MCP)** — on a copy, never on your real data: start
+`.\artifacts\doba-win-x64\Doba.exe --data <full path of artifacts\manual>` (any folder under `artifacts\`), with
+`Doba.Mcp.exe` published next to `Doba.exe`. How each client is connected: README › Claude (MCP).
+
+41. Settings › Data. Expected: Claude access off; "Claude can" and "Connect Claude" dimmed and inactive (the segment
+    group's track too). Turn Claude access on: both become active; "Claude can" shows Read.
+42. Claude Desktop (the Microsoft Store / MSIX build): Copy for Claude Desktop, Settings › Developer › Edit Config, merge,
+    quit from the tray, start again. Expected: + › Connectors lists `doba` with 11 tools; "what is on today?" calls
+    `get_today` (Claude asks first) and answers with the copy's tasks. Record which config file Edit Config opened and
+    where the `mcp*.log` files are, so README can name them.
+43. Claude Code: Copy for Claude Code, run the command in a terminal. Expected: `claude mcp list` shows `doba` connected;
+    in a session `/mcp` lists its tools; asking for today's tasks works.
+44. Level: with Read, ask Claude to create a task. Expected: refused with the "Read & edit" hint, nothing changes in
+    Doba. Switch to Read & edit and ask again: the task appears in Doba at once (no restart, no refresh). Open that task
+    in Doba's edit dialog and ask Claude to rename it: refused ("open in Doba's editor"); close the dialog and it works.
+45. Turn Claude access off, ask again. Expected: "Claude access is off" with the Settings path. Quit Doba from the tray,
+    ask again: "Doba is not running (data folder: …)". Doba is never started by Claude.
+
 ## 4. Performance
 
 Final run of `scripts\perf.ps1` on `dev` at `938bdb9` (2026-11-19, quiet machine, nothing else building).
@@ -317,6 +337,11 @@ Known gaps left by the final review (not fixed, with the reason):
   its native icon only once it is in the application's `TrayIcon.Icons` collection and Doba created it standalone;
   closing then hid the window with nothing to bring it back. The icon is now attached there, `IsSupported` turns false
   when no native icon could be created (closing then quits), and `--selfcheck` fails without the native icon.
+- **Reused task id after a delete** (old `TaskStore` behaviour, see `DECISIONS.md` "Ids"): a new task gets the
+  largest id + 1, so deleting the newest task and creating another hands out the same id again. Harmless inside Doba;
+  with Claude (MCP) a stale id that Claude remembers from before the delete could now hit the new task (Claude reads
+  ids from lists and may act on an old one later). Proposed follow-up: never reuse an id (keep a high-water mark in the
+  database).
 - **Daily backup failures** go to the debugger trace only (not to `doba.log`, no notice).
 - **Database rows are not validated on load**; the store normalises every task it loads instead (bad values are
   corrected in memory and on the next write of that task).
