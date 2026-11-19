@@ -316,6 +316,48 @@ public class AppLifecycleTests
     }
 
     [AvaloniaFact]
+    public void Exit_waits_for_a_busy_database_only_up_to_its_bound_and_logs_what_it_gave_up()
+    {
+        using var folder = new TempFolder();
+        using var h = LifecycleHarness.Disk(folder, Clock());
+        using var stall = WriterStall.Hold(folder.Location);
+        h.App.Store.Add(Task("held by another process", Day));
+        var lifecycle = new RecordingDispose(h.Lifecycle);
+        var bound = TimeSpan.FromMilliseconds(300);
+
+        // The held write lock makes the writer wait SQLite's 30 s busy timeout; Exit must not wait with it.
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        var finished = global::Doba.App.App.DrainOnExit(lifecycle, bound, h.App.LogProblem);
+        watch.Stop();
+
+        Assert.False(finished);
+        Assert.True(watch.Elapsed < TimeSpan.FromSeconds(5), $"Exit waited {watch.Elapsed.TotalMilliseconds:F0} ms");
+        Assert.False(lifecycle.Drain!.IsCompleted);
+        Assert.DoesNotContain("held by another process", folder.TitlesOnDisk());
+        var log = File.ReadAllText(DataLog.PathIn(folder.Path));
+        Assert.Contains("exit: pending changes were not written within 0.3 s", log, StringComparison.Ordinal);
+
+        // The drain itself goes on (the process would end here); once the lock goes, it finishes cleanly.
+        stall.Release();
+        Assert.True(lifecycle.Drain.Wait(TimeSpan.FromSeconds(20)));
+        Assert.Contains("held by another process", folder.TitlesOnDisk());
+        Assert.True(global::Doba.App.App.ExitDrainTimeout > TimeSpan.Zero && global::Doba.App.App.ExitDrainTimeout <= TimeSpan.FromSeconds(10));
+    }
+
+    [AvaloniaFact]
+    public void Exit_within_the_bound_flushes_and_reports_success()
+    {
+        using var folder = new TempFolder();
+        using var h = LifecycleHarness.Disk(folder, Clock());
+        h.App.Store.Add(Task("quick exit", Day));
+
+        Assert.True(global::Doba.App.App.DrainOnExit(h.Lifecycle, global::Doba.App.App.ExitDrainTimeout, h.App.LogProblem));
+
+        Assert.Contains("quick exit", folder.TitlesOnDisk());
+        Assert.False(File.Exists(DataLog.PathIn(folder.Path)));
+    }
+
+    [AvaloniaFact]
     public void Session_end_flushes_synchronously()
     {
         using var folder = new TempFolder();
@@ -625,5 +667,17 @@ public class AppLifecycleTests
         Assert.False(h.Window.HasSystemBackdrop);
         Assert.True(h.Window.PaintedBackdrop.IsVisible);
         Assert.NotNull(h.Window.Background);
+    }
+
+    /// <summary>Passes DisposeAsync through and keeps its task, so a test can wait for a drain Exit stopped waiting on.</summary>
+    private sealed class RecordingDispose(IAsyncDisposable inner) : IAsyncDisposable
+    {
+        public System.Threading.Tasks.Task? Drain { get; private set; }
+
+        public ValueTask DisposeAsync()
+        {
+            Drain = inner.DisposeAsync().AsTask();
+            return new ValueTask(Drain);
+        }
     }
 }

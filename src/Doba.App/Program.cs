@@ -50,5 +50,15 @@ internal static class Program
     public static AppBuilder BuildAvaloniaApp() =>
         AppBuilder.Configure<App>()
             .UsePlatformDetect()
+            .With(new SkiaOptions { MaxGpuResourceSizeBytes = GpuResourceCacheBytes })
             .LogToTrace();
+
+    /// <summary>
+    /// Skia's GPU resource cache cap: 24 MB instead of Avalonia 12.1.6's 28.125 MB (29,491,200 bytes). Idle working set
+    /// drops by about 3 MB (demo, db-348) and 8 MB (10,000 tasks: 131 → 123 MB); render-thread p95 and max frame times
+    /// in the Week and overlay scenarios stay as with the default. Every cap at 20 MB or below doubled render p95 on the
+    /// 10k and dense weeks (5.6 → 11.1 ms: textures re-uploaded during transitions). Measured with scripts/perf.ps1 on a
+    /// 1600×1000 window; table in docs/DECISIONS.md.
+    /// </summary>
+    internal const long GpuResourceCacheBytes = 24L * 1024 * 1024;
 }

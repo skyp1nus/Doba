@@ -13,7 +13,10 @@
     <TrimMode>full</TrimMode>
     <OptimizationPreference>Speed</OptimizationPreference>
     <StackTraceSupport>false</StackTraceSupport>
-    <UseSystemResourceKeys>true</UseSystemResourceKeys>
+    <!-- Off: .NET's own exception messages stay sentences in doba.log and the startup error box (with it on they read
+         "IO_AlreadyExists_Name, <path>"). Measured: +58 KB on Doba.exe (20,384,256 -> 20,442,624 bytes), warm startup
+         unchanged within noise (scripts/perf.ps1 -Runs 5). -->
+    <UseSystemResourceKeys>false</UseSystemResourceKeys>
     <SelfContained Condition="'$(RuntimeIdentifier)' != ''">true</SelfContained>
   </PropertyGroup>
   <ItemGroup>

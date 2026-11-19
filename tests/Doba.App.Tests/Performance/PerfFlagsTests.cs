@@ -1,3 +1,4 @@
+using Avalonia.Headless.XUnit;
 using Doba.App.Diagnostics;
 
 namespace Doba.App.Tests.Performance;
@@ -121,7 +122,10 @@ public sealed class PerfFlagsTests
     public void Frames_between_takes_the_half_open_window() =>
         Assert.Equal(new double[] { 2, 3 }, FrameMeter.Between([1, 2, 3, 4], 2, 4));
 
-    [Fact]
+    // On the headless UI thread: the probe is process-wide and not thread-safe, and every other mark in the test run
+    // (App.Initialize, App.Launch) is made on that thread, so no other test can add a mark (or grow the list under this
+    // test's enumeration) while recording is on here.
+    [AvaloniaFact]
     public void Probe_marks_record_only_when_enabled()
     {
         PerfProbe.Reset();
@@ -134,10 +138,7 @@ public sealed class PerfFlagsTests
             PerfProbe.Mark("perf-flags-test-a");
             PerfProbe.MarkAt("perf-flags-test-b", 12.34);
 
-            // The probe is process-wide: a headless session starting in parallel (App.Initialize) may add its own marks
-            // while recording is on, so only this test's marks and their order are asserted.
-            var mine = PerfProbe.Marks.Select(m => m.Name).Where(n => n.StartsWith("perf-flags-test-", StringComparison.Ordinal));
-            Assert.Equal(new[] { "perf-flags-test-a", "perf-flags-test-b" }, mine);
+            Assert.Equal(new[] { "perf-flags-test-a", "perf-flags-test-b" }, PerfProbe.Marks.Select(m => m.Name));
             Assert.Equal(12.34, PerfProbe.At("perf-flags-test-b"));
             Assert.True(double.IsNaN(PerfProbe.At("missing")));
             var line = PerfProbe.FormatMarks();

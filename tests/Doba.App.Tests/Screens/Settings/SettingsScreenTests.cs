@@ -10,8 +10,10 @@ using Doba.App.Platform;
 using Doba.App.Screens;
 using Doba.App.Screens.Settings;
 using Doba.App.Services;
+using Doba.App.Tests.Lifecycle;
 using Doba.App.Tests.Support;
 using Doba.App.Theme;
+using Doba.Core.Demo;
 using Doba.Core.Model;
 using Doba.Core.Navigation;
 using Doba.Storage;
@@ -452,6 +454,113 @@ public sealed class SettingsScreenTests
         window.Close();
     }
 
+    /// <summary>Under NativeAOT (UseSystemResourceKeys) an exception's own text can be a bare resource key, so the row
+    /// shows a fixed sentence per failure kind and never the exception's message.</summary>
+    [AvaloniaFact]
+    public async Task Export_and_import_failures_show_fixed_sentences_not_the_exception_text()
+    {
+        using var f = new Fixture();
+        var window = f.Show(SettingsTab.Data);
+        var row = (ButtonsRow)f.Vm.RowsOf(SettingsTab.Data)[2];
+        int count = f.App.Store.All.Count;
+
+        await f.Vm.ExportToAsync(new FailingStream(new IOException("IO_DiskFull_Key")));
+        Assert.Equal("Export failed: the file could not be written.", row.Message);
+        Assert.True(row.IsError);
+
+        await f.Vm.ExportToAsync(new FailingStream(new UnauthorizedAccessException("UnauthorizedAccess_IODenied_Path, x")));
+        Assert.Equal("Export failed: access to the file was denied.", row.Message);
+
+        Assert.False(await f.Vm.ImportFromAsync(new FailingStream(new IOException("IO_SharingViolation_File, x"))));
+        Assert.Equal("Import failed: the file could not be read.", row.Message);
+
+        Assert.False(await f.Vm.ImportFromAsync(new FailingStream(new UnauthorizedAccessException("UnauthorizedAccess_IODenied_Path, x"))));
+        Assert.Equal("Import failed: access to the file was denied.", row.Message);
+        Assert.Equal(count, f.App.Store.All.Count);
+
+        // The pickers' own failures (the file cannot be created or opened) read the same way.
+        f.Vm.FilePicker = new FailingPicker(new UnauthorizedAccessException("UnauthorizedAccess_IODenied_Path, x"));
+        await f.Vm.ExportCommand.ExecuteAsync(null);
+        Assert.Equal("Export failed: access to the file was denied.", row.Message);
+        f.Vm.FilePicker = new FailingPicker(new IOException("IO_FileNotFound_FileName, x"));
+        await f.Vm.ImportCommand.ExecuteAsync(null);
+        Assert.Equal("Import failed: the file could not be read.", row.Message);
+        Assert.True(row.IsError);
+        window.Close();
+    }
+
+    [AvaloniaFact]
+    public async Task Import_says_imported_only_once_the_tasks_are_on_disk()
+    {
+        using var folder = new TempFolder();
+        using var f = new Fixture(app: AppServices.Open(folder.Location, DemoData.CreateClock(), PlatformServices.NoOp()));
+        var window = f.Show(SettingsTab.Data);
+        var row = (ButtonsRow)f.Vm.RowsOf(SettingsTab.Data)[2];
+        using var file = await ExportOf(DemoData.Tasks());
+
+        // Another process holds the write lock: the import is in memory, but not yet on disk.
+        var stall = WriterStall.Hold(folder.Location);
+        Task<bool> import;
+        try
+        {
+            import = f.Vm.ImportFromAsync(file);
+            for (var i = 0; i < 10; i++)
+            {
+                Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+                await Task.Delay(30);
+            }
+
+            Assert.Equal(DemoData.Tasks().Count, f.App.Store.All.Count);
+            Assert.False(import.IsCompleted);
+            Assert.Equal(string.Empty, row.Message);
+            Assert.Empty(folder.TitlesOnDisk());
+        }
+        finally
+        {
+            stall.Release();
+        }
+
+        Assert.True(await import);
+        Assert.Equal(DemoData.Tasks().Count, folder.TitlesOnDisk().Count);
+        Assert.Equal(FormattableString.Invariant($"Imported {DemoData.Tasks().Count} tasks."), row.Message);
+        Assert.False(row.IsError);
+        window.Close();
+    }
+
+    [AvaloniaFact]
+    public async Task Import_whose_write_fails_shows_the_failure_instead_of_imported()
+    {
+        using var folder = new TempFolder();
+        using var f = new Fixture(app: AppServices.Open(folder.Location, DemoData.CreateClock(), PlatformServices.NoOp()));
+        var window = f.Show(SettingsTab.Data);
+        var row = (ButtonsRow)f.Vm.RowsOf(SettingsTab.Data)[2];
+        using var file = await ExportOf(DemoData.Tasks());
+
+        // Renames the tasks table behind the app's back, so the import's write fails (SQLite "no such table").
+        using (var connection = new Microsoft.Data.Sqlite.SqliteConnection("Data Source=" + folder.Location.DatabasePath + ";Pooling=False"))
+        {
+            connection.Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = "ALTER TABLE tasks RENAME TO tasks_moved;";
+            command.ExecuteNonQuery();
+        }
+
+        Assert.False(await f.Vm.ImportFromAsync(file));
+
+        Assert.Equal(SettingsViewModel.ImportNotSaved, row.Message);
+        Assert.StartsWith("Import failed: the tasks could not be saved.", row.Message, StringComparison.Ordinal);
+        Assert.True(row.IsError);
+        window.Close();
+    }
+
+    private static async Task<MemoryStream> ExportOf(IReadOnlyList<TaskItem> tasks)
+    {
+        var file = new MemoryStream();
+        await JsonTransfer.ExportAsync(file, tasks, DemoData.Tags, AppSettings.Default, DemoData.CreateClock());
+        file.Position = 0;
+        return file;
+    }
+
     [AvaloniaFact]
     public void Tab_changes_swap_the_content()
     {
@@ -514,11 +623,13 @@ public sealed class SettingsScreenTests
 
     private sealed class Fixture : IDisposable
     {
-        public Fixture(bool autostartSupported = true)
+        /// <param name="app">A database-backed app (its platform is used as is); null builds the demo app on recording
+        /// autostart and shell.</param>
+        public Fixture(bool autostartSupported = true, AppServices? app = null)
         {
             Autostart = new RecordingAutostart(autostartSupported);
             Shell = new RecordingShell();
-            App = AppServices.CreateDemo(platform: PlatformServices.NoOp() with { Autostart = Autostart, Shell = Shell });
+            App = app ?? AppServices.CreateDemo(platform: PlatformServices.NoOp() with { Autostart = Autostart, Shell = Shell });
             var actions = new TaskActions(App.Store, App.Settings, App.Platform.Shell, App.Clock);
             Services = new ScreenServices(App, actions, new RecordingCommands(), () => null);
             Vm = new SettingsViewModel(Services);
@@ -595,6 +706,45 @@ public sealed class SettingsScreenTests
         public void PlayCompletionSound()
         {
         }
+    }
+
+    /// <summary>A file that fails every read and write with <paramref name="error"/>.</summary>
+    private sealed class FailingStream(Exception error) : Stream
+    {
+        public override bool CanRead => true;
+
+        public override bool CanSeek => false;
+
+        public override bool CanWrite => true;
+
+        public override long Length => throw new NotSupportedException();
+
+        public override long Position { get => 0; set => throw new NotSupportedException(); }
+
+        public override void Flush() => throw error;
+
+        public override Task FlushAsync(CancellationToken cancellationToken) => Task.FromException(error);
+
+        public override int Read(byte[] buffer, int offset, int count) => throw error;
+
+        public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default) =>
+            ValueTask.FromException<int>(error);
+
+        public override void Write(byte[] buffer, int offset, int count) => throw error;
+
+        public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default) =>
+            ValueTask.FromException(error);
+
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+
+        public override void SetLength(long value) => throw new NotSupportedException();
+    }
+
+    private sealed class FailingPicker(Exception error) : ISettingsFilePicker
+    {
+        public Task<Stream?> OpenExportStreamAsync(string suggestedFileName) => Task.FromException<Stream?>(error);
+
+        public Task<Stream?> OpenImportStreamAsync() => Task.FromException<Stream?>(error);
     }
 
     private sealed class MemoryPicker : ISettingsFilePicker

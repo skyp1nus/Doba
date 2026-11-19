@@ -210,6 +210,10 @@ public sealed class AppServices : IAsyncDisposable
         }
     }
 
+    /// <summary>Writes a storage problem to Trace and, with a database, to <see cref="DataLog"/> in the data folder (any
+    /// thread; never throws).</summary>
+    internal void LogProblem(string message) => Log(message);
+
     private void Log(string message)
     {
         Trace.WriteLine("Doba: " + message);

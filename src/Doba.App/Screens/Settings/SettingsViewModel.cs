@@ -162,9 +162,28 @@ public sealed partial class SettingsViewModel : ScreenViewModel
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            ShowTransferMessage($"Export failed: {ex.Message}", isError: true);
+            ShowTransferMessage(ExportFailure(ex), isError: true);
         }
     }
+
+    /// <summary>
+    /// Fixed sentences for a file that could not be written or read. Not the exception's own text: it is written for
+    /// developers (and is a bare resource key in a NativeAOT build with UseSystemResourceKeys), and the owner should
+    /// read a short sentence.
+    /// </summary>
+    internal static string ExportFailure(Exception error) => error is UnauthorizedAccessException
+        ? "Export failed: access to the file was denied."
+        : "Export failed: the file could not be written.";
+
+    /// <inheritdoc cref="ExportFailure"/>
+    internal static string ImportFailure(Exception error) => error is UnauthorizedAccessException
+        ? "Import failed: access to the file was denied."
+        : "Import failed: the file could not be read.";
+
+    /// <summary>Shown when the imported tasks are in memory but could not be written to the database.</summary>
+    internal const string ImportNotSaved =
+        "Import failed: the tasks could not be saved. They are shown now but will be missing after a restart; details are in " +
+        DataLog.FileName + ".";
 
     /// <summary>
     /// Reads a Doba export from <paramref name="source"/> and replaces every task, tag and setting with it. An invalid
@@ -185,12 +204,33 @@ public sealed partial class SettingsViewModel : ScreenViewModel
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            ShowTransferMessage($"Import failed: {ex.Message}", isError: true);
+            ShowTransferMessage(ImportFailure(ex), isError: true);
             return false;
         }
 
-        Services.App.Store.ReplaceAll(data.Tasks, data.Tags);
-        _settings.Update(_ => data.Settings); // AppLifecycle reconciles the Run entry with "Launch at startup"
+        // "Imported" only once the import is on disk: wait for the writer, and report a write that failed meanwhile
+        // (SaveFailed comes from the writer's thread; the title-bar notice shows it as well).
+        var app = Services.App;
+        var failed = 0;
+        void OnSaveFailed(object? sender, string message) => Interlocked.Exchange(ref failed, 1);
+        app.SaveFailed += OnSaveFailed;
+        try
+        {
+            app.Store.ReplaceAll(data.Tasks, data.Tags);
+            _settings.Update(_ => data.Settings); // AppLifecycle reconciles the Run entry with "Launch at startup"
+            await app.FlushAsync().ConfigureAwait(true);
+        }
+        finally
+        {
+            app.SaveFailed -= OnSaveFailed;
+        }
+
+        if (Volatile.Read(ref failed) != 0)
+        {
+            ShowTransferMessage(ImportNotSaved, isError: true);
+            return false;
+        }
+
         ShowTransferMessage(string.Create(CultureInfo.InvariantCulture, $"Imported {Count(data.Tasks.Count)}."), isError: false);
         return true;
     }
@@ -219,7 +259,7 @@ public sealed partial class SettingsViewModel : ScreenViewModel
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            ShowTransferMessage($"Export failed: {ex.Message}", isError: true);
+            ShowTransferMessage(ExportFailure(ex), isError: true);
             return;
         }
 
@@ -249,7 +289,7 @@ public sealed partial class SettingsViewModel : ScreenViewModel
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            ShowTransferMessage($"Import failed: {ex.Message}", isError: true);
+            ShowTransferMessage(ImportFailure(ex), isError: true);
             return;
         }
 
