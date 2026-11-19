@@ -147,6 +147,13 @@ public sealed class ShellFixture : IDisposable
         return Screenshots.Capture(Window, name);
     }
 
+    /// <summary>Settles, renders and saves the <paramref name="crop"/> part of the window as <c>&lt;name&gt;.png</c>.</summary>
+    public string Capture(string name, PixelRect crop)
+    {
+        Settle();
+        return Screenshots.Capture(Window, name, crop);
+    }
+
     public void Dispose()
     {
         Window.Close();

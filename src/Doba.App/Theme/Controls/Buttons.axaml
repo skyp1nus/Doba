@@ -121,13 +121,6 @@
   <!-- "Add task" row: 1 px dashed border (3 on / 2 off, as Chromium draws it) + .ob hover. -->
   <ControlTemplate x:Key="Template.Button.Dashed" TargetType="ContentControl">
     <Panel>
-      <Rectangle Name="PART_Dash"
-                 RadiusX="{TemplateBinding CornerRadius, Converter={x:Static t:ThemeConverters.TopLeftRadius}}"
-                 RadiusY="{TemplateBinding CornerRadius, Converter={x:Static t:ThemeConverters.TopLeftRadius}}"
-                 Stroke="{TemplateBinding BorderBrush}"
-                 StrokeThickness="1"
-                 StrokeDashArray="3,2"
-                 StrokeDashOffset="0.5" />
       <ContentPresenter Name="PART_ContentPresenter"
                         Background="{TemplateBinding Background}"
                         CornerRadius="{TemplateBinding CornerRadius}"
@@ -143,6 +136,16 @@
           </Transitions>
         </ContentPresenter.Transitions>
       </ContentPresenter>
+      <!-- The dash is painted over the fill (CSS paints the border over the background), so an opaque fill such as the
+           schedule's "+N" (Schedule.More / MoreOpen) does not hide it. -->
+      <Rectangle Name="PART_Dash"
+                 RadiusX="{TemplateBinding CornerRadius, Converter={x:Static t:ThemeConverters.TopLeftRadius}}"
+                 RadiusY="{TemplateBinding CornerRadius, Converter={x:Static t:ThemeConverters.TopLeftRadius}}"
+                 Stroke="{TemplateBinding BorderBrush}"
+                 StrokeThickness="1"
+                 StrokeDashArray="3,2"
+                 StrokeDashOffset="0.5"
+                 IsHitTestVisible="False" />
     </Panel>
   </ControlTemplate>
 

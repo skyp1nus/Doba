@@ -117,7 +117,8 @@ if (require.main === module) (async () => {
     if (job.act) await job.act(page);
     await settle(page);
     const f = path.join(OUT, job.name + '.png');
-    await page.screenshot({ path: f });
+    // job.clip crops the 1600×1000 frame ({ x, y, width, height } in CSS px), as the canvas's state artboards do
+    await page.screenshot(job.clip ? { path: f, clip: job.clip } : { path: f });
     console.log('wrote', f);
   }
   await browser.close();

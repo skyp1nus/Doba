@@ -225,6 +225,7 @@ Schedule (Today / Day aside; `Controls/ScheduleTimeline.axaml`):
 | Space.Schedule.MoreTall | 0,7,0,0 | "+N" text 6 px under its 1 px dashed border when ≥ 44 px tall |
 | Size.Schedule.List, Space.Schedule.List / ListHead | 232 / 6 / 8,4,8,6 | "+N" list width, padding (r10 = Radius.Panel), head padding |
 | Size.Schedule.ListRow, Space.Schedule.ListGap / ListOpen / ListOpenGap | 32 / 2 / 8,0 / 8 | list rows: 28 px checkbox button (Size.ControlSmall), gap 2, open button padding and title ↔ time gap |
+| Opacity.Schedule.Under | 0.55 | blocks under the dragged copy or a growing block (read by `ScheduleTimeline.Motion.cs`, a 130 ms composition fade on `PART_Body`; multiplies with the tag-filter dim on the block root) |
 
 Block geometry (x, width, top, height, content tier, `chkTop`, grip height; 302 px column area at x 54, gap 4, up to three
 columns) is computed in Core (`Doba.Core.Projections.ScheduleLayout` / `ScheduleColumns`); block content padding and
@@ -280,7 +281,7 @@ Pick named themes with `Theme="{StaticResource Button.Outline}"`. Templates live
 | `Button.Caption` / `Button.CaptionClose` | 46×40, Text.Secondary, hover Overlay.Press / CloseHover (150 ms), not focusable | caption buttons (`Icon ViewBox=10 Size=10 StrokeWidth=1`) |
 | `Button.Crumb` | mono 11, 0.88 spacing, 0 2, Muted → Primary (200 ms) | breadcrumbs (separator: `TextBlock.label.faint` "/") |
 | `Button.Link` | mono 10.5, 6 2, Muted → Primary | "+N more", week numbers, inbox day links (override FontSize/LetterSpacing/Padding per use) |
-| `Button.Dashed` | 38 px, dashed 3/2 Border.Strong, r8, 12 0 8, 13.5 Muted, hover Overlay.Hover | "Add task" (Icon.Plus 14/1.8 · label · `Kbd.muted`, gap 10) |
+| `Button.Dashed` | 38 px, dashed 3/2 Border.Strong, r8, 12 0 8, 13.5 Muted, hover Overlay.Hover | "Add task" (Icon.Plus 14/1.8 · label · `Kbd.muted`, gap 10). Its template (`Template.Button.Dashed`, also the schedule's "+N" and a move's dashed origin) paints the dash over the fill, as CSS paints a border over the background |
 | `Button.Search` | 28 px, Overlay.Field, 1 px Overlay.Active, r7, 10 0 6, 12.5 Tertiary | title-bar search (Icon.Search 14 · label · Kbd "Ctrl K", gap 8) |
 | `Button.Header` | transparent; hover fades content to 0.75 (200 ms) | week day header, year month header (`.hd`) |
 | `Button.Title` | no chrome, left, `Density.TitleSize`, Primary → White on hover (300 ms) | task titles (`.tt`); content is a `c:StrikeText` (§4.16); done: `Foreground=Text.Muted` + `Struck` |
@@ -422,6 +423,8 @@ ellipsis before the count. Hover / current colour changes take 200 ms.
   schedule `Snap = 90` (a block / the time chip stepping between slots), `Lift = 180` (the dragged copy lifting),
   `Land = 220` (landing, the Esc flight back, neighbours re-laid out) and `ChipHold = 900` — how long the time chip
   stays after an arrow-key step; it is information, not animation, so `MotionTimes.ChipHold` is never zeroed.
+  `Fade = 130` with ease-out (a move's origin content fading out, neighbours dimming under the copy, the chip fading
+  in; `Exit` 130 is ease-in) and `LiftScale = 1.02` (the dragged copy).
 * `MotionTimes` — the same tokens as `TimeSpan` for `x:Static` in XAML.
 * `Animator` — render-thread (composition) helpers. They animate the element's composition visual (Opacity,
   Translation, Scale + CenterPoint) and never touch layout or the UI-side `Opacity`/`RenderTransform`:
@@ -443,6 +446,18 @@ Animator.Animate(dialog, new MotionState(0, 0, Motion.DialogY, Motion.DialogScal
   completes, the element stays hidden on the render thread until content is swapped, an entrance runs, or `Reset`.
   Animate a stable host (the content presenter), not freshly created content, so the composition visual exists and
   has bounds. Blur (zoom 6→0 px) is not implemented (optional in the spec).
+  `Animator.Retarget(v, to, ms, easing, origin?, onFinished?)` starts from where the visual is drawn now (the running
+  handle's current value, or the end state of its last finished animation) instead of from rest, returns the running
+  handle when it already heads to `to`, and finishes at once when the visual is already there; `Animator.Shown(v)` /
+  `Animator.Destination(v)` report where a visual is drawn / heading. A handle that completes records `To` for its
+  visual, a cancelled one Rest; `Reset` clears the record.
+* Schedule motion (`Controls/ScheduleTimeline.Motion.cs`) uses one composition layer per job: the block's item
+  container (neighbour FLIP from the old place, Land 220 ease-out; landing from the copy's drawn rect with scale
+  1.02 → 1, ZIndex 1 while it lands; key steps Snap 90), `PART_Body` (dim to 0.55 and back, Fade 130), `PART_ContentBox`
+  (a move's origin content, Fade 130 out, back at once), `PART_Shadow` (landing shadow 1 → 0 over Land, ease-in;
+  resize shadow over Hover 180, ease), `PART_Copy` (glide between slots, Snap 90), `PART_CopyLift` (scale 1 → 1.02,
+  Lift 180), `PART_CopyShadow` (0 → 1, Lift 180) and `PART_Chip` (fade-in Fade 130, glide Snap 90). The block root
+  keeps only the tag-filter dim transition. With animations off nothing flies and the copy has no lift and no shadow.
 * `ContentTransitions` — the navigation transitions (zoom, period slide, section exit + enter, Settings in / out,
   title fade, launch); the shell's default `IContentTransitions`.
 * `SidebarCollapse` — the 232 ↔ 56 px collapse as a 176 px composition slide of the main panel (340 ms); widths

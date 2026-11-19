@@ -255,6 +255,54 @@ Write the outcome next to each item.
     fades show frames well over 20 ms there, the blur can be dropped (`DECISIONS.md` "Backdrop blur behind overlays").
     Also open and close the task dialog by hand (N, Esc) and judge whether it stutters.
 
+**Schedule: drag, resize, keyboard, "+N"** (Today and Day; headless tests cannot judge how a drag feels)
+
+Start with `--demo` (its 15 and 16 November have overlapping tasks) unless the step says otherwise. Steps 41–56 are
+the same on Today and in the Day view; try each on both at least once.
+
+41. Hover a schedule block. Expected: a faint lighter layer and a short bar at the bottom edge fade in (about 0.2 s);
+    the cursor is a hand; over the bar it is a vertical resize arrow.
+42. Click a block without moving the mouse. Expected: its task opens in the dialog; nothing is marked done. Click the
+    small checkbox in a block. Expected: the task is marked done (or not done) and no dialog opens.
+43. Press on "Write the weekly update", let the mouse tremble a little (under 4 px) and release. Expected: the dialog
+    opens; the time is unchanged.
+44. Drag that block down. Expected: after about 4 px the copy lifts (a touch larger, with a shadow); the old place
+    shows a dashed outline; a time label in the hour column shows the slot; the copy steps in 15-minute slots;
+    blocks under the copy fade to about half. Release: the block lands in about 0.2 s, the list on the left shows the
+    new time, and the neighbours slide to their new columns. No dialog opens.
+45. Drag again holding Alt; also press and release Alt without moving. Expected: 5-minute slots, re-snapped at once
+    on the Alt press or release; no window menu opens and no access-key underlines appear.
+46. Drag far up and far down. Expected: the block stops at 07:00, and with its end at 23:00, without a bounce. Then
+    make the window 1100×700 and drag towards the top and the bottom of the schedule. Expected: it scrolls by itself,
+    faster closer to the edge, and stops at the ends.
+47. Press Esc during a drag, and during a resize. Expected: the copy flies back (about 0.2 s), the release does not
+    open the dialog, nothing is saved.
+48. Alt+Tab to another app during a drag (button still down), then come back. Expected: the drag was cancelled as by
+    Esc: nothing moved and the cursor is normal.
+49. Drag a block's bottom bar. Expected: the block grows or shrinks in place in 15-minute steps (5 with Alt), shows
+    the range and length ("09:30 – 11:15 · 1h 45m"); at least 15 minutes; its end at most 23:00; release saves.
+50. Keyboard: Tab to a block (an outline appears around it). Up / Down move it by 15 minutes (Alt: 5); Shift+Up /
+    Down change its length; the time label stays about 1 s after the last step; holding a key repeats; at 07:00 /
+    23:00 nothing happens and the column does not scroll. Enter opens the task; Space ticks it. In the Day view
+    Left / Right still change the day.
+51. Narrator (Win+Ctrl+Enter). Expected after a drop: "Moved <title>, 11:15 to 12:15"; after a resize: "Resized …";
+    after Esc: "Move cancelled"; after a key step: the new time. Repeat the same step twice: read both times.
+52. Day view, 16 November: two blocks and "+2" beside them. Click "+2". Expected: a list of two tasks opens under it
+    (about 0.2 s; near the bottom of the day it opens above). A second click, Esc, a click elsewhere in the schedule
+    or another day closes it. A row's title opens the task (the list closes); its checkbox ticks it (the list stays).
+    Tasks in the list cannot be dragged. Keyboard: Tab to "+2", Enter: focus on the first row; Esc: focus back on
+    "+2". Moving a block with the keyboard under a "+N" moves the focus to that "+N".
+53. Windows Settings › Accessibility › Visual effects › Animation effects off, while Doba runs. Drag a block.
+    Expected: the copy follows the pointer without the lift and the shadow; the drop and Esc are instant; neighbours
+    jump. The time label after a key step still stays about 1 s. Turn the setting back on.
+54. At 125 % and 150 % display scaling: a slight tremble on click still opens rather than drags; the copy, the dashed
+    outline and the bar are crisp; the bottom bar is easy to grab (it reaches 3 px below the block).
+55. If a pen is available: the pen drags like the mouse. On a touch screen: a tap opens or ticks; touch does not drag
+    (by decision).
+56. With `--data D:\dev\Doba\artifacts\manual` (or a scratch folder): move a block, close Doba (Quit from the tray),
+    start again. Expected: the new time is kept. A task with no length set (drawn as 30 minutes) still has no length
+    after a move; a resize sets one.
+
 ## 4. Performance
 
 Final run of `scripts\perf.ps1` on `dev` at `938bdb9` (2026-11-19, quiet machine, nothing else building).
@@ -326,6 +374,18 @@ Known gaps left by the final review (not fixed, with the reason):
   on sit up to 1 px low.
 - **CI** runs once, on the pull request. Its `--perf` and `--selfcheck` steps are informational on a hosted runner
   (no GPU, no Mica, possibly no notification area): they print their output but cannot fail the job.
+
+Schedule drag (2026-11-19), known and left as they are:
+
+- **"+N" open state** is not exposed to screen readers as expanded / collapsed (no `aria-expanded` equivalent on an
+  Avalonia Button); its name says how many tasks and which times it holds.
+- **A landing block passes under the now-line** (the grid's layer 2); the prototype draws it above. Visible only when a
+  block lands across the now-line, for 0.2 s.
+- **The focus outline** jumps to the block's final place at once during a 90 ms key-step slide (composition offsets do
+  not move adorners).
+- **Shadows and dashes**: the lifted copy's and the "+N" list's box shadows spread 1–2 colour levels differently from
+  Chromium, and the dash pattern on vertical edges starts at another phase.
+- **Touch**: no long-press drag (the prototype has none either).
 
 Repository housekeeping for the owner:
 

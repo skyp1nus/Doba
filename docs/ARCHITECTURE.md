@@ -57,6 +57,9 @@ single-file analyzers on for every non-test project) and versions in `Directory.
 * **Local updates**: a screen view-model re-projects after a store change and calls `KeyedSync.Apply(existing, records,
   key, create, update)`, which updates rows in place by key, inserts / removes / moves the differences and never
   clears the collection. Completing a task changes one row's properties and the counters, not the visual tree.
+  The schedule uses `KeyedSync.ApplyStable` instead: it removes stale items, updates in place and appends new ones but
+  never moves an item, because an `ItemsControl` recreates the container of a moved item (focus, composition visual and
+  running animations would be lost); Tab order comes from each block's `TabOrder` (start, longer first, id).
 * **Time** is injected: `TimeProvider` everywhere (`clock.Today()`, `clock.TimeOfDay()` from
   `Doba.Core.Time.TimeProviderExtensions`). `DayClock` (App) ticks once a minute and raises `DayChanged` when the local
   date changes; `Check()` also runs on window activation and on `WM_TIMECHANGE`. On a day change: re-projection,
@@ -71,9 +74,9 @@ single-file analyzers on for every non-test project) and versions in `Directory.
 | `Model` | `TaskItem` (immutable record), `Priority` (+ `Next()`, `DisplayName()`), `AppSettings` (+ `Accent`, `ThemeMode`, `Density`, `LaunchView`), `Tags.Normalize` |
 | `Time` | `DateMath` (week start for any first day, ISO week, labels; month names as read-only lists + `MonthName(m)` / `MonthAbbrev(m)`), `TimeProviderExtensions`, `FixedTimeProvider` |
 | `Store` | `ITaskReader`, `ITaskStore` (`Add`, `Update`, `Delete`, `ToggleDone`, `CyclePriority`, `MoveToDate`, `UpdateMany`, `AddTag`, `ReplaceAll`), `TaskStore`, `TaskChangeKind` (`Added`, `Updated`, `Removed`, `Reset`, `TagsChanged`, `Batch`), `ITaskPersistence`, `NullTaskPersistence`, `ISettingsPersistence`, `CarryOver` |
-| `Projections` | `ProjectionContext(Today, Now, WeekStart, FilterTag)`, `TaskRow`, `TaskGroup`, `SpanBar`, `NavTarget`, the Inbox / Today / Day / Week / Month / Year / Sidebar models, `SearchHit`, `ScheduleModel` + `ScheduleLayout`, `Projector` |
+| `Projections` | `ProjectionContext(Today, Now, WeekStart, FilterTag)`, `TaskRow`, `TaskGroup`, `SpanBar`, `NavTarget`, the Inbox / Today / Day / Week / Month / Year / Sidebar models, `SearchHit`, `ScheduleModel` (blocks with placements, `Overflows`) + `ScheduleLayout` (geometry, content tiers, labels), `ScheduleColumns` (overlap layout), `Projector` |
 | `Navigation` | `AppView`, `SettingsTab`, `TransitionKind`, `NavState`, `NavResult`, `Navigator`, `HeaderModel`, `Crumb`, `HeaderProjection` |
-| `Editing` | `TaskDraft`, `DraftPopover`, `MiniCalendarDay`, `DateQuickOption`, `TaskDialog` (dialog rules, pill labels, quick options, days stepper, wheel commit) |
+| `Editing` | `TaskDraft`, `DraftPopover`, `MiniCalendarDay`, `DateQuickOption`, `TaskDialog` (dialog rules, pill labels, quick options, days stepper, wheel commit), `ScheduleEdit` + `ScheduleDragMode` / `ScheduleSlot` (schedule drag, resize and key-step math, texts, write-back) |
 | `Demo` | `DemoData`: the prototype's seed (incl. the mulberry32 fill, seed 46) and the fixed clock 2026-11-15 22:26 |
 
 `Projector` entry points (all pure, all under 5 ms at 10,000 tasks):
@@ -108,6 +111,14 @@ Rules ported from the prototype (`design-reference.dc.html` script lines 929–1
 * Search: substring of the title, open before done, then by date (undated last), then Id; the best `limit` hits are
   kept while scanning (no full sort).
 * `CarryOver.Run(store, today)`: open single-day tasks dated before today move to today in one `UpdateMany`.
+* Schedule overlaps (`ScheduleColumns.Layout`, the prototype's `layoutDay`): items sorted by start, then longer first,
+  then id; clusters of blocks whose visual spans (start + max(dur, 30)) overlap; each block takes the first free column
+  and widens over free columns to its right; up to 3 columns, the rest of a cluster folds into one "+N"
+  (`ScheduleOverflow`, its list sorted by start, priority, layout order). Done tasks are laid out like open ones.
+* Schedule edits (`ScheduleEdit`, the prototype's `sbCompute` / `sbKey` / `sbAuto`): thresholds 4 / 2 DIP, an absolute
+  15-minute grid (5 with Alt), 07:00–23:00, a 15-minute minimum, JS rounding (`Floor(x + 0.5)`) and nested min / max
+  (never `Math.Clamp`, which throws when a 16 h task makes min > max). `Apply` turns a slot into the task to store: a
+  move keeps `DurationMinutes`, a resize writes the length, the same slot returns null.
 
 ## 4. Doba.Storage
 
@@ -176,7 +187,8 @@ Dialogs/                TaskDialogView(+ViewModel), TaskDialogItems; Popovers/ (
                         WeekColumns); Search/ (SearchPaletteView, SearchPaletteViewModel, SearchHitViewModel).
 Controls/               TaskCheckBox, PriorityIcon, Icon, Kbd, Pill, Card, ProgressLine, SegmentedSwitch, ToggleSwitch,
                         FocusRing, StrikeText, TaskCard, TaskListRow, TaskGroupList, AddTaskButton, SpanBarButton,
-                        ScheduleTimeline, ScheduleScroll, TimeWheel, PixelCentring, SnapScope.
+                        ScheduleTimeline (+ .ViewModel, .BlockContent, .Keys, .Drag, .Motion), ScheduleScroll, TimeWheel,
+                        PixelCentring, SnapScope.
 ViewModels/             TaskRowViewModel, TaskGroupViewModel, EntranceExpiry (shared row / group view-models).
 Theme/                  Tokens.axaml, Theme.axaml (merges the rest), Styles.axaml, Icons.axaml, Controls/*.axaml,
                         ThemeService, AccentPalette, ThemeConverters, Gallery/ControlsGallery (test rendering).
@@ -265,6 +277,19 @@ public interface IOverlayView { void FocusInitial(); }
 * Week fits cards from measured row heights (`WeekCardMeasurer` shapes titles with the real font) and shows only the
   lanes that fit (`WeekRowViewModel.VisibleLanes`); Month passes `MonthLayout.Metrics`; Year trims key items to the
   measured cell (`YearRoom`); Today and Day schedules scroll on their own (`ScheduleScroll`).
+* The schedule (`Controls/ScheduleTimeline`, shared by Today and Day) binds a `ScheduleViewModel`: blocks, "+N"s and
+  their list, the dragged copy, the time chip and a polite live region. Click on a block opens the task, its checkbox
+  part toggles it. Pointer input goes to `ScheduleDrag` (`ScheduleTimeline.Drag.cs`), a controller on the grid with the
+  states Idle → Pending → Moving / Resizing: it listens to pressed / moved / released with `handledEventsToo` and never
+  marks them handled; past the threshold it sets the cursor and captures the pointer on the grid (the block's button
+  loses its press, so no click follows), adds a TopLevel tunnel key handler for Esc and Alt, and drives autoscroll
+  through an injectable frame source (`Tick()` in tests). A lost capture, another day, leaving the screen or a store
+  change of the dragged task cancel. Arrow keys on a focused block go through `ScheduleTimeline.Keys.cs` to
+  `ScheduleViewModel.Step`. The view-model holds the drag preview (`BeginDrag` / `PreviewDrag` / `EndDrag`, which
+  survive `Update`), and every drop or key step is one `TaskActions.Reschedule` = one `ITaskStore.Update`; the
+  re-projection is synchronous and updates the blocks in place. `ScheduleTimeline.Motion.cs` animates the lift, glide,
+  landing, Esc flight, neighbour FLIP, dim and chip on separate composition layers (DECISIONS "Schedule motion
+  layers").
 * Inbox and Today lists are virtualised (per-group `VirtualizingStackPanel` inside one page `ScrollViewer`).
   Recycled rows show their new task's state at once (`SnapScope`).
 * `TaskDialogViewModel` wraps Core's `TaskDialog` rules; popovers are built on first open and live in the tree only
@@ -295,7 +320,8 @@ public interface IOverlayView { void FocusInitial(); }
 * `Animator`: composition (render-thread) animations of opacity, translation and scale with `MotionHandle`
   (`IsAnimating`, `WasCancelled`, `Finished`, `Complete()`, `Cancel()`); a new animation supersedes the old; cancel and
   `Reset` restore opacity 1 and identity. Only opacity and render transforms are ever animated; progress lines animate
-  `ScaleX` from the left edge.
+  `ScaleX` from the left edge. `Animator.Retarget` continues from where a visual is drawn now (the running handle's
+  value or the last finished state) instead of from rest; `Shown(v)` and `Destination(v)` report that state.
 * `ContentTransitions` (default `ShellComposition.Transitions`): zoom in / out from the click point or 50 % 40 %,
   period slides, section exit + enter, Settings in / out with the sidebar slide, title fade, launch entrance. No zoom
   blur.

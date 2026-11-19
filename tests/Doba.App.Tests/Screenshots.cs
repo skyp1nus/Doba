@@ -1,3 +1,5 @@
+using System.Runtime.InteropServices;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Media.Imaging;
@@ -45,6 +47,31 @@ public static class Screenshots
         Assert.NotNull(frame);
         var path = Path.Combine(Directory, name + ".png");
         frame.Save(path, PngBitmapEncoderOptions.Default);
+        return path;
+    }
+
+    /// <summary>Lays out, renders and saves the <paramref name="crop"/> rectangle of the window (frame pixels) as
+    /// <c>&lt;name&gt;.png</c>, like the design canvas's cropped state artboards; returns the path.</summary>
+    public static string Capture(Window window, string name, PixelRect crop)
+    {
+        window.UpdateLayout();
+        using WriteableBitmap? frame = window.CaptureRenderedFrame();
+        Assert.NotNull(frame);
+        Assert.True(new PixelRect(frame.PixelSize).Contains(crop), $"{crop} is outside the {frame.PixelSize} frame");
+        using var cropped = new WriteableBitmap(crop.Size, frame.Dpi, frame.Format, frame.AlphaFormat);
+        using (var source = frame.Lock())
+        using (var target = cropped.Lock())
+        {
+            var row = new byte[crop.Width * 4];
+            for (var y = 0; y < crop.Height; y++)
+            {
+                Marshal.Copy(source.Address + ((crop.Y + y) * source.RowBytes) + (crop.X * 4), row, 0, row.Length);
+                Marshal.Copy(row, 0, target.Address + (y * target.RowBytes), row.Length);
+            }
+        }
+
+        var path = Path.Combine(Directory, name + ".png");
+        cropped.Save(path, PngBitmapEncoderOptions.Default);
         return path;
     }
 }

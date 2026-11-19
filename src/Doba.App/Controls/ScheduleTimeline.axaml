@@ -265,8 +265,9 @@
                         CornerRadius="{DynamicResource Radius.Control}"
                         BoxShadow="{DynamicResource Shadow.Schedule.Lift}" />
                 <Panel Name="PART_Body">
-                  <!-- The fill and ring change at once on done (the prototype's .sb has no colour transition). -->
-                  <Border Name="PART_Frame" BorderThickness="1" CornerRadius="{DynamicResource Radius.Control}" />
+                  <!-- The fill and ring change at once on done (the prototype's .sb has no colour transition). The fill reaches
+                       under the translucent ring (OuterBorderEdge = CSS background-clip: border-box). -->
+                  <Border Name="PART_Frame" BorderThickness="1" BackgroundSizing="OuterBorderEdge" CornerRadius="{DynamicResource Radius.Control}" />
                   <!-- The origin of a move: transparent, 1 px dashed accent 35 % (shown by the .origin state). -->
                   <ContentControl Name="PART_Dash"
                                   Template="{StaticResource Template.Button.Dashed}"
@@ -449,6 +450,7 @@
             <Border CornerRadius="{DynamicResource Radius.Control}" Background="{DynamicResource Brush.Schedule.CopyBase}">
               <Border Name="PART_CopyFrame"
                       BorderThickness="1"
+                      BackgroundSizing="OuterBorderEdge"
                       CornerRadius="{DynamicResource Radius.Control}"
                       Background="{DynamicResource Brush.Accent16}"
                       BorderBrush="{DynamicResource Brush.Accent45}"
