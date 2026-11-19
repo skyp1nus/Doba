@@ -600,6 +600,10 @@ public sealed class SettingsScreenTests
         Assert.True(f.App.Settings.Current.ClaudeAccess); // unchanged: the click went nowhere
         Assert.Equal([1, 1, 1, Disabled(f.View), Disabled(f.View), Disabled(f.View)], RowTextOpacities(f.View));
         Assert.Equal(Disabled(f.View), LevelGroup(f.View).Opacity);
+        // The Connect Claude buttons fade with their row (Button.Outline's :disabled, once) and cannot be clicked.
+        Assert.Equal(2, ClaudeButtons(f.View).Count);
+        Assert.All(ClaudeButtons(f.View), b => Assert.Equal(Disabled(f.View), EffectiveOpacity(b), 6));
+        AssertCopyButtonsDoNothing(window, f);
         window.Close();
     }
 
@@ -616,6 +620,9 @@ public sealed class SettingsScreenTests
         Assert.Equal([true, true, true, true, false, false], rows.Select(r => r.IsEnabled));
         Assert.True(ClaudeSwitch(f.View).IsEffectivelyEnabled);
         Assert.All(ClaudeButtons(f.View), b => Assert.False(b.IsEffectivelyEnabled));
+        Assert.Equal(2, ClaudeButtons(f.View).Count);
+        Assert.All(ClaudeButtons(f.View), b => Assert.Equal(Disabled(f.View), EffectiveOpacity(b), 6));
+        AssertCopyButtonsDoNothing(window, f);
         Assert.Equal([1, 1, 1, 1, Disabled(f.View), Disabled(f.View)], RowTextOpacities(f.View));
         // The level group fades as a whole (track included), once: its items keep full opacity inside it.
         Assert.Equal(Disabled(f.View), LevelGroup(f.View).Opacity);
@@ -628,6 +635,7 @@ public sealed class SettingsScreenTests
         Assert.True(f.App.Settings.Current.ClaudeAccess);
         Assert.All(rows, r => Assert.True(r.IsEnabled));
         Assert.All(ClaudeButtons(f.View), b => Assert.True(b.IsEffectivelyEnabled));
+        Assert.All(ClaudeButtons(f.View), b => Assert.Equal(1, EffectiveOpacity(b)));
         Assert.All(RowTextOpacities(f.View), o => Assert.Equal(1, o));
         Assert.Equal(1, LevelGroup(f.View).Opacity);
 
@@ -640,6 +648,7 @@ public sealed class SettingsScreenTests
         Assert.False(f.App.Settings.Current.ClaudeAccess);
         Assert.Equal([true, true, true, true, false, false], rows.Select(r => r.IsEnabled));
         Assert.Equal(Disabled(f.View), LevelGroup(f.View).Opacity);
+        Assert.All(ClaudeButtons(f.View), b => Assert.Equal(Disabled(f.View), EffectiveOpacity(b), 6));
         window.Close();
     }
 
@@ -833,6 +842,27 @@ public sealed class SettingsScreenTests
 
     private static List<Button> ClaudeButtons(Control view) =>
         [.. view.GetVisualDescendants().OfType<Button>().Where(b => b.Content is string text && text.StartsWith("Copy for Claude", StringComparison.Ordinal))];
+
+    /// <summary>The opacity a control is drawn with: its own times every ancestor's, up to the window.</summary>
+    private static double EffectiveOpacity(Visual visual) =>
+        visual.GetSelfAndVisualAncestors().Aggregate(1.0, (opacity, v) => opacity * v.Opacity);
+
+    /// <summary>Clicks each Copy for Claude button and asserts nothing was copied and nothing was said.</summary>
+    private static void AssertCopyButtonsDoNothing(Window window, Fixture f)
+    {
+        var clipboard = new RecordingClipboard();
+        f.Vm.Clipboard = clipboard;
+        var connect = (ButtonsRow)f.Vm.RowsOf(SettingsTab.Data)[5];
+        foreach (var button in ClaudeButtons(f.View))
+        {
+            Click(window, button);
+        }
+
+        Assert.Empty(clipboard.Texts);
+        Assert.Equal(string.Empty, connect.Message);
+        Assert.False(f.Vm.CopyForDesktopCommand.IsRunning);
+        Assert.False(f.Vm.CopyForCodeCommand.IsRunning);
+    }
 
     private static List<ListBoxItem> SegmentItems(Control view, params string[] labels) =>
         [.. view.GetVisualDescendants().OfType<ListBoxItem>().Where(i => labels.Contains(i.Content as string))];
