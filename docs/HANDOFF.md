@@ -8,7 +8,7 @@ commands are in [`README.md`](../README.md); the code map is [`ARCHITECTURE.md`]
 
 **Branch.** `dev`. The final review fixes and the last integration pass are merged; nothing is merged into `main`.
 The single pull request `dev → main` starts the only GitHub Actions run (owner's rule: no other runs); see the pull
-request for its result.
+request for its result. That run (pull request #1, 2026-11-19) was green: Release build with warnings as errors, 1088 tests, NativeAOT publish, artifact upload; on the hosted runner (no GPU) `--perf` printed 377 ms from process start to the first rendered frame and `--selfcheck` passed 9 of 9.
 **What is complete, against the brief (`docs/KICKOFF.md`).**
 
 | Brief | State |
