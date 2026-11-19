@@ -15,10 +15,14 @@ namespace Doba.App.Shell;
 /// <see cref="Projector.Sidebar"/>; every action goes through <see cref="IShellNavigation"/>.
 /// </summary>
 /// <remarks>
-/// The shell calls <see cref="Refresh"/> after navigation, tag-filter, collapse and store changes; the sidebar also
-/// listens to the shell's PropertyChanged / Navigated, the store and the day rollover itself, so it is right even when
-/// a call is missed. Refresh is idempotent: properties only raise when their value changes and tag rows are reconciled
-/// with <see cref="KeyedSync"/> (rows update in place, the list is never rebuilt).
+/// <para>The sidebar keeps itself up to date: counts and tags re-project on store changes, the day rollover and the
+/// tag filter (each once; the shell does not refresh it again), collapse follows the shell's IsSidebarCollapsed.</para>
+/// <para>Navigation state (highlight, current row, settings tab) follows the shell's Nav / Navigated, or, with
+/// <c>followsContentSwap</c> (the real shell), only <see cref="ShowPresented"/>, which the shell calls inside the content
+/// swap: on a section transition the highlight then slides with the new page's entrance, after the old page's 130 ms
+/// exit, as in the prototype (whose <c>view</c> changes only in <c>go</c>, after the exit).</para>
+/// <para>Everything is idempotent: properties only raise when their value changes and tag rows are reconciled with
+/// <see cref="KeyedSync"/> (rows update in place, the list is never rebuilt).</para>
 /// </remarks>
 public sealed partial class SidebarViewModel : ObservableObject, IDisposable
 {
@@ -28,12 +32,20 @@ public sealed partial class SidebarViewModel : ObservableObject, IDisposable
     /// <summary>Highlight rows above the tags: Inbox 0, Today 1, Calendar 2.</summary>
     private const int LastSectionRow = 2;
 
-    public SidebarViewModel(AppServices app, IShellNavigation shell)
+    private readonly bool _followsContentSwap;
+    private NavState? _presented;
+
+    /// <param name="app">The composition root.</param>
+    /// <param name="shell">Where sidebar clicks go and where navigation state is read.</param>
+    /// <param name="followsContentSwap">True when the shell calls <see cref="ShowPresented"/> from its content swap;
+    /// the navigation state then changes only there.</param>
+    public SidebarViewModel(AppServices app, IShellNavigation shell, bool followsContentSwap = false)
     {
         ArgumentNullException.ThrowIfNull(app);
         ArgumentNullException.ThrowIfNull(shell);
         App = app;
         Shell = shell;
+        _followsContentSwap = followsContentSwap;
         Tabs = new ObservableCollection<SidebarTabViewModel>(
             Enum.GetValues<SettingsTab>().Select(t => new SidebarTabViewModel(t, SelectTab)));
 
@@ -101,12 +113,24 @@ public sealed partial class SidebarViewModel : ObservableObject, IDisposable
     /// <summary>The open settings tab (<see cref="NavState.Tab"/>).</summary>
     [ObservableProperty] public partial SettingsTab ActiveTab { get; private set; }
 
+    /// <summary>How many times counts and tags were projected (tests check that one change projects once).</summary>
+    internal int Projections { get; private set; }
+
     /// <summary>Re-projects counts and tags and re-reads navigation and collapse state. Cheap and idempotent.</summary>
     public void Refresh()
     {
         Project();
         ApplyNav();
         ApplyCollapsed();
+    }
+
+    /// <summary>The shell's content swap shows <paramref name="state"/>: the highlight, current row and settings tab
+    /// move to it now.</summary>
+    public void ShowPresented(NavState state)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+        _presented = state;
+        ApplyNav();
     }
 
     public void Dispose()
@@ -184,6 +208,7 @@ public sealed partial class SidebarViewModel : ObservableObject, IDisposable
     {
         var ctx = new ProjectionContext(App.DayClock.Today, App.DayClock.Now, App.Settings.Current.WeekStart, Shell.FilterTag);
         var model = Projector.Sidebar(App.Store, ctx);
+        Projections++;
         InboxCount = model.InboxCount;
         InboxCountText = model.InboxCount.ToString(CultureInfo.InvariantCulture);
         TodayCount = model.TodayCount;
@@ -193,7 +218,7 @@ public sealed partial class SidebarViewModel : ObservableObject, IDisposable
 
     private void ApplyNav()
     {
-        var nav = Shell.Nav;
+        var nav = _followsContentSwap && _presented is { } presented ? presented : Shell.Nav;
         var section = nav.SectionIndex;
         HighlightIndex = Math.Min(LastSectionRow, section);
         IsHighlightVisible = nav.View != AppView.Settings;
@@ -230,7 +255,11 @@ public sealed partial class SidebarViewModel : ObservableObject, IDisposable
         switch (e.PropertyName)
         {
             case nameof(IShellNavigation.Nav):
-                ApplyNav();
+                if (!_followsContentSwap)
+                {
+                    ApplyNav();
+                }
+
                 break;
             case nameof(IShellNavigation.IsSidebarCollapsed):
                 ApplyCollapsed();
@@ -246,7 +275,13 @@ public sealed partial class SidebarViewModel : ObservableObject, IDisposable
         }
     }
 
-    private void OnNavigated(object? sender, NavigatedEventArgs e) => ApplyNav();
+    private void OnNavigated(object? sender, NavigatedEventArgs e)
+    {
+        if (!_followsContentSwap)
+        {
+            ApplyNav();
+        }
+    }
 
     private void OnStoreChanged(object? sender, TaskStoreChangedEventArgs e) => Project();
 

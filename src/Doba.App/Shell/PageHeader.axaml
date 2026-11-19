@@ -83,12 +83,14 @@
         </ItemsControl>
         <!-- h1 "Title <span>subtitle</span>": two text blocks because Avalonia applies letter spacing per text block,
              not per run (the title's -0.02em must not reach the subtitle). The title keeps the h1's trailing space; the
-             subtitle sits on the title's baseline (Space.Shell.Subtitle). -->
-        <StackPanel Name="PART_Heading" Orientation="Horizontal" Margin="{DynamicResource Space.Shell.Title}">
+             subtitle sits on the title's baseline (Space.Shell.Subtitle). Left-aligned, so the block is as wide as its text
+             while it fits; when the window is too narrow (1100 px Day view, "· Today") the subtitle gets only the room left
+             of the header actions and ends in an ellipsis instead of running under the view switch. -->
+        <Grid Name="PART_Heading" ColumnDefinitions="Auto,*" HorizontalAlignment="Left" Margin="{DynamicResource Space.Shell.Title}">
           <TextBlock Name="PART_HeadingTitle" Classes="title" TextWrapping="NoWrap" VerticalAlignment="Bottom"><Run Text="{Binding Title}" /><Run Text=" " /></TextBlock>
-          <TextBlock Name="PART_HeadingSubtitle" Classes="subtitle" TextWrapping="NoWrap" VerticalAlignment="Bottom"
-                     Margin="{DynamicResource Space.Shell.Subtitle}" Text="{Binding Subtitle}" />
-        </StackPanel>
+          <TextBlock Name="PART_HeadingSubtitle" Grid.Column="1" Classes="subtitle" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"
+                     VerticalAlignment="Bottom" Margin="{DynamicResource Space.Shell.Subtitle}" Text="{Binding Subtitle}" />
+        </Grid>
       </StackPanel>
     </DockPanel>
   </Border>

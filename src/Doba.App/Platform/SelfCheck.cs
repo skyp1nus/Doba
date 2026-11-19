@@ -14,7 +14,8 @@ namespace Doba.App.Platform;
 /// <c>--selfcheck</c>: exercises the Windows platform code on a real demo window and prints one line per check to
 /// stdout, then exits with 0 when every check passed (1 otherwise). Nothing is read from or written to the data folder;
 /// the registry check uses <c>HKCU\Software\Doba\SelfCheck</c> (never the Run key, which is only read); the hotkey and
-/// tray icon are created and removed again. A watchdog ends the run after <see cref="Watchdog"/>.
+/// tray icon are created and removed again (for the tray only the managed object is checked: whether the icon appears
+/// in the notification area is a manual step). A watchdog ends the run after <see cref="Watchdog"/>.
 /// </summary>
 internal static class SelfCheck
 {
@@ -186,7 +187,11 @@ internal static class SelfCheck
 
             tray.IsVisible = false;
         });
-        report.Line("tray", ok, ok ? "icon created, shown, hidden and removed" : "tray icon failed");
+        // Only Avalonia's managed TrayIcon state is observable here; whether Shell_NotifyIcon put an icon in the
+        // notification area is not reported back, so that part stays a manual check.
+        report.Line("tray", ok, ok
+            ? "TrayIcon object created, set visible, hidden and removed (that Windows shows the icon needs a person to look)"
+            : "tray icon failed");
     }
 
     [SupportedOSPlatform("windows")]

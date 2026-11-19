@@ -22,6 +22,18 @@ public class ChordTests
     }
 
     [AvaloniaFact]
+    public void The_chord_timeout_is_measured_on_the_injected_app_clock()
+    {
+        using var shell = ShellFixture.Open(AppView.Week);
+
+        Assert.Same(shell.App.Clock, shell.Window.Shortcuts!.ChordClock);
+        // The demo clock fixes the wall-clock time only; its timestamps still advance, so the chord can time out.
+        var t0 = shell.App.Clock.GetTimestamp();
+        Thread.Sleep(1);
+        Assert.True(shell.App.Clock.GetElapsedTime(t0) > TimeSpan.Zero);
+    }
+
+    [AvaloniaFact]
     public void G_arms_the_chord_without_doing_anything_else()
     {
         var (shell, _, keys) = Open();

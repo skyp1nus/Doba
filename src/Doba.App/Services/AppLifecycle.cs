@@ -97,6 +97,7 @@ public sealed class AppLifecycle : IAsyncDisposable
         var preferences = Platform.Preferences;
         AppMotion.SystemAnimationsEnabled = preferences.AnimationsEnabled;
         preferences.AnimationsChanged += OnAnimationsChanged;
+        preferences.ClockChanged += OnClockChanged;
         _window.ApplyBackdrop(preferences);
 
         _window.Opened += OnOpened;
@@ -227,6 +228,7 @@ public sealed class AppLifecycle : IAsyncDisposable
         }
 
         Platform.Preferences.AnimationsChanged -= OnAnimationsChanged;
+        Platform.Preferences.ClockChanged -= OnClockChanged;
         _window.Opened -= OnOpened;
         _window.Closing -= OnClosing;
         _window.Closed -= OnClosed;
@@ -351,6 +353,19 @@ public sealed class AppLifecycle : IAsyncDisposable
 
     private void OnAnimationsChanged(object? sender, EventArgs e) =>
         AppMotion.SystemAnimationsEnabled = Platform.Preferences.AnimationsEnabled;
+
+    /// <summary>The system time or time zone changed: drop .NET's cached local zone (TimeProvider.System reads it), then
+    /// re-read today, which raises the day rollover (re-projection, carry-over, backup) if the date moved.</summary>
+    private void OnClockChanged(object? sender, EventArgs e)
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        TimeZoneInfo.ClearCachedData();
+        _app.DayClock.Check();
+    }
 
     private void OnHotkeyPressed(object? sender, EventArgs e) => QuickAdd();
 

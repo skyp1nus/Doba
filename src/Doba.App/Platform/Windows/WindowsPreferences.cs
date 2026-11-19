@@ -5,12 +5,14 @@ namespace Doba.App.Platform.Windows;
 
 /// <summary>
 /// "Animation effects" (Settings → Accessibility → Visual effects) via SPI_GETCLIENTAREAANIMATION, and backdrop
-/// availability from the OS build. Change notifications come from the WM_SETTINGCHANGE broadcast.
+/// availability from the OS build. Change notifications come from the WM_SETTINGCHANGE broadcast; WM_TIMECHANGE
+/// (system time or time zone changed) is passed on as <see cref="ClockChanged"/>.
 /// </summary>
 [SupportedOSPlatform("windows")]
 internal sealed class WindowsPreferences : ISystemPreferences
 {
     private EventHandler? _animationsChanged;
+    private EventHandler? _clockChanged;
     private PlatformWindow? _window;
     private bool _lastAnimations;
 
@@ -33,6 +35,17 @@ internal sealed class WindowsPreferences : ISystemPreferences
         remove => _animationsChanged -= value;
     }
 
+    /// <remarks>The first subscription (on the UI thread) starts listening for WM_TIMECHANGE.</remarks>
+    public event EventHandler? ClockChanged
+    {
+        add
+        {
+            _clockChanged += value;
+            EnsureWatching();
+        }
+        remove => _clockChanged -= value;
+    }
+
     private void EnsureWatching()
     {
         if (_window is not null || PlatformWindow.GetOrCreate() is not { } window)
@@ -47,6 +60,12 @@ internal sealed class WindowsPreferences : ISystemPreferences
 
     private void OnMessage(uint msg, IntPtr wParam, IntPtr lParam)
     {
+        if (msg == NativeMethods.WM_TIMECHANGE)
+        {
+            Dispatcher.UIThread.Post(() => _clockChanged?.Invoke(this, EventArgs.Empty));
+            return;
+        }
+
         // Re-read on every WM_SETTINGCHANGE (some senders pass wParam = 0); raise only on an actual change.
         if (msg != NativeMethods.WM_SETTINGCHANGE)
         {

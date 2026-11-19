@@ -17,7 +17,7 @@ using AppMotion = Doba.App.Motion.Motion;
 namespace Doba.App.Tests.Performance;
 
 /// <summary>
-/// The startup path in the order App.axaml.cs runs it, on recording fakes: nothing that can wait (tray icon, autostart
+/// The startup path App.axaml.cs runs (<c>App.Launch</c>), on recording fakes: nothing that can wait (tray icon, autostart
 /// reconcile, carry-over, backup) happens before the first frame, and all of it happens right after. Also the
 /// database preload that overlaps Avalonia's start, and the UI-thread release of platform objects on exit.
 /// </summary>
@@ -39,11 +39,11 @@ public sealed class StartupOrderTests
         app.Store.Changed += (_, e) => log.Add("store:" + e.Kind);
         var animationsWere = AppMotion.SystemAnimationsEnabled;
 
-        var window = ShellComposition.CreateMainWindow(app, Application.Current!);
-        var lifecycle = new AppLifecycle(app, window, new LifecycleOptions(ManageAutostart: true), () => { });
+        // The launch path App.StartApp runs (window, icon, opening size, lifecycle start), not a copy of it; the default
+        // location makes it reconcile autostart, here on the recording fake.
+        var (window, lifecycle) = global::Doba.App.App.Launch(app, Application.Current!, StartupFlags.None, () => { });
         try
         {
-            lifecycle.Start();
             log.Add("started");
             window.Show();
             log.Add("shown");
@@ -143,12 +143,13 @@ public sealed class StartupOrderTests
         var preload = AppServices.StartPreload(flags);
         Assert.NotNull(preload);
         var loaded = preload.GetAwaiter().GetResult();
-        var app = AppServices.FromStartup(flags, preload);
+        var plans = new List<PlatformPlan>();
+        var app = AppServices.FromStartup(flags, preload, plan => { plans.Add(plan); return PlatformServices.NoOp(); });
         try
         {
             Assert.Same(loaded.Database, app.Database);
             Assert.Same(loaded.Store, app.Store);
-            Assert.False(app.Platform.Autostart.IsSupported);
+            Assert.False(Assert.Single(plans).Autostart);
             Assert.True(File.Exists(folder.Location.DatabasePath));
         }
         finally
@@ -168,7 +169,60 @@ public sealed class StartupOrderTests
 
         var preload = AppServices.StartPreload(flags);
 
-        Assert.ThrowsAny<IOException>(() => AppServices.FromStartup(flags, preload));
+        Assert.ThrowsAny<IOException>(() => AppServices.FromStartup(flags, preload, _ => throw new InvalidOperationException("no platform set for a failed load")));
+    }
+
+    [AvaloniaFact]
+    public void A_data_folder_that_cannot_be_opened_ends_the_launch_with_a_message_naming_it()
+    {
+        using var folder = new TempFolder();
+        var blocked = Path.Combine(folder.Path, "not-a-folder");
+        File.WriteAllText(blocked, "x");
+        var flags = StartupFlags.Parse(["--data", blocked]);
+
+        // What App.StartApp does; Program.Main catches StartupFailedException, shows its message and exits 3.
+        var failure = Assert.Throws<StartupFailedException>(() => AppStartup.OpenServices(flags, AppServices.StartPreload(flags), _ => PlatformServices.NoOp()));
+
+        Assert.Equal(blocked, failure.Folder);
+        Assert.IsAssignableFrom<IOException>(failure.InnerException);
+        Assert.Contains(blocked, failure.Message, StringComparison.Ordinal);
+        Assert.Contains(failure.InnerException!.Message, failure.Message, StringComparison.Ordinal);
+        Assert.Equal("x", File.ReadAllText(blocked)); // nothing replaced
+    }
+
+    [AvaloniaFact]
+    public void A_database_from_a_newer_Doba_is_reported_and_left_as_it_is()
+    {
+        using var folder = new TempFolder();
+        DobaDatabase.Open(folder.Location).DisposeAsync().AsTask().GetAwaiter().GetResult();
+        using (var connection = new Microsoft.Data.Sqlite.SqliteConnection("Data Source=" + folder.Location.DatabasePath + ";Pooling=False"))
+        {
+            connection.Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = "PRAGMA user_version = 999;";
+            command.ExecuteNonQuery();
+        }
+
+        var flags = StartupFlags.Parse(["--data", folder.Path]);
+        var failure = Assert.Throws<StartupFailedException>(() => AppStartup.OpenServices(flags, AppServices.StartPreload(flags), _ => PlatformServices.NoOp()));
+
+        Assert.IsType<NotSupportedException>(failure.InnerException);
+        Assert.Contains("newer version of Doba", failure.Message, StringComparison.Ordinal);
+        Assert.Contains(folder.Path, failure.Message, StringComparison.Ordinal);
+        using (var connection = new Microsoft.Data.Sqlite.SqliteConnection("Data Source=" + folder.Location.DatabasePath + ";Mode=ReadOnly;Pooling=False"))
+        {
+            connection.Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = "PRAGMA user_version;";
+            Assert.Equal(999L, (long)command.ExecuteScalar()!);
+        }
+    }
+
+    [Fact]
+    public void Demo_launches_never_report_a_data_folder()
+    {
+        // --demo opens nothing, so a failure there is a bug, not a data problem: it is not dressed up as one.
+        Assert.Null(StartupFlags.Parse(["--demo"]).DataFolderInUse);
     }
 
     /// <summary>Platform fakes that log what they are asked to do and on which thread they are released.</summary>

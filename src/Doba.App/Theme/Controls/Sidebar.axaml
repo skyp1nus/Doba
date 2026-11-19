@@ -153,6 +153,7 @@
                        Grid.Column="1"
                        Text="{TemplateBinding Label}"
                        Foreground="{TemplateBinding Foreground}"
+                       TextTrimming="CharacterEllipsis"
                        VerticalAlignment="Center">
               <TextBlock.Transitions>
                 <Transitions>

@@ -3,6 +3,7 @@ using Doba.App.Platform;
 using Doba.App.Services;
 using Doba.Core.Demo;
 using Doba.Core.Model;
+using Doba.Storage;
 
 namespace Doba.App.Tests.Lifecycle;
 
@@ -36,15 +37,58 @@ public class StartupTests
     public void Minimized_is_case_insensitive(string arg) => Assert.True(StartupFlags.Parse([arg]).Minimized);
 
     [Fact]
-    public void Every_flag_is_parsed_and_unknown_ones_are_ignored()
+    public void Every_flag_is_parsed()
     {
-        var flags = StartupFlags.Parse(["--perf", "--whatever", "--exit-after-first-frame", "--data", @"D:\x y", "--minimized", "--selfcheck", "--demo"]);
+        var flags = StartupFlags.Parse(["--perf", "--exit-after-first-frame", "--data", @"D:\x y", "--minimized", "--selfcheck", "--demo"]);
 
         Assert.Equal(new StartupFlags(Perf: true, ExitAfterFirstFrame: true, Demo: true, DataFolder: @"D:\x y", Minimized: true, SelfCheck: true), flags);
     }
 
-    [Fact]
-    public void Data_without_a_folder_is_ignored() => Assert.Null(StartupFlags.Parse(["--data"]).DataFolder);
+    // A command line that is not understood must never fall through to the real data folder and Run key (the past
+    // incident: a launch without the intended flag wrote %LOCALAPPDATA%\Doba and the HKCU Run value).
+    [Theory]
+    [InlineData("--whatever")]
+    [InlineData("--dmeo")]
+    [InlineData("-demo")]
+    [InlineData("/demo")]
+    [InlineData("demo")]
+    [InlineData("--data=D:\\x")]
+    [InlineData("")]
+    public void Unknown_arguments_are_errors(string arg)
+    {
+        Assert.False(StartupFlags.TryParse([arg], out var flags, out var error));
+        Assert.Contains(arg, error, StringComparison.Ordinal);
+        Assert.Equal(StartupFlags.None, flags);
+        Assert.Throws<ArgumentException>(() => StartupFlags.Parse([arg]));
+    }
+
+    public static TheoryData<string> DataWithoutFolder() => ["--data", "--data|", "--data|   ", "--data|--demo", "--minimized|--data"];
+
+    [Theory]
+    [MemberData(nameof(DataWithoutFolder))]
+    public void Data_without_a_folder_is_an_error(string commandLine)
+    {
+        Assert.False(StartupFlags.TryParse(commandLine.Split('|'), out _, out var error));
+        Assert.Contains("--data", error, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("", true)]
+    [InlineData("--minimized", true)]
+    [InlineData("--demo", false)]
+    [InlineData("--selfcheck", false)]
+    public void Only_launches_that_read_data_name_a_data_folder(string commandLine, bool readsData)
+    {
+        var flags = StartupFlags.Parse(commandLine.Length == 0 ? [] : commandLine.Split('|'));
+
+        Assert.Equal(readsData, flags.DataFolderInUse is not null);
+        if (readsData)
+        {
+            Assert.Equal(DataLocation.Default().Folder, flags.DataFolderInUse);
+        }
+
+        Assert.Equal(@"D:\x", StartupFlags.Parse(["--data", @"D:\x"]).DataFolderInUse);
+    }
 
     [Theory]
     [InlineData("--demo")]
@@ -56,49 +100,41 @@ public class StartupTests
     public void A_data_folder_is_not_the_default_location() =>
         Assert.False(StartupFlags.Parse(["--data", "x"]).UsesDefaultDataLocation);
 
+    // The platform choice is checked on the plan: no test builds the Windows autostart, hotkey or tray (CLAUDE.md).
     [Fact]
-    public void Demo_launch_gets_no_op_autostart_and_hotkey()
+    public void Demo_launch_uses_no_autostart_hotkey_or_tray() =>
+        Assert.Equal(new PlatformPlan(Autostart: false, Hotkey: false, Tray: false), PlatformPlan.For(demo: true, customDataFolder: false));
+
+    [Fact]
+    public void A_custom_data_folder_never_touches_the_registry_but_keeps_the_hotkey_and_tray() =>
+        Assert.Equal(new PlatformPlan(Autostart: false, Hotkey: true, Tray: true), PlatformPlan.For(demo: false, customDataFolder: true));
+
+    [Fact]
+    public void The_default_location_uses_everything() =>
+        Assert.Equal(PlatformPlan.Full, PlatformPlan.For(demo: false, customDataFolder: false));
+
+    [Fact]
+    public void A_demo_platform_set_has_no_tray_so_closing_a_demo_window_quits()
     {
+        // With an all-off plan only the read-only OS preferences and the click-only shell are the platform's own.
         var platform = PlatformServices.ForLaunch(demo: true, customDataFolder: false);
 
         Assert.False(platform.Autostart.IsSupported);
         Assert.False(platform.Hotkey.IsSupported);
-        Assert.Equal(OperatingSystem.IsWindows(), platform.Tray.IsSupported);
-        platform.Hotkey.Dispose();
-        platform.Tray.Dispose();
-    }
-
-    [Fact]
-    public void A_custom_data_folder_never_touches_the_registry_but_keeps_the_hotkey()
-    {
-        var platform = PlatformServices.ForLaunch(demo: false, customDataFolder: true);
-
-        Assert.False(platform.Autostart.IsSupported);
-        Assert.Equal(OperatingSystem.IsWindows(), platform.Hotkey.IsSupported);
-        platform.Hotkey.Dispose();
-        platform.Tray.Dispose();
-    }
-
-    [Fact]
-    public void The_default_location_gets_the_real_autostart_on_Windows()
-    {
-        var platform = PlatformServices.ForLaunch(demo: false, customDataFolder: false);
-
-        Assert.Equal(OperatingSystem.IsWindows() && Environment.ProcessPath is not null, platform.Autostart.IsSupported);
-        platform.Hotkey.Dispose();
-        platform.Tray.Dispose();
+        Assert.False(platform.Tray.IsSupported);
+        Assert.Equal(PlatformServices.NoOp().Tray.GetType(), platform.Tray.GetType());
     }
 
     [AvaloniaFact]
-    public void Demo_flag_builds_demo_services_with_no_op_autostart_and_hotkey()
+    public void Demo_flag_builds_demo_services_with_the_demo_plan()
     {
-        var app = AppServices.FromStartup(StartupFlags.Parse(["--demo"]));
+        var plans = new List<PlatformPlan>();
+        var app = AppServices.FromStartup(StartupFlags.Parse(["--demo"]), null, plan => { plans.Add(plan); return PlatformServices.NoOp(); });
         try
         {
             Assert.True(app.IsDemo);
             Assert.Equal(DemoData.Today, app.DayClock.Today);
-            Assert.False(app.Platform.Autostart.IsSupported);
-            Assert.False(app.Platform.Hotkey.IsSupported);
+            Assert.Equal([PlatformPlan.For(demo: true, customDataFolder: false)], plans);
         }
         finally
         {
@@ -110,12 +146,13 @@ public class StartupTests
     public void Data_flag_opens_that_folder_without_registry_access()
     {
         using var folder = new TempFolder();
-        var app = AppServices.FromStartup(StartupFlags.Parse(["--data", folder.Path]));
+        var plans = new List<PlatformPlan>();
+        var app = AppServices.FromStartup(StartupFlags.Parse(["--data", folder.Path]), null, plan => { plans.Add(plan); return PlatformServices.NoOp(); });
         try
         {
             Assert.False(app.IsDemo);
             Assert.Equal(folder.Path, app.Database!.Location.Folder);
-            Assert.False(app.Platform.Autostart.IsSupported);
+            Assert.Equal([new PlatformPlan(Autostart: false, Hotkey: true, Tray: true)], plans);
         }
         finally
         {

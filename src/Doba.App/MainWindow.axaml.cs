@@ -84,6 +84,23 @@ public partial class MainWindow : Window
         UpdateBackdrop();
     }
 
+    /// <summary>
+    /// Before the first Show of a real launch: fits the opening size to the working area of the screen the window opens
+    /// on (<see cref="WindowPlacement.Fit"/>) and centres it there. Nothing changes where no screen is known.
+    /// </summary>
+    internal void FitToScreen()
+    {
+        if ((Screens.ScreenFromWindow(this) ?? Screens.Primary) is not { } screen)
+        {
+            return;
+        }
+
+        var size = WindowPlacement.Fit(new Size(Width, Height), new Size(MinWidth, MinHeight), screen.WorkingArea, screen.Scaling);
+        Width = size.Width;
+        Height = size.Height;
+        WindowStartupLocation = WindowStartupLocation.CenterScreen;
+    }
+
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);

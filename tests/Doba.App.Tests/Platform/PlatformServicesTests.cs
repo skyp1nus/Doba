@@ -6,31 +6,29 @@ namespace Doba.App.Tests.Platform;
 
 public class PlatformServicesTests
 {
+    // PlatformServices.Create() with a plan that allows a machine-wide part builds the real Windows object for it, which
+    // tests must never do (CLAUDE.md). The choice is tested on PlatformPlan; an all-off plan builds only no-ops for the
+    // machine-wide parts, which is safe to check here.
     [Fact]
-    public void Create_returns_the_no_op_set_off_Windows_and_the_Windows_set_on_Windows()
+    public void An_all_off_plan_builds_no_machine_wide_part_on_any_OS()
     {
-        var services = PlatformServices.Create();
+        var services = PlatformServices.Create(new PlatformPlan(Autostart: false, Hotkey: false, Tray: false));
         var noOp = PlatformServices.NoOp();
 
+        Assert.IsType(noOp.Autostart.GetType(), services.Autostart);
+        Assert.IsType(noOp.Hotkey.GetType(), services.Hotkey);
+        Assert.IsType(noOp.Tray.GetType(), services.Tray);
         if (OperatingSystem.IsWindows())
         {
-            Assert.True(services.Autostart.IsSupported || Environment.ProcessPath is null);
-            Assert.True(services.Hotkey.IsSupported);
+            // The read-only preferences and the click-only shell are the platform's own (no member is used here).
             Assert.NotEqual(noOp.Preferences.GetType(), services.Preferences.GetType());
             Assert.NotEqual(noOp.Shell.GetType(), services.Shell.GetType());
         }
-        else
-        {
-            Assert.IsType(noOp.Autostart.GetType(), services.Autostart);
-            Assert.IsType(noOp.Hotkey.GetType(), services.Hotkey);
-            Assert.IsType(noOp.Preferences.GetType(), services.Preferences);
-            Assert.IsType(noOp.Shell.GetType(), services.Shell);
-            Assert.False(services.Autostart.IsSupported);
-            Assert.False(services.Hotkey.IsSupported);
-        }
-
-        services.Hotkey.Dispose();
     }
+
+    [Fact]
+    public void The_full_plan_allows_every_machine_wide_part() =>
+        Assert.Equal(new PlatformPlan(Autostart: true, Hotkey: true, Tray: true), PlatformPlan.Full);
 
     [Fact]
     public void No_op_autostart_is_unsupported_and_never_enabled()

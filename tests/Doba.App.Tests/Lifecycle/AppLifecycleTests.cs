@@ -168,6 +168,28 @@ public class AppLifecycleTests
         Assert.Equal([Day.AddDays(1)], days);
     }
 
+    [AvaloniaFact]
+    public void A_time_or_time_zone_change_rolls_the_day_over_at_once()
+    {
+        // Travel east past midnight while the window stays open: WM_TIMECHANGE re-reads today, no restart, no wait for
+        // the next minute tick.
+        var clock = Clock();
+        using var folder = new TempFolder();
+        using var h = LifecycleHarness.Disk(folder, clock);
+        var days = new List<DateOnly>();
+        h.App.DayClock.DayChanged += (_, d) => days.Add(d);
+        clock.Set(new DateTimeOffset(2026, 11, 16, 0, 30, 0, TimeSpan.FromHours(10)));
+
+        h.Platform.Preferences.ChangeClock();
+
+        Assert.Equal([Day.AddDays(1)], days);
+        Assert.Equal(Day.AddDays(1), h.App.DayClock.Today);
+
+        h.Exit();
+        h.Platform.Preferences.ChangeClock(); // after Exit the handler is gone
+        Assert.Single(days);
+    }
+
     // ---- Flush ----------------------------------------------------------------------------------------------------
 
     [AvaloniaFact]

@@ -61,6 +61,8 @@ internal sealed class FakePreferences(bool animations = true, bool backdrop = fa
 
     public event EventHandler? AnimationsChanged;
 
+    public event EventHandler? ClockChanged;
+
     public void Watch(TopLevel owner) => Watches++;
 
     public void Change(bool enabled)
@@ -68,6 +70,9 @@ internal sealed class FakePreferences(bool animations = true, bool backdrop = fa
         AnimationsEnabled = enabled;
         AnimationsChanged?.Invoke(this, EventArgs.Empty);
     }
+
+    /// <summary>What WM_TIMECHANGE does: the system time or time zone was changed.</summary>
+    public void ChangeClock() => ClockChanged?.Invoke(this, EventArgs.Empty);
 }
 
 /// <summary>A tray icon whose menu items the test "clicks".</summary>

@@ -25,6 +25,7 @@ public sealed class AppServices : IAsyncDisposable
         Platform = platform;
         Database = database;
         DayClock = new DayClock(clock);
+        DataFolder = database?.Location.Folder;
         if (database is not null)
         {
             database.WriteFailed += OnWriteFailed;
@@ -46,6 +47,17 @@ public sealed class AppServices : IAsyncDisposable
 
     public bool IsDemo => Database is null;
 
+    /// <summary>The data folder (null in demo mode).</summary>
+    public string? DataFolder { get; }
+
+    /// <summary>
+    /// Raised (on the storage writer's thread, or the caller's) with a sentence for the owner each time a change could
+    /// not be written to disk. The in-memory store keeps the change, so what the app shows and what a restart would
+    /// load now differ; the shell turns this into a visible notice. Every failure is also appended to
+    /// <see cref="DataLog"/> in the data folder.
+    /// </summary>
+    public event EventHandler<string>? SaveFailed;
+
     /// <summary>DemoData with the fixed 2026-11-15 22:26 clock; nothing persisted. Used by --demo and the screenshot tests.</summary>
     public static AppServices CreateDemo(AppSettings? settings = null, PlatformServices? platform = null) =>
         new(DemoData.CreateClock(),
@@ -59,24 +71,28 @@ public sealed class AppServices : IAsyncDisposable
         FromLoaded(LoadedStore.Load(location), clock, platform);
 
     /// <summary>
-    /// From command-line flags: --demo (and --selfcheck), or --data &lt;folder&gt;, else %LOCALAPPDATA%\Doba. Demo mode
-    /// gets no-op autostart and hotkey; --data never touches the registry (see <see cref="PlatformServices.ForLaunch"/>).
+    /// From command-line flags: --demo (and --selfcheck), or --data &lt;folder&gt;, else %LOCALAPPDATA%\Doba. The
+    /// platform set follows <see cref="PlatformPlan.For"/> (demo: no autostart, hotkey or tray; --data: no registry).
     /// <paramref name="preload"/> is the database already being opened and loaded off the UI thread (see
-    /// <see cref="StartPreload"/>); null opens it here.
+    /// <see cref="StartPreload"/>); null opens it here. <paramref name="platforms"/> builds the platform set for the
+    /// plan (default <see cref="PlatformServices.Create(PlatformPlan)"/>; tests pass a recorder that returns no-ops).
+    /// Nothing platform-side is built when the data cannot be loaded.
     /// </summary>
-    internal static AppServices FromStartup(StartupFlags flags, Task<LoadedStore>? preload = null)
+    internal static AppServices FromStartup(StartupFlags flags, Task<LoadedStore>? preload = null,
+        Func<PlatformPlan, PlatformServices>? platforms = null)
     {
         ArgumentNullException.ThrowIfNull(flags);
+        platforms ??= PlatformServices.Create;
         var demo = IsDemoLaunch(flags);
-        var platform = PlatformServices.ForLaunch(demo, flags.DataFolder is not null);
+        var plan = PlatformPlan.For(demo, flags.DataFolder is not null);
         if (demo)
         {
-            return CreateDemo(platform: platform);
+            return CreateDemo(platform: platforms(plan));
         }
 
         // GetResult rethrows the loader's own exception, exactly as a synchronous Open would have thrown it.
         var loaded = preload?.GetAwaiter().GetResult() ?? LoadedStore.Load(DataLocationOf(flags));
-        return FromLoaded(loaded, null, platform);
+        return FromLoaded(loaded, null, platforms(plan));
     }
 
     /// <summary>
@@ -109,8 +125,8 @@ public sealed class AppServices : IAsyncDisposable
             platform ?? PlatformServices.Create(),
             loaded.Database);
 
-    /// <summary>Waits until every queued task and settings write is on disk (no-op in demo mode). Never throws: a
-    /// failed write is reported through <see cref="Trace"/> (the design has no UI for it).</summary>
+    /// <summary>Waits until every queued task and settings write is on disk (no-op in demo mode). Never throws: each
+    /// failed write was already reported through <see cref="SaveFailed"/>; the flush's summary goes to the log.</summary>
     public async Task FlushAsync()
     {
         if (Database is not { } db || _disposed)
@@ -122,9 +138,13 @@ public sealed class AppServices : IAsyncDisposable
         {
             await db.Tasks.FlushAsync().ConfigureAwait(false);
         }
-        catch (Exception ex) when (ex is StorageWriteException or ObjectDisposedException or IOException)
+        catch (StorageWriteException ex)
         {
-            Trace.WriteLine("Doba: flushing pending writes failed: " + ex.Message);
+            Log("flush: " + ex.Message);
+        }
+        catch (Exception ex) when (ex is ObjectDisposedException or IOException)
+        {
+            ReportSaveFailure("flush", ex);
         }
     }
 
@@ -165,13 +185,39 @@ public sealed class AppServices : IAsyncDisposable
             }
             catch (StorageWriteException ex)
             {
-                Trace.WriteLine("Doba: writes failed before closing the database: " + ex.Message);
+                Log("close: " + ex.Message);
             }
         }
     }
 
-    private static void OnWriteFailed(object? sender, StorageWriteFailedEventArgs e) =>
-        Trace.WriteLine("Doba: a background write failed: " + e.Error.Message);
+    /// <summary>The owner-facing sentence for a failed write in <paramref name="folder"/>.</summary>
+    public static string DescribeSaveFailure(string folder, Exception error)
+    {
+        ArgumentNullException.ThrowIfNull(folder);
+        ArgumentNullException.ThrowIfNull(error);
+        return "Some changes could not be saved to " + folder + ": " + error.Message +
+            ". They are still shown here but will be missing after a restart. Details are in " + DataLog.FileName + " in that folder.";
+    }
+
+    private void OnWriteFailed(object? sender, StorageWriteFailedEventArgs e) => ReportSaveFailure("write", e.Error);
+
+    private void ReportSaveFailure(string what, Exception error)
+    {
+        Log(what + " failed: " + error.GetType().Name + ": " + error.Message);
+        if (Database is { } db)
+        {
+            SaveFailed?.Invoke(this, DescribeSaveFailure(db.Location.Folder, error));
+        }
+    }
+
+    private void Log(string message)
+    {
+        Trace.WriteLine("Doba: " + message);
+        if (Database is { } db)
+        {
+            DataLog.Append(db.Location.Folder, Clock.GetLocalNow(), message);
+        }
+    }
 }
 
 /// <summary>An opened database, what it held and the in-memory store built from it (no UI objects: may be built on

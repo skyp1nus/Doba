@@ -59,28 +59,34 @@ public sealed class PerfFlagsTests
     [InlineData("--perf-scenario", "month")]
     [InlineData("--perf-rounds", "0")]
     [InlineData("--perf-rounds", "101")]
-    public void Invalid_values_are_ignored(string flag, string value)
+    public void Invalid_values_are_errors(string flag, string value)
     {
-        var flags = StartupFlags.Parse([flag, value, "--demo"]);
+        Assert.False(StartupFlags.TryParse([flag, value, "--demo"], out var flags, out var error));
 
-        Assert.Equal(StartupFlags.None with { Demo = true }, flags);
+        Assert.Contains(flag, error, StringComparison.Ordinal);
+        Assert.Contains(value, error, StringComparison.Ordinal);
+        Assert.Equal(StartupFlags.None, flags);
     }
 
     [Theory]
     [InlineData("--perf-idle-seconds")]
     [InlineData("--perf-scenario")]
     [InlineData("--perf-rounds")]
-    public void A_value_flag_at_the_end_is_ignored(string flag) =>
-        Assert.Equal(StartupFlags.None, StartupFlags.Parse([flag]));
+    public void A_value_flag_at_the_end_is_an_error(string flag)
+    {
+        Assert.False(StartupFlags.TryParse([flag], out _, out var error));
+        Assert.Contains(flag, error, StringComparison.Ordinal);
+    }
 
     [Fact]
-    public void A_value_is_consumed_and_not_read_as_a_flag()
+    public void A_flag_in_the_value_position_is_an_error_and_is_not_read_as_a_flag()
     {
-        // "--demo" here is the (invalid) idle value, not the demo flag.
-        var flags = StartupFlags.Parse(["--perf-idle-seconds", "--demo"]);
+        // "--demo" here would be the idle value: neither swallowed as a number nor taken as the demo flag (a launch that
+        // silently lost --demo would run on the real data folder).
+        Assert.False(StartupFlags.TryParse(["--perf-idle-seconds", "--demo"], out var flags, out var error));
 
         Assert.False(flags.Demo);
-        Assert.Equal(0, flags.PerfIdleSeconds);
+        Assert.Contains("--demo", error, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -125,14 +131,20 @@ public sealed class PerfFlagsTests
             Assert.Empty(PerfProbe.Marks);
 
             PerfProbe.Enable();
-            PerfProbe.Mark("a");
-            PerfProbe.MarkAt("b", 12.34);
+            PerfProbe.Mark("perf-flags-test-a");
+            PerfProbe.MarkAt("perf-flags-test-b", 12.34);
 
-            Assert.Equal(new[] { "a", "b" }, PerfProbe.Marks.Select(m => m.Name));
-            Assert.Equal(12.34, PerfProbe.At("b"));
+            // The probe is process-wide: a headless session starting in parallel (App.Initialize) may add its own marks
+            // while recording is on, so only this test's marks and their order are asserted.
+            var mine = PerfProbe.Marks.Select(m => m.Name).Where(n => n.StartsWith("perf-flags-test-", StringComparison.Ordinal));
+            Assert.Equal(new[] { "perf-flags-test-a", "perf-flags-test-b" }, mine);
+            Assert.Equal(12.34, PerfProbe.At("perf-flags-test-b"));
             Assert.True(double.IsNaN(PerfProbe.At("missing")));
-            Assert.StartsWith("doba-perf marks a=", PerfProbe.FormatMarks(), StringComparison.Ordinal);
-            Assert.EndsWith(" b=12.3", PerfProbe.FormatMarks(), StringComparison.Ordinal);
+            var line = PerfProbe.FormatMarks();
+            Assert.StartsWith("doba-perf marks ", line, StringComparison.Ordinal);
+            Assert.Contains(" perf-flags-test-a=", line, StringComparison.Ordinal);
+            Assert.Contains(" perf-flags-test-b=12.3", line, StringComparison.Ordinal);
+            Assert.True(line.IndexOf(" perf-flags-test-a=", StringComparison.Ordinal) < line.IndexOf(" perf-flags-test-b=", StringComparison.Ordinal));
             // The process started before Main, so the measured span is positive (or n/a where unavailable).
             Assert.True(double.IsNaN(PerfProbe.ProcessToMainMs) || PerfProbe.ProcessToMainMs >= 0);
         }

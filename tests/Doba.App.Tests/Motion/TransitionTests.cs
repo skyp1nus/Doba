@@ -188,6 +188,7 @@ public sealed class TransitionTests
         foreach (var (target, dir) in steps)
         {
             var before = shell.Vm.Current;
+            var highlightBefore = highlight.Index;
             if (target == AppView.Week)
             {
                 shell.Vm.GoCalendar();
@@ -207,13 +208,14 @@ public sealed class TransitionTests
             Assert.Equal(AppMotion.Ms(AppMotion.Exit), exit.Duration);
             Assert.Same(AppMotion.EaseIn, exit.Easing);
             Assert.Null(Animator.Running(t.Title)); // the title changes with the content, after the exit
+            // So does the sidebar highlight (prototype: `view` changes in `go`, after the exit): it has not moved yet.
+            Assert.Equal(highlightBefore, highlight.Index);
+            Assert.Null(Animator.Running(highlight));
 
             // The exit ends: swap, the exit is replaced (not left holding opacity 0), then the entrance.
             exit.Complete();
 
-            // The sidebar highlight is sliding (380 ms ease-out, one row per section step) while the entrance plays. It is
-            // checked here, not during the exit, so the test holds whether the highlight starts at the click (today: the
-            // sidebar follows Nav, 130 ms early) or with the swap as in the prototype (requested from the lead).
+            // The sidebar highlight slides (380 ms ease-out, one row per section step) together with the entrance.
             var slide = Assert.IsType<MotionHandle>(Animator.Running(highlight));
             Assert.Equal(AppMotion.Ms(AppMotion.Indicator), slide.Duration);
             Assert.Same(AppMotion.EaseOut, slide.Easing);

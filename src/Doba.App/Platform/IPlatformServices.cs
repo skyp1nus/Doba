@@ -51,6 +51,13 @@ public interface ISystemPreferences
 
     /// <summary>Starts listening for OS setting changes (WM_SETTINGCHANGE) through <paramref name="owner"/>'s window.</summary>
     void Watch(TopLevel owner) { }
+
+    /// <summary>
+    /// Raised on the UI thread when the system time or the time zone was changed (WM_TIMECHANGE). .NET caches the local
+    /// time zone, so the handler clears that cache and re-reads "today" (otherwise "today", the now-line, midnight and
+    /// carry-over stay on the old zone until a restart).
+    /// </summary>
+    event EventHandler? ClockChanged { add { } remove { } }
 }
 
 /// <summary>Shell integration: open a folder in the file manager, play the completion sound.</summary>

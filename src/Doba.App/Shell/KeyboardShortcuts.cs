@@ -69,6 +69,7 @@ public sealed class KeyboardShortcuts
         _root = root;
         _vm = vm;
         _overlays = overlays;
+        ChordClock = vm.App.Clock;
         _content = content;
         root.AddHandler(InputElement.KeyDownEvent, OnPreviewKeyDown, RoutingStrategies.Tunnel, handledEventsToo: true);
         root.AddHandler(InputElement.KeyDownEvent, OnKeyDown, RoutingStrategies.Bubble);
@@ -90,8 +91,12 @@ public sealed class KeyboardShortcuts
         }
     }
 
-    /// <summary>The clock the G chord's timeout is measured on (the system clock; tests drive their own).</summary>
-    public TimeProvider ChordClock { get; set; } = TimeProvider.System;
+    /// <summary>
+    /// The clock the G chord's timeout is measured on: the app's injected clock (<see cref="AppServices.Clock"/>). Only
+    /// its timestamps are used, and both TimeProvider.System and the demo's FixedTimeProvider (which fixes the wall-clock
+    /// time only) take those from the Stopwatch, so the 1500 ms are real time in every mode; tests set their own.
+    /// </summary>
+    public TimeProvider ChordClock { get; set; }
 
     /// <summary>True while G waits for its second key.</summary>
     public bool IsChordArmed => _armedAt is { } at && ChordClock.GetElapsedTime(at) <= ChordTimeout;

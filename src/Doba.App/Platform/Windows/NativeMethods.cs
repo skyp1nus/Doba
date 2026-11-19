@@ -103,6 +103,22 @@ internal static class NativeMethods
     [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
     internal static extern int SystemParametersInfoBool(uint uiAction, uint uiParam, ref int pvParam, uint fWinIni);
 
+    // --- Clock -------------------------------------------------------------------------------------------------
+
+    /// <summary>Broadcast to top-level windows when the system time or the time zone changes.</summary>
+    internal const uint WM_TIMECHANGE = 0x001E;
+
+    // --- Message box --------------------------------------------------------------------------------------------
+
+    internal const uint MB_OK = 0x00000000;
+    internal const uint MB_ICONERROR = 0x00000010;
+    internal const uint MB_SETFOREGROUND = 0x00010000;
+
+    /// <summary>MessageBoxW with both strings passed as pointers to UTF-16 text (blittable).</summary>
+    [DllImport(User32, ExactSpelling = true, EntryPoint = "MessageBoxW")]
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+    internal static extern int MessageBox(IntPtr hWnd, IntPtr lpText, IntPtr lpCaption, uint uType);
+
     // --- Sound --------------------------------------------------------------------------------------------------
 
     internal const uint SND_ASYNC = 0x0001;

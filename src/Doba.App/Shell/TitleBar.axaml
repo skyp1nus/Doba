@@ -14,17 +14,29 @@
   <Grid Name="PART_DragArea" Background="Transparent" ColumnDefinitions="*,Auto,*"
         ColumnSpacing="{DynamicResource Space.Shell.TitleBarGap}"
         Margin="{DynamicResource Space.Shell.TitleBar}">
-    <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space.Shell.BrandGap}" VerticalAlignment="Center"
-                IsHitTestVisible="False">
-      <Border Width="{DynamicResource Size.Shell.Logo}" Height="{DynamicResource Size.Shell.Logo}"
-              CornerRadius="{DynamicResource Radius.KeyCap}" Background="{DynamicResource Brush.Bg.Logo}">
-        <c:Icon Data="{StaticResource Icon.Logo}" Size="{DynamicResource Size.Shell.LogoGlyph}" StrokeWidth="3.2"
-                Foreground="{DynamicResource Brush.Bg.DialogFooter}"
-                HorizontalAlignment="Center" VerticalAlignment="Center" />
-      </Border>
-      <TextBlock Text="Doba" FontSize="{DynamicResource FontSize.12.5}" FontWeight="Medium"
-                 Foreground="{DynamicResource Brush.Text.Secondary}" VerticalAlignment="Center" />
-    </StackPanel>
+    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Space.Shell.TitleBarGap}">
+      <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space.Shell.BrandGap}" VerticalAlignment="Center"
+                  IsHitTestVisible="False">
+        <Border Width="{DynamicResource Size.Shell.Logo}" Height="{DynamicResource Size.Shell.Logo}"
+                CornerRadius="{DynamicResource Radius.KeyCap}" Background="{DynamicResource Brush.Bg.Logo}">
+          <c:Icon Data="{StaticResource Icon.Logo}" Size="{DynamicResource Size.Shell.LogoGlyph}" StrokeWidth="3.2"
+                  Foreground="{DynamicResource Brush.Bg.DialogFooter}"
+                  HorizontalAlignment="Center" VerticalAlignment="Center" />
+        </Border>
+        <TextBlock Text="Doba" FontSize="{DynamicResource FontSize.12.5}" FontWeight="Medium"
+                   Foreground="{DynamicResource Brush.Text.Secondary}" VerticalAlignment="Center" />
+      </StackPanel>
+
+      <!-- Not in the design: shown only after a change could not be written to disk (the store and the disk now differ).
+           The tool tip has the folder and the reason; a click opens the data folder, where doba.log has the details. -->
+      <Button Name="PART_SaveProblem" Grid.Column="1" Theme="{StaticResource Button.Link}" VerticalAlignment="Center"
+              Foreground="{DynamicResource Brush.Danger}"
+              IsVisible="{Binding SaveProblem, Converter={x:Static ObjectConverters.IsNotNull}}"
+              Command="{Binding OpenDataFolderCommand}"
+              ToolTip.Tip="{Binding SaveProblem}" AutomationProperties.Name="{Binding SaveProblem}">
+        <TextBlock Text="Changes not saved" TextTrimming="CharacterEllipsis" />
+      </Button>
+    </Grid>
 
     <Button Name="PART_Search" Grid.Column="1" Theme="{StaticResource Button.Search}"
             Width="{DynamicResource Size.Shell.Search}" MinWidth="{DynamicResource Size.Shell.SearchMin}"

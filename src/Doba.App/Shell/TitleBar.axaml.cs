@@ -18,6 +18,7 @@ public partial class TitleBar : UserControl
         InitializeComponent();
         WindowDecorationProperties.SetElementRole(PART_DragArea, WindowDecorationsElementRole.TitleBar);
         WindowDecorationProperties.SetElementRole(PART_Search, WindowDecorationsElementRole.User);
+        WindowDecorationProperties.SetElementRole(PART_SaveProblem, WindowDecorationsElementRole.User);
         WindowDecorationProperties.SetElementRole(PART_Minimize, WindowDecorationsElementRole.MinimizeButton);
         WindowDecorationProperties.SetElementRole(PART_Maximize, WindowDecorationsElementRole.MaximizeButton);
         WindowDecorationProperties.SetElementRole(PART_Close, WindowDecorationsElementRole.CloseButton);
@@ -26,6 +27,9 @@ public partial class TitleBar : UserControl
     internal Control DragArea => PART_DragArea;
 
     internal Button SearchButton => PART_Search;
+
+    /// <summary>"Changes not saved" (visible only after a failed write).</summary>
+    internal Button SaveProblemButton => PART_SaveProblem;
 
     internal Button MinimizeButton => PART_Minimize;
 

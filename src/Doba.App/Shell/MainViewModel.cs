@@ -1,4 +1,5 @@
 using Avalonia;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Doba.App.Dialogs;
@@ -24,6 +25,7 @@ public sealed partial class MainViewModel : ObservableObject, IAppCommands, IShe
     private readonly ThemeService _theme;
     private readonly Dictionary<AppView, ScreenViewModel> _screens = [];
     private AppSettings _settings;
+    private DateOnly _today; // the day the navigation state was last brought up to date with
     private bool _disposed;
 
     public MainViewModel(AppServices app, ThemeService theme, NavState? start = null)
@@ -34,15 +36,18 @@ public sealed partial class MainViewModel : ObservableObject, IAppCommands, IShe
         _theme = theme;
         _settings = app.Settings.Current;
         Screens = new ScreenServices(app, new TaskActions(app.Store, app.Settings, app.Platform.Shell, app.Clock), this, () => FilterTag);
+        _today = app.DayClock.Today;
         // Nav first: the sidebar and header read it in their constructors.
-        Nav = start ?? InitialState(_settings, app.DayClock.Today);
-        Sidebar = new SidebarViewModel(app, this);
+        Nav = start ?? InitialState(_settings, _today);
+        // The sidebar's highlight and current row follow the content swap (Present), not the Nav change, so on a
+        // section transition they move with the entrance after the exit, as in the prototype.
+        Sidebar = new SidebarViewModel(app, this, followsContentSwap: true);
         Header = new PageHeaderViewModel(this, this);
 
-        app.Store.Changed += OnStoreChanged;
         app.Settings.Changed += OnSettingsChanged;
         app.DayClock.DayChanged += OnDayChanged;
         app.DayClock.MinuteTick += OnMinuteTick;
+        app.SaveFailed += OnSaveFailed;
 
         Present(Nav);
     }
@@ -83,6 +88,12 @@ public sealed partial class MainViewModel : ObservableObject, IAppCommands, IShe
 
     /// <summary>The sidebar column is the narrow rail: collapsed and not in Settings (the settings sidebar is always 232 px).</summary>
     public bool IsRail => IsSidebarCollapsed && !ShowsSettings;
+
+    /// <summary>
+    /// Set (on the UI thread) when a change could not be written to disk: the owner-facing sentence with the folder and
+    /// the reason, shown by the title bar's "Changes not saved" notice until the app restarts. Null = nothing failed.
+    /// </summary>
+    [ObservableProperty] public partial string? SaveProblem { get; private set; }
 
     /// <summary>
     /// Plays a content transition around the swap. The window sets it to
@@ -148,19 +159,18 @@ public sealed partial class MainViewModel : ObservableObject, IAppCommands, IShe
 
     public void SetSettingsTab(SettingsTab tab) => Apply(Navigator.SetTab(Nav, tab), null);
 
+    // The sidebar follows IsSidebarCollapsed and FilterTag through PropertyChanged by itself (no second refresh here).
     [RelayCommand]
     public void ToggleSidebar()
     {
         IsSidebarCollapsed = !IsSidebarCollapsed;
         Header.SetSidebarCollapsed(IsSidebarCollapsed);
-        Sidebar.Refresh();
     }
 
     public void ToggleTagFilter(string tag)
     {
         ArgumentNullException.ThrowIfNull(tag);
         FilterTag = string.Equals(FilterTag, tag, StringComparison.Ordinal) ? null : tag;
-        Sidebar.Refresh();
         Current?.RefreshIfActive();
     }
 
@@ -168,6 +178,16 @@ public sealed partial class MainViewModel : ObservableObject, IAppCommands, IShe
 
     [RelayCommand]
     public void OpenSearch() => OpenOverlay(new SearchPaletteViewModel(Screens));
+
+    /// <summary>The "Changes not saved" notice: opens the data folder (where doba.log is) in Explorer.</summary>
+    [RelayCommand]
+    private void OpenDataFolder()
+    {
+        if (App.DataFolder is { } folder)
+        {
+            App.Platform.Shell.OpenFolder(folder);
+        }
+    }
 
     // ---- IAppCommands ---------------------------------------------------------------------------------------------
 
@@ -277,7 +297,7 @@ public sealed partial class MainViewModel : ObservableObject, IAppCommands, IShe
         Current = next;
         ShowsSettings = state.View == AppView.Settings;
         Header.Update(state, Today, App.Settings.Current.WeekStart);
-        Sidebar.Refresh();
+        Sidebar.ShowPresented(state); // highlight, current row and settings tab; the counts do not depend on navigation
     }
 
     private void RebuildHeader()
@@ -287,8 +307,6 @@ public sealed partial class MainViewModel : ObservableObject, IAppCommands, IShe
             Header.Update(state, Today, App.Settings.Current.WeekStart);
         }
     }
-
-    private void OnStoreChanged(object? sender, TaskStoreChangedEventArgs e) => Sidebar.Refresh();
 
     private void OnSettingsChanged(object? sender, AppSettings next)
     {
@@ -315,10 +333,47 @@ public sealed partial class MainViewModel : ObservableObject, IAppCommands, IShe
         }
     }
 
-    private void OnDayChanged(object? sender, DateOnly e)
+    /// <summary>
+    /// Midnight (or a wake-up on a later day): Inbox and Today anchored at the old today move their anchor to the new
+    /// one, without a transition, so the sidebar's Calendar opens the week of the new day (Navigator.GoCalendar uses
+    /// the anchor). The sidebar re-projects its counts from its own DayChanged subscription.
+    /// </summary>
+    private void OnDayChanged(object? sender, DateOnly today)
     {
+        var previous = _today;
+        _today = today;
+        if (Nav.View is AppView.Inbox or AppView.Today && Nav.Anchor == previous && today != previous)
+        {
+            Nav = Nav with { Anchor = today };
+            if (Current is { } screen && _screens.TryGetValue(Nav.View, out var shown) && ReferenceEquals(screen, shown))
+            {
+                screen.Show(Nav); // the screen keeps the state it shows (not while a section swap is still pending)
+            }
+
+            Header.Update(Nav, Today, App.Settings.Current.WeekStart);
+            Sidebar.ShowPresented(Nav);
+            return;
+        }
+
         RebuildHeader();
-        Sidebar.Refresh();
+    }
+
+    private void OnSaveFailed(object? sender, string message)
+    {
+        if (Dispatcher.UIThread.CheckAccess())
+        {
+            SaveProblem = message;
+        }
+        else
+        {
+            Dispatcher.UIThread.Post(() =>
+            {
+                if (!_disposed)
+                {
+                    SaveProblem = message;
+                }
+            });
+        }
     }
 
     private void OnMinuteTick(object? sender, EventArgs e)
@@ -340,7 +395,7 @@ public sealed partial class MainViewModel : ObservableObject, IAppCommands, IShe
         // is still running is written now (a dialog that was merely open writes nothing).
         CloseOverlay();
         _disposed = true;
-        App.Store.Changed -= OnStoreChanged;
+        App.SaveFailed -= OnSaveFailed;
         App.Settings.Changed -= OnSettingsChanged;
         App.DayClock.DayChanged -= OnDayChanged;
         App.DayClock.MinuteTick -= OnMinuteTick;
