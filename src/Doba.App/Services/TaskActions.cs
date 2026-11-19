@@ -1,4 +1,5 @@
 using Doba.App.Platform;
+using Doba.Core.Editing;
 using Doba.Core.Store;
 using Doba.Core.Time;
 
@@ -30,6 +31,23 @@ public sealed class TaskActions(ITaskStore store, ISettingsService settings, ISh
     {
         PendingEntranceId = id;
         store.MoveToDate(id, clock.Today());
+    }
+
+    /// <summary>
+    /// Writes a schedule change of the task <paramref name="id"/> (an arrow-key step or a drop) as ONE store update, in
+    /// place: the start moves to <paramref name="slot"/>; a <see cref="ScheduleDragMode.Resize"/> also writes its length,
+    /// a move keeps the task's own (so an unspecified duration stays unspecified). Returns false, writing nothing, when
+    /// the task is gone, untimed, or already at that slot.
+    /// </summary>
+    public bool Reschedule(long id, ScheduleDragMode mode, ScheduleSlot slot)
+    {
+        if (store.Get(id) is not { } task || ScheduleEdit.Apply(task, mode, slot) is not { } changed)
+        {
+            return false;
+        }
+
+        store.Update(changed);
+        return true;
     }
 
     /// <summary>Called by the dialog after creating a task.</summary>

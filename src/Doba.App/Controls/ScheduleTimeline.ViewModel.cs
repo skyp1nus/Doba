@@ -5,8 +5,10 @@ using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Doba.App.Services;
+using Doba.App.Motion;
 using Doba.App.Shell;
 using Doba.App.ViewModels;
+using Doba.Core.Editing;
 using Doba.Core.Projections;
 using Doba.Core.Time;
 
@@ -401,6 +403,12 @@ public sealed partial class ScheduleViewModel : ObservableObject
     private readonly IAppCommands _commands;
     private DateOnly? _date;
 
+    /// <summary>The time chip's pending hide after a key step.</summary>
+    private IDisposable? _chipHold;
+
+    /// <summary>Bumped on every new hold or hide, so a stale hold callback does nothing.</summary>
+    private int _chipGeneration;
+
     public ScheduleViewModel(TaskActions actions, IAppCommands commands)
     {
         _actions = actions;
@@ -431,6 +439,12 @@ public sealed partial class ScheduleViewModel : ObservableObject
 
     public ScheduleChipViewModel Chip { get; } = new();
 
+    /// <summary>
+    /// The clock behind the chip's hold after a key step. Null (the app) = a one-shot <see cref="DispatcherTimer"/> on the
+    /// UI thread; tests set a manual clock.
+    /// </summary>
+    internal TimeProvider? HoldClock { get; set; }
+
     /// <summary>The polite live region's text (screen readers announce each change).</summary>
     [ObservableProperty] public partial string Message { get; private set; } = string.Empty;
 
@@ -451,6 +465,10 @@ public sealed partial class ScheduleViewModel : ObservableObject
         ArgumentNullException.ThrowIfNull(model);
         var sameDay = _date == date;
         _date = date;
+        if (!sameDay)
+        {
+            HideChip(); // the prototype shows the key chip only on the day it was stepped on
+        }
 
         // Blocks folded into a "+N" are not drawn.
         KeyedSync.ApplyStable(Blocks, model.Blocks.Where(b => !b.IsHidden).ToList(), b => b.Row.Id, vm => vm.Id,
@@ -468,6 +486,81 @@ public sealed partial class ScheduleViewModel : ObservableObject
 
         AssignTabOrder();
         SetNow(model.NowMinutes);
+    }
+
+    /// <summary>
+    /// One arrow-key step of <paramref name="block"/> (prototype <c>sbKey</c>): ↑ / ↓ to the previous / next 15-minute
+    /// line (5 with <paramref name="fine"/>), or its end with <paramref name="shift"/>. A step that changes something is
+    /// written as one store update (<see cref="TaskActions.Reschedule"/>; the synchronous re-projection updates this
+    /// model in place), the chip shows the new start (Shift: the new end) for <see cref="MotionTimes.ChipHold"/> and the
+    /// live region announces it. Returns what was written, or null at an edge (nothing written, nothing shown).
+    /// </summary>
+    public ScheduleDragMode? Step(ScheduleBlockViewModel block, bool down, bool shift, bool fine)
+    {
+        ArgumentNullException.ThrowIfNull(block);
+        if (ScheduleEdit.Key(block.StartMinutes, block.DurationMinutes, down, shift, fine) is not { } slot)
+        {
+            return null;
+        }
+
+        var mode = shift ? ScheduleDragMode.Resize : ScheduleDragMode.Move;
+        var title = block.Row.Title;
+        if (!_actions.Reschedule(block.Id, mode, slot))
+        {
+            return null;
+        }
+
+        ShowChip(ScheduleEdit.ChipMinutes(mode, slot));
+        Announce(ScheduleEdit.ChangedMessage(mode, title, slot));
+        return mode;
+    }
+
+    /// <summary>The "+N" that folds the task <paramref name="id"/>, if any.</summary>
+    public ScheduleOverflowViewModel? OverflowOf(long id) => Overflows.FirstOrDefault(o => o.Rows.Any(r => r.Id == id));
+
+    /// <summary>Shows the time chip at <paramref name="minutes"/> and hides it <see cref="MotionTimes.ChipHold"/> later
+    /// (a new step restarts the hold). The hold is information, not an animation: it stays with animations off.</summary>
+    public void ShowChip(int minutes)
+    {
+        CancelChipHold();
+        Chip.Show(minutes);
+        var generation = _chipGeneration;
+        if (HoldClock is { } clock)
+        {
+            _chipHold = clock.CreateTimer(_ => OnChipHoldElapsed(generation), null, MotionTimes.ChipHold, Timeout.InfiniteTimeSpan);
+        }
+        else
+        {
+            _chipHold = DispatcherTimer.RunOnce(() => OnChipHoldElapsed(generation), MotionTimes.ChipHold);
+        }
+    }
+
+    /// <summary>Hides the time chip at once (another day; a drag takes it over).</summary>
+    public void HideChip()
+    {
+        CancelChipHold();
+        Chip.Hide();
+    }
+
+    private void CancelChipHold()
+    {
+        _chipGeneration++;
+        _chipHold?.Dispose();
+        _chipHold = null;
+    }
+
+    private void OnChipHoldElapsed(int generation)
+    {
+        if (!Dispatcher.UIThread.CheckAccess())
+        {
+            Dispatcher.UIThread.Post(() => OnChipHoldElapsed(generation));
+            return;
+        }
+
+        if (generation == _chipGeneration)
+        {
+            HideChip();
+        }
     }
 
     /// <summary>Opens the list of <paramref name="overflow"/> (closing another one), or closes it when it is open.</summary>

@@ -35,9 +35,6 @@ public partial class ScheduleTimeline : UserControl
     /// <summary>Enter / Space went down on a "+N": the list it opens takes the keyboard focus.</summary>
     private bool _openByKey;
 
-    /// <summary>Space went down on a block (its key-up is swallowed, so the open button does not click).</summary>
-    private bool _spaceDown;
-
     public ScheduleTimeline()
     {
         InitializeComponent();
@@ -194,47 +191,6 @@ public partial class ScheduleTimeline : UserControl
         }
 
         _vm?.CloseOverflow();
-    }
-
-    /// <summary>
-    /// Space on a focused block marks its task done (the open button would click on Space; the prototype's sbKey). Enter
-    /// or Space on a "+N" remembers that the list is opened from the keyboard.
-    /// </summary>
-    private void OnPreviewKeyDown(object? sender, KeyEventArgs e)
-    {
-        if (e.Source is not Visual source)
-        {
-            return;
-        }
-
-        var button = source as Button ?? source.FindAncestorOfType<Button>();
-        if (button is { Name: "PART_More" } && e.Key is Key.Enter or Key.Space)
-        {
-            _openByKey = true;
-            return;
-        }
-
-        if (e.Key != Key.Space || e.KeyModifiers != KeyModifiers.None
-            || button is not { Name: "PART_Open", DataContext: ScheduleBlockViewModel block })
-        {
-            return;
-        }
-
-        e.Handled = true;
-        if (!_spaceDown)
-        {
-            _spaceDown = true;
-            block.Row.ToggleCommand.Execute(null);
-        }
-    }
-
-    private void OnPreviewKeyUp(object? sender, KeyEventArgs e)
-    {
-        if (e.Key == Key.Space && _spaceDown)
-        {
-            _spaceDown = false;
-            e.Handled = true;
-        }
     }
 
     /// <summary>Esc closes the open list (the window's Esc handling never sees it).</summary>
