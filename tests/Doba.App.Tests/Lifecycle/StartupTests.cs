@@ -102,12 +102,12 @@ public class StartupTests
 
     // The platform choice is checked on the plan: no test builds the Windows autostart, hotkey or tray (CLAUDE.md).
     [Fact]
-    public void Demo_launch_uses_no_autostart_hotkey_or_tray() =>
-        Assert.Equal(new PlatformPlan(Autostart: false, Hotkey: false, Tray: false), PlatformPlan.For(demo: true, customDataFolder: false));
+    public void Demo_launch_uses_no_autostart_hotkey_tray_or_bridge() =>
+        Assert.Equal(new PlatformPlan(Autostart: false, Hotkey: false, Tray: false, Bridge: false), PlatformPlan.For(demo: true, customDataFolder: false));
 
     [Fact]
-    public void A_custom_data_folder_never_touches_the_registry_but_keeps_the_hotkey_and_tray() =>
-        Assert.Equal(new PlatformPlan(Autostart: false, Hotkey: true, Tray: true), PlatformPlan.For(demo: false, customDataFolder: true));
+    public void A_custom_data_folder_never_touches_the_registry_but_keeps_the_hotkey_tray_and_bridge() =>
+        Assert.Equal(new PlatformPlan(Autostart: false, Hotkey: true, Tray: true, Bridge: true), PlatformPlan.For(demo: false, customDataFolder: true));
 
     [Fact]
     public void The_default_location_uses_everything() =>
@@ -123,6 +123,8 @@ public class StartupTests
         Assert.False(platform.Hotkey.IsSupported);
         Assert.False(platform.Tray.IsSupported);
         Assert.Equal(PlatformServices.NoOp().Tray.GetType(), platform.Tray.GetType());
+        Assert.False(platform.Bridge.IsSupported);
+        Assert.Equal(PlatformServices.NoOp().Bridge.GetType(), platform.Bridge.GetType());
     }
 
     [AvaloniaFact]
@@ -152,7 +154,7 @@ public class StartupTests
         {
             Assert.False(app.IsDemo);
             Assert.Equal(folder.Path, app.Database!.Location.Folder);
-            Assert.Equal([new PlatformPlan(Autostart: false, Hotkey: true, Tray: true)], plans);
+            Assert.Equal([new PlatformPlan(Autostart: false, Hotkey: true, Tray: true, Bridge: true)], plans);
         }
         finally
         {

@@ -253,6 +253,24 @@ public sealed class DobaDatabaseTests : IDisposable
         Assert.Equal(AppSettings.Default with { Accent = Accent.Sage, CompletionSound = true }, settings);
     }
 
+    [Theory]
+    [InlineData("'true'", "'ReadWrite'", true, ClaudeAccessLevel.ReadWrite)]
+    [InlineData("'TRUE'", "'readwrite'", true, ClaudeAccessLevel.ReadWrite)]
+    [InlineData("'yes'", "'Write'", false, ClaudeAccessLevel.Read)]
+    [InlineData("'1'", "'1'", false, ClaudeAccessLevel.ReadWrite)]
+    [InlineData("''", "'7'", false, ClaudeAccessLevel.Read)]
+    public async Task Claude_access_settings_parse_leniently(string access, string level, bool expectedAccess, ClaudeAccessLevel expectedLevel)
+    {
+        await using (DobaDatabase.Open(_temp.Location))
+        {
+        }
+
+        Raw.Execute(DbPath, $"INSERT INTO settings (key, value) VALUES ('claudeAccess', {access}), ('claudeAccessLevel', {level});");
+
+        var settings = (await ReopenAndLoad()).Settings;
+        Assert.Equal(AppSettings.Default with { ClaudeAccess = expectedAccess, ClaudeAccessLevel = expectedLevel }, settings);
+    }
+
     [Fact]
     public async Task Updates_and_deletes_are_persisted()
     {

@@ -147,5 +147,7 @@ public static class Samples
         LaunchAtStartup = false,
         KeepInTray = false,
         DailyBackup = false,
+        ClaudeAccess = true,
+        ClaudeAccessLevel = ClaudeAccessLevel.ReadWrite,
     };
 }

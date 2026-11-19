@@ -18,7 +18,8 @@ public sealed record LifecycleOptions(bool StartMinimized = false, bool ManageAu
 /// <summary>
 /// Makes Doba a resident Windows app around the main window: tray icon and close-to-tray, the global quick-add hotkey,
 /// launch-at-startup reconcile, OS animations and backdrop, carry-over and daily backup after the first frame and at
-/// midnight (<see cref="DataMaintenance"/>), <see cref="DayClock.Check"/> on activation (sleep through midnight), and
+/// midnight (<see cref="DataMaintenance"/>), the Claude bridge while Claude access is on
+/// (<see cref="ClaudeAccessService"/>), <see cref="DayClock.Check"/> on activation (sleep through midnight), and
 /// flushing pending writes on hide-to-tray, Quit, Exit and Windows session end. Everything goes through
 /// <see cref="AppServices.Platform"/>, so tests and <c>--demo</c> run it on no-op or fake platform services.
 /// </summary>
@@ -58,10 +59,14 @@ public sealed class AppLifecycle : IAsyncDisposable
         _shutdown = shutdown;
         _settings = app.Settings.Current;
         Maintenance = new DataMaintenance(app);
+        ClaudeAccess = new ClaudeAccessService(app, OpenEditId);
     }
 
     /// <summary>Carry-over and daily backup.</summary>
     public DataMaintenance Maintenance { get; }
+
+    /// <summary>The Claude bridge pipe, open while Settings → Data → Claude access is on.</summary>
+    public ClaudeAccessService ClaudeAccess { get; }
 
     /// <summary>False when <c>--minimized</c> starts the app hidden in the tray (the window is not shown at all).</summary>
     public bool ShowsWindowAtStart { get; private set; } = true;
@@ -197,6 +202,8 @@ public sealed class AppLifecycle : IAsyncDisposable
     /// </summary>
     public void OnShutdownRequested(object? sender, ShutdownRequestedEventArgs e)
     {
+        // No Claude request may start once Windows is ending the session (queued ones answer "closing").
+        ClaudeAccess.Stop();
         // A save still inside the dialog's exit animation must reach the store before the flush.
         _window.ViewModel?.CompletePendingOverlayClose();
         _ = _app.FlushAsync().Wait(SessionEndFlushTimeoutMs);
@@ -205,6 +212,8 @@ public sealed class AppLifecycle : IAsyncDisposable
     /// <summary>Desktop Exit: stops everything, waits for a running backup, flushes and closes the database (once).</summary>
     public async ValueTask DisposeAsync()
     {
+        // First: requests still queued for the UI thread answer "closing" instead of writing to a store being closed.
+        ClaudeAccess.Stop();
         if (_disposed)
         {
             return;
@@ -262,7 +271,8 @@ public sealed class AppLifecycle : IAsyncDisposable
         }
     }
 
-    /// <summary>Everything that must not delay the first frame: carry-over, backup, autostart, tray icon.</summary>
+    /// <summary>Everything that must not delay the first frame: carry-over, backup, the Claude bridge, autostart, tray
+    /// icon. The bridge opens after carry-over, so Claude never sees yesterday's overdue tasks still in place.</summary>
     private void AfterFirstFrame()
     {
         if (_afterFirstFrame || _disposed || _quitting)
@@ -272,9 +282,14 @@ public sealed class AppLifecycle : IAsyncDisposable
 
         _afterFirstFrame = true;
         Maintenance.Start();
+        ClaudeAccess.Start();
         ReconcileAutostart();
         Platform.Tray.IsVisible = _settings.KeepInTray;
     }
+
+    /// <summary>The task open in the edit dialog (its exit animation included: the dialog writes when it closes); null
+    /// with no dialog or a New task one. Claude's changes to that task answer "conflict".</summary>
+    internal long? OpenEditId() => (_window.ViewModel?.Overlay as TaskDialogViewModel)?.Draft.EditId;
 
     private void RegisterHotkey()
     {

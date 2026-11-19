@@ -13,6 +13,7 @@ using Doba.App.Services;
 using Doba.App.Tests.Lifecycle;
 using Doba.App.Tests.Support;
 using Doba.App.Theme;
+using Doba.Bridge;
 using Doba.Core.Demo;
 using Doba.Core.Model;
 using Doba.Core.Navigation;
@@ -65,7 +66,11 @@ public sealed class SettingsScreenTests
                 "Stored on this PC", DataLocation.Default().Folder, "Open folder",
                 "Daily backup", "Keeps the last 7 days of backups next to your data.",
                 "Export & import", "Move your tasks as a single JSON file.", "Export", "Import",
-                "Everything is stored locally on this PC. There is no account and no sync between devices yet.",
+                "Claude access", "Not available in demo mode.",
+                "Claude can", "Editing includes deleting tasks.", "Read", "Read & edit",
+                "Connect Claude", ClaudeConnect.McpExePath, "Copy for Claude Desktop", "Copy for Claude Code",
+                "Everything is stored locally on this PC. There is no account and no sync between devices yet. " +
+                    "Claude sees your tasks only while Claude access is on.",
             ]
         },
         {
@@ -97,7 +102,7 @@ public sealed class SettingsScreenTests
             SettingsTab.Calendar => 2,
             SettingsTab.Tasks => 3,
             SettingsTab.Windows => 3,
-            SettingsTab.Data => 3,
+            SettingsTab.Data => 6,
             _ => 0,
         };
         Assert.Equal(expectedRows, rows);
@@ -326,6 +331,9 @@ public sealed class SettingsScreenTests
             (SettingsTab.Tasks, s => s with { DefaultPriority = Priority.High, CarryOver = !s.CarryOver, CompletionSound = !s.CompletionSound }),
             (SettingsTab.Windows, s => s with { KeepInTray = !s.KeepInTray }),
             (SettingsTab.Data, s => s with { DailyBackup = !s.DailyBackup }),
+            (SettingsTab.Data, s => s with { ClaudeAccess = !s.ClaudeAccess, ClaudeAccessLevel = ClaudeAccessLevel.ReadWrite }),
+            (SettingsTab.Data, s => s with { ClaudeAccess = !s.ClaudeAccess }),
+            (SettingsTab.Data, s => s with { ClaudeAccessLevel = ClaudeAccessLevel.Read }),
         ];
 
         vm.Show(new NavState(AppView.Settings, f.App.DayClock.Today, SettingsTab.Appearance));
@@ -553,6 +561,241 @@ public sealed class SettingsScreenTests
         window.Close();
     }
 
+    // ---- Data › Claude (MCP) --------------------------------------------------------------------------------------
+
+    [AvaloniaFact]
+    public void Claude_rows_come_last_on_the_data_tab_in_order()
+    {
+        using var f = new Fixture();
+        var rows = f.Vm.RowsOf(SettingsTab.Data);
+
+        Assert.Equal(["path", "backup", "io", "claude", "claudeLevel", "claudeConnect"], rows.Select(r => r.Key));
+        var access = Assert.IsType<SwitchRow>(rows[3]);
+        Assert.Equal("Claude access", access.Label);
+        var level = Assert.IsType<SegmentRow>(rows[4]);
+        Assert.Equal(("Claude can", "Editing includes deleting tasks."), (level.Label, level.Description));
+        Assert.Equal(["Read", "Read & edit"], level.Options);
+        var connect = Assert.IsType<ButtonsRow>(rows[5]);
+        Assert.Equal(("Connect Claude", ClaudeConnect.McpExePath), (connect.Label, connect.Description));
+        Assert.True(connect.MonoDescription);
+        Assert.Equal(["Copy for Claude Desktop", "Copy for Claude Code"], connect.Buttons.Select(b => b.Label));
+    }
+
+    [AvaloniaFact]
+    public void In_demo_mode_every_claude_row_is_disabled()
+    {
+        using var f = new Fixture(settings: AppSettings.Default with { ClaudeAccess = true });
+        var window = f.Show(SettingsTab.Data);
+
+        var rows = f.Vm.RowsOf(SettingsTab.Data);
+        Assert.Equal([true, true, true, false, false, false], rows.Select(r => r.IsEnabled));
+        Assert.Equal("Not available in demo mode.", rows[3].Description);
+        Assert.Contains("Not available in demo mode.", VisibleTexts(f.View));
+
+        var claudeSwitch = ClaudeSwitch(f.View);
+        Assert.False(claudeSwitch.IsEffectivelyEnabled);
+        Assert.All(ClaudeButtons(f.View), b => Assert.False(b.IsEffectivelyEnabled));
+        Assert.All(SegmentItems(f.View, "Read", "Read & edit"), i => Assert.False(i.IsEffectivelyEnabled));
+        Click(window, claudeSwitch);
+        Assert.True(f.App.Settings.Current.ClaudeAccess); // unchanged: the click went nowhere
+        Assert.Equal([1, 1, 1, Disabled(f.View), Disabled(f.View), Disabled(f.View)], RowTextOpacities(f.View));
+        window.Close();
+    }
+
+    [AvaloniaFact]
+    public void Level_and_connect_follow_the_access_switch()
+    {
+        using var data = new TempFolder();
+        using var f = Fixture.OnDisk(data);
+        var window = f.Show(SettingsTab.Data);
+        var rows = f.Vm.RowsOf(SettingsTab.Data);
+
+        Assert.Equal(SettingsViewModel.ClaudeDescription, rows[3].Description);
+        Assert.Contains("Let Claude Desktop and Claude Code see your tasks through MCP. Tasks Claude reads are sent to Anthropic.", VisibleTexts(f.View));
+        Assert.Equal([true, true, true, true, false, false], rows.Select(r => r.IsEnabled));
+        Assert.True(ClaudeSwitch(f.View).IsEffectivelyEnabled);
+        Assert.All(ClaudeButtons(f.View), b => Assert.False(b.IsEffectivelyEnabled));
+        Assert.Equal([1, 1, 1, 1, Disabled(f.View), Disabled(f.View)], RowTextOpacities(f.View));
+        var switches = f.View.GetVisualDescendants().OfType<ToggleSwitch>().ToList();
+        Assert.Equal(2, switches.Count); // Daily backup, Claude access
+        Assert.Equal([true, false], switches.Select(s => s.IsChecked == true));
+
+        Click(window, ClaudeSwitch(f.View));
+        Assert.True(f.App.Settings.Current.ClaudeAccess);
+        Assert.All(rows, r => Assert.True(r.IsEnabled));
+        Assert.All(ClaudeButtons(f.View), b => Assert.True(b.IsEffectivelyEnabled));
+        Assert.All(RowTextOpacities(f.View), o => Assert.Equal(1, o));
+
+        Click(window, SegmentItems(f.View, "Read & edit").Single());
+        Assert.Equal(ClaudeAccessLevel.ReadWrite, f.App.Settings.Current.ClaudeAccessLevel);
+        Click(window, SegmentItems(f.View, "Read").Single());
+        Assert.Equal(ClaudeAccessLevel.Read, f.App.Settings.Current.ClaudeAccessLevel);
+
+        Click(window, ClaudeSwitch(f.View));
+        Assert.False(f.App.Settings.Current.ClaudeAccess);
+        Assert.Equal([true, true, true, true, false, false], rows.Select(r => r.IsEnabled));
+        window.Close();
+    }
+
+    [AvaloniaFact]
+    public void Outside_access_changes_update_the_rows_while_another_tab_is_shown()
+    {
+        using var data = new TempFolder();
+        using var f = Fixture.OnDisk(data);
+        var window = f.Show(SettingsTab.Appearance);
+
+        f.App.Settings.Update(s => s with { ClaudeAccess = true, ClaudeAccessLevel = ClaudeAccessLevel.ReadWrite });
+
+        var rows = f.Vm.RowsOf(SettingsTab.Data);
+        Assert.True(((SwitchRow)rows[3]).IsOn);
+        Assert.Equal(1, ((SegmentRow)rows[4]).SelectedIndex);
+        Assert.All(rows, r => Assert.True(r.IsEnabled));
+        window.Close();
+    }
+
+    [AvaloniaFact]
+    public async Task Copy_buttons_put_the_connect_texts_on_the_clipboard_and_say_so()
+    {
+        using var data = new TempFolder();
+        using var f = Fixture.OnDisk(data, AppSettings.Default with { ClaudeAccess = true });
+        var clipboard = new RecordingClipboard();
+        f.Vm.Clipboard = clipboard;
+        var window = f.Show(SettingsTab.Data);
+        var connect = (ButtonsRow)f.Vm.RowsOf(SettingsTab.Data)[5];
+
+        Click(window, ClaudeButtons(f.View).Single(b => b.Content as string == "Copy for Claude Desktop"));
+        await f.Vm.CopyForDesktopCommand.ExecutionTask!;
+        var desktop = Assert.Single(clipboard.Texts);
+        Assert.Equal(ClaudeConnect.DesktopConfig(ClaudeConnect.McpExePath, data.Path, BridgeNames.DefaultDataFolder()), desktop);
+        using (var json = System.Text.Json.JsonDocument.Parse(desktop))
+        {
+            var doba = json.RootElement.GetProperty("mcpServers").GetProperty("doba");
+            Assert.Equal(ClaudeConnect.McpExePath, doba.GetProperty("command").GetString());
+            Assert.Equal(["--data", data.Path], doba.GetProperty("args").EnumerateArray().Select(a => a.GetString()));
+        }
+
+        Assert.Contains(data.Path.Replace(@"\", @"\\", StringComparison.Ordinal), desktop, StringComparison.Ordinal);
+        Assert.Equal("Copied — paste it into Claude Desktop's config", connect.Message);
+        Assert.False(connect.IsError);
+        window.UpdateLayout();
+        Assert.Contains("Copied — paste it into Claude Desktop's config", VisibleTexts(f.View));
+
+        Click(window, ClaudeButtons(f.View).Single(b => b.Content as string == "Copy for Claude Code"));
+        await f.Vm.CopyForCodeCommand.ExecutionTask!;
+        Assert.Equal("claude mcp add --scope user doba -- \"" + ClaudeConnect.McpExePath + "\" --data \"" + data.Path + "\"", clipboard.Texts[1]);
+        Assert.Equal("Copied — run it in a terminal", connect.Message);
+        window.Close();
+    }
+
+    [AvaloniaFact]
+    public async Task A_busy_clipboard_shows_an_error_and_no_clipboard_shows_nothing()
+    {
+        using var data = new TempFolder();
+        using var f = Fixture.OnDisk(data, AppSettings.Default with { ClaudeAccess = true });
+        var window = f.Show(SettingsTab.Data);
+        var connect = (ButtonsRow)f.Vm.RowsOf(SettingsTab.Data)[5];
+
+        f.Vm.Clipboard = new RecordingClipboard(available: false);
+        await f.Vm.CopyForCodeCommand.ExecuteAsync(null);
+        Assert.Equal(string.Empty, connect.Message);
+
+        f.Vm.Clipboard = new RecordingClipboard(error: new TimeoutException("Timeout opening clipboard."));
+        await f.Vm.CopyForDesktopCommand.ExecuteAsync(null);
+        Assert.Equal("Could not copy: the clipboard is busy. Try again.", connect.Message);
+        Assert.True(connect.IsError);
+        window.Close();
+    }
+
+    [AvaloniaFact]
+    public void The_view_gives_the_view_model_the_window_clipboard()
+    {
+        using var f = new Fixture();
+        var window = f.Show(SettingsTab.Data);
+        Assert.IsType<TopLevelClipboard>(f.Vm.Clipboard);
+        window.Close();
+    }
+
+    [AvaloniaTheory]
+    [InlineData(true, ClaudeAccessLevel.ReadWrite)]
+    [InlineData(false, ClaudeAccessLevel.Read)]
+    public async Task Import_keeps_the_current_claude_access(bool access, ClaudeAccessLevel level)
+    {
+        using var data = new TempFolder();
+        using var f = Fixture.OnDisk(data, AppSettings.Default with { ClaudeAccess = !access, ClaudeAccessLevel = level == ClaudeAccessLevel.Read ? ClaudeAccessLevel.ReadWrite : ClaudeAccessLevel.Read });
+        using var exported = new MemoryStream();
+        await f.Vm.ExportToAsync(exported); // made while access was the other way round
+        f.App.Settings.Update(s => s with { ClaudeAccess = access, ClaudeAccessLevel = level, Accent = Accent.Sand });
+
+        exported.Position = 0;
+        Assert.True(await f.Vm.ImportFromAsync(exported));
+
+        Assert.Equal(Accent.Mist, f.App.Settings.Current.Accent); // the file's settings are applied …
+        Assert.Equal(access, f.App.Settings.Current.ClaudeAccess); // … except Claude access
+        Assert.Equal(level, f.App.Settings.Current.ClaudeAccessLevel);
+        Assert.Equal(access, ((SwitchRow)f.Vm.RowsOf(SettingsTab.Data)[3]).IsOn);
+    }
+
+    [AvaloniaFact]
+    public async Task A_file_that_says_claude_access_on_cannot_turn_it_on()
+    {
+        using var data = new TempFolder();
+        using var f = Fixture.OnDisk(data);
+        using var file = new MemoryStream("""{ "format": "doba", "version": 1, "settings": { "claudeAccess": true, "claudeAccessLevel": "readWrite" } }"""u8.ToArray());
+
+        Assert.True(await f.Vm.ImportFromAsync(file));
+
+        Assert.False(f.App.Settings.Current.ClaudeAccess);
+        Assert.Equal(ClaudeAccessLevel.Read, f.App.Settings.Current.ClaudeAccessLevel);
+    }
+
+    /// <summary>The Data tab with Claude access on, outside demo mode (data folder under the temp directory):
+    /// artifacts/screenshots/settings-data-claude-content.png.</summary>
+    [AvaloniaFact]
+    public void Settings_data_with_claude_access_screenshot()
+    {
+        var animations = AppMotion.SystemAnimationsEnabled;
+        AppMotion.SystemAnimationsEnabled = false;
+        try
+        {
+            using var data = new TempFolder();
+            using var f = Fixture.OnDisk(data, AppSettings.Default with { ClaudeAccess = true });
+            var window = f.Show(SettingsTab.Data);
+            if (window.TryFindResource("Brush.Bg.Main", window.ActualThemeVariant, out var main) && main is IBrush brush)
+            {
+                window.Background = brush;
+            }
+
+            ((ButtonsRow)f.Vm.RowsOf(SettingsTab.Data)[5]).Message = SettingsViewModel.CopiedForCode;
+            AvaloniaHeadlessPlatform.ForceRenderTimerTick(3);
+            var path = Screenshots.Capture(window, "settings-data-claude-content");
+            Assert.True(new FileInfo(path).Length > 5_000);
+            window.Close();
+        }
+        finally
+        {
+            AppMotion.SystemAnimationsEnabled = animations;
+        }
+    }
+
+    private static ToggleSwitch ClaudeSwitch(Control view) =>
+        view.GetVisualDescendants().OfType<ToggleSwitch>().Single(s => s.DataContext is SwitchRow { Key: "claude" });
+
+    private static List<Button> ClaudeButtons(Control view) =>
+        [.. view.GetVisualDescendants().OfType<Button>().Where(b => b.Content is string text && text.StartsWith("Copy for Claude", StringComparison.Ordinal))];
+
+    private static List<ListBoxItem> SegmentItems(Control view, params string[] labels) =>
+        [.. view.GetVisualDescendants().OfType<ListBoxItem>().Where(i => labels.Contains(i.Content as string))];
+
+    /// <summary>Opacity of each visible row's label + description column, in row order.</summary>
+    private static List<double> RowTextOpacities(Control view) =>
+        [.. view.GetVisualDescendants().OfType<StackPanel>().Where(p => p.Classes.Contains("row-text") && p.IsVisible).Select(p => p.Opacity)];
+
+    private static double Disabled(Control view)
+    {
+        Assert.True(view.TryFindResource("Opacity.Disabled", view.ActualThemeVariant, out var value));
+        return (double)value!;
+    }
+
     private static async Task<MemoryStream> ExportOf(IReadOnlyList<TaskItem> tasks)
     {
         var file = new MemoryStream();
@@ -625,11 +868,12 @@ public sealed class SettingsScreenTests
     {
         /// <param name="app">A database-backed app (its platform is used as is); null builds the demo app on recording
         /// autostart and shell.</param>
-        public Fixture(bool autostartSupported = true, AppServices? app = null)
+        /// <param name="settings">The demo app's settings (default: the defaults).</param>
+        public Fixture(bool autostartSupported = true, AppServices? app = null, AppSettings? settings = null)
         {
             Autostart = new RecordingAutostart(autostartSupported);
             Shell = new RecordingShell();
-            App = app ?? AppServices.CreateDemo(platform: PlatformServices.NoOp() with { Autostart = Autostart, Shell = Shell });
+            App = app ?? AppServices.CreateDemo(settings, PlatformServices.NoOp() with { Autostart = Autostart, Shell = Shell });
             var actions = new TaskActions(App.Store, App.Settings, App.Platform.Shell, App.Clock);
             Services = new ScreenServices(App, actions, new RecordingCommands(), () => null);
             Vm = new SettingsViewModel(Services);
@@ -648,6 +892,18 @@ public sealed class SettingsScreenTests
         public SettingsViewModel Vm { get; }
 
         public SettingsView View { get; }
+
+        /// <summary>Outside demo mode: a database in <paramref name="folder"/>, the demo clock, no-op platform.</summary>
+        public static Fixture OnDisk(TempFolder folder, AppSettings? settings = null)
+        {
+            var app = AppServices.Open(folder.Location, DemoData.CreateClock(), PlatformServices.NoOp());
+            if (settings is not null)
+            {
+                app.Settings.Update(_ => settings);
+            }
+
+            return new Fixture(app: app);
+        }
 
         public Window Show(SettingsTab tab)
         {
@@ -738,6 +994,28 @@ public sealed class SettingsScreenTests
         public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
 
         public override void SetLength(long value) => throw new NotSupportedException();
+    }
+
+    /// <summary>Records what is copied; <paramref name="available"/> false = no clipboard, <paramref name="error"/> =
+    /// another app holds it.</summary>
+    private sealed class RecordingClipboard(bool available = true, Exception? error = null) : ISettingsClipboard
+    {
+        public List<string> Texts { get; } = [];
+
+        public Task<bool> TrySetTextAsync(string text)
+        {
+            if (error is not null)
+            {
+                return Task.FromException<bool>(error);
+            }
+
+            if (available)
+            {
+                Texts.Add(text);
+            }
+
+            return Task.FromResult(available);
+        }
     }
 
     private sealed class FailingPicker(Exception error) : ISettingsFilePicker
