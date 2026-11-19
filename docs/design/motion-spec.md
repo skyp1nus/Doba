@@ -51,6 +51,8 @@
 | Згортання сайдбару | Кнопка в шапці сторінки | — | width 232→0 px, opacity 1→0 (і навпаки) | 340 ms E, opacity 220 ms |
 | Старт застосунку | Запуск | — | opacity 0→1, translateY 12→0 px | 520 ms, E |
 
+> Примітка: у фінальному дизайні сайдбар згортається не в 0, а в «рейку» 56 px з іконками (підписи згасають за 180 ms). Джерело істини для розмірів — `design-reference.dc.html`.
+
 **Точка зуму.** `transform-origin` — центр елемента, по якому клікнули, у відсотках від області контенту: `x = (rect.centerX − body.left) / body.width`, так само для y. Якщо кліку не було (перемикач, клавіатура), береться `50% 40%`.
 
 **Напрямок розділів.** Порядок: Inbox = 0, Today = 1, Calendar = 2, Settings = 3. Якщо новий індекс більший, `dir = +1` (новий екран виїжджає знизу), інакше `dir = −1`. Вхід стартує тільки після завершення виходу, а анімацію виходу треба скасувати перед входом, інакше вона тримає opacity 0.
@@ -231,11 +233,10 @@ public static class Motion
 }
 ```
 
-- **WinUI 3.** Composition API: `compositor.CreateCubicBezierEasingFunction(Motion.OutP1, Motion.OutP2)`, анімуй `Opacity`, `Offset`/`Translation`, `Scale` на `Visual` (`ElementCompositionPreview.GetElementVisual`). `CenterPoint` = точка кліку для зуму. Blur — через `GaussianBlurEffect` у `CompositionEffectBrush`; якщо це дорого, без нього можна обійтися.
-- **WPF.** `Storyboard` + `DoubleAnimation` з `KeySpline="0.22,1 0.36,1"` (через `SplineDoubleKeyFrame`), анімуй `RenderTransform` (`TranslateTransform`, `ScaleTransform` з `RenderTransformOrigin`) і `Opacity`, не `Margin`/`Width`. Виняток — згортання сайдбару (`Width` або `ColumnDefinition`).
-- **Послідовність секцій.** Спочатку вихід (130 ms), у `Completed` підміни контент, зупини анімацію виходу (щоб вона не тримала opacity 0), і тільки тоді запускай вхід. Новий клік під час анімації скасовує попередню.
-- **Барабан.** `ScrollViewer` з `VerticalSnapPointsType="MandatorySingle"` + `ItemsRepeater`, або власний контрол з інерцією. Фіксуй значення після 120 ms тиші в `ViewChanged` (`IsIntermediate == false`).
-- **Вимкнені анімації в Windows.** Якщо `UISettings.AnimationsEnabled == false` (Settings › Accessibility › Visual effects › Animation effects), усі тривалості = 0. Зміна кольору та прозорості лишається миттєвою.
+- **UI-фреймворк.** Оригінальна специфікація наводила приклади для WinUI 3 (Composition API) та WPF (Storyboard + KeySpline). Проєкт будується на Avalonia — ті самі принципи: анімуй `Opacity` і transform (translate/scale) на рівні композиції, а не `Margin`/`Width`; точка зуму = центр трансформації. Blur у зумі необов'язковий: якщо він дорогий, без нього можна обійтися.
+- **Послідовність секцій.** Спочатку вихід (130 ms), після завершення підміни контент, зупини анімацію виходу (щоб вона не тримала opacity 0), і тільки тоді запускай вхід. Новий клік під час анімації скасовує попередню.
+- **Барабан.** Скрол-контейнер з обов'язковим прилипанням до елемента або власний контрол з інерцією. Фіксуй значення після 120 ms тиші.
+- **Вимкнені анімації в Windows.** Якщо в системі вимкнено анімації (Settings › Accessibility › Visual effects › Animation effects), усі тривалості = 0. Зміна кольору та прозорості лишається миттєвою.
 - **Продуктивність.** Ціль 60 fps на екрані тижня з ~40 картками. Під час анімації контенту не перебудовуй візуальне дерево повторно.
 
 ### Чекліст приймання
