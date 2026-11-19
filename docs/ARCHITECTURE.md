@@ -355,9 +355,16 @@ Doba.exe: BridgeHost (pool threads) → Dispatcher.UIThread → ToolExecutor →
   Doba: every `tools/call` becomes one `BridgeClient.CallAsync` to the Doba that holds the folder's single-instance
   mutex. `tools/list` is static (`ToolCatalog.All`); the access level is checked by Doba per call.
 * **Pipe.** Name `Doba-<key>-mcp`, where `<key>` is `BridgeNames.InstanceKey(folder)` (the same key as the mutex
-  `Local\Doba-<key>`). ACL: the current user (ReadWrite, CreateNewInstance, Synchronize) and Deny NETWORK; the client
-  connects with `PipeOptions.CurrentUserOnly`. The host keeps one free listening instance, at most 8 connections and
-  1 MB per message. It exists only while Settings › Data › Claude access is on (`ClaudeAccessService`), never in demo.
+  `Local\Doba-<key>`). ACL: the current user (ReadWrite, CreateNewInstance, Synchronize) and Deny NETWORK; owner: the
+  token's default owner (`WindowsIdentity.Owner`: the user, or BUILTIN\Administrators when elevated), which is what
+  the client's `PipeOptions.CurrentUserOnly` compares, so an elevated pair connects and a mixed pair gets
+  `unauthorized`. A session's first instance, and one made while it has none open, uses `FirstPipeInstance`; any other
+  instance is checked for our owner after creation, and a foreign owner (the name was taken in a gap) stops the
+  session instead of serving on that pipe. After reading a request the host impersonates the client
+  (`RunAsClient`) and closes, unanswered, a connection whose user is not its own. The host keeps one free listening
+  instance, at most 8 connections and 1 MB per message (an oversize answer becomes a neutral `internal` error; change
+  results cut notes to 200 characters so an applied change is always answered as a success). It exists only while
+  Settings › Data › Claude access is on (`ClaudeAccessService`), never in demo.
   Without a pipe the client tells "access off" (the mutex exists; retried for 1 s while Doba starts) from "not running".
 * **Wire format.** UTF-8 JSON, one line each way per connection (`Wire/BridgeMessages.cs`, snake_case, source-generated):
   `{"protocol":1,"client":"Doba.Mcp 0.1.0","tool":"create_task","args":{…}}` →

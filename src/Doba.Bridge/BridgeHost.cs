@@ -13,10 +13,17 @@ namespace Doba.Bridge;
 /// request line and one response line; <c>handle</c> runs the request (in Doba: on the UI thread).
 /// </summary>
 /// <remarks>
-/// <para>The pipe's ACL allows only the current user (read/write, create instance, synchronize) and denies NETWORK, and
-/// its owner is the current user (what <see cref="PipeOptions.CurrentUserOnly"/> clients check). The first instance is
-/// created with <see cref="PipeOptions.FirstPipeInstance"/>, so <see cref="Start"/> fails rather than join a pipe some
-/// other process created under the same name.</para>
+/// <para>The pipe's ACL allows only the current user (read/write, create instance, synchronize) and denies NETWORK. Its
+/// owner is the token's default owner (<see cref="WindowsIdentity.Owner"/>), which is what
+/// <see cref="PipeOptions.CurrentUserOnly"/> clients compare with their own: the user's SID normally,
+/// BUILTIN\Administrators in an elevated token (or in any admin token with UAC off). So Doba and Doba.Mcp connect when
+/// both run elevated or both not, and a mixed pair is refused.</para>
+/// <para>The first instance of a session, and any instance made while the session has none open, is created with
+/// <see cref="PipeOptions.FirstPipeInstance"/>, so it fails rather than join a pipe some other process created under the
+/// same name. Every other instance joins ours and is checked after creation: if its owner is not ours, the name was
+/// taken by someone else in a gap, and the session stops (<see cref="IsListening"/> turns false) instead of serving on
+/// that pipe. Each connection is also checked by impersonating the client after its request line is read: a client that
+/// is not the current user is closed unanswered.</para>
 /// <para>A free listening instance is kept while fewer than <see cref="MaxConnections"/> connections are served: the next
 /// one is created before the connected one is served. At the limit, clients wait for a free instance.</para>
 /// <para>Nothing a client sends can stop the accept loop: every connection's errors end that connection only.</para>
@@ -28,6 +35,10 @@ public sealed class BridgeHost : IDisposable
 
     /// <summary>Largest request or response line, in bytes.</summary>
     public const int MaxMessageBytes = 1 << 20;
+
+    /// <summary>Sent instead of an answer larger than <see cref="MaxMessageBytes"/> (only reads can get there:
+    /// <see cref="ToolExecutor"/> keeps change results small).</summary>
+    public const string OversizeMessage = "Doba's answer is larger than 1 MB, so it was not sent.";
 
     /// <summary>How long a connected client has to send its request line.</summary>
     public static readonly TimeSpan ReadTimeout = TimeSpan.FromSeconds(10);
@@ -47,6 +58,8 @@ public sealed class BridgeHost : IDisposable
     private readonly Lock _gate = new();
     private Session? _session;
     private bool _disposed;
+    private SecurityIdentifier? _user;
+    private SecurityIdentifier? _owner;
 
     public BridgeHost(string pipeName, Func<BridgeRequest, CancellationToken, Task<BridgeResponse>> handle)
     {
@@ -56,7 +69,8 @@ public sealed class BridgeHost : IDisposable
         _handle = handle;
     }
 
-    /// <summary>True between <see cref="Start"/> and <see cref="Stop"/>.</summary>
+    /// <summary>True between <see cref="Start"/> and <see cref="Stop"/>, unless the session stopped itself because the
+    /// pipe name was taken by another owner meanwhile.</summary>
     public bool IsListening
     {
         get
@@ -67,6 +81,12 @@ public sealed class BridgeHost : IDisposable
             }
         }
     }
+
+    /// <summary>Tests: reads a joined pipe instance's owner instead of its security descriptor (null = unreadable).</summary>
+    internal Func<NamedPipeServerStream, SecurityIdentifier?>? InstanceOwnerReader { get; init; }
+
+    /// <summary>Tests: reads a connected client's user instead of impersonating it (null = unknown).</summary>
+    internal Func<NamedPipeServerStream, SecurityIdentifier?>? ClientUserReader { get; init; }
 
     /// <summary>Creates the pipe and starts accepting connections. Does nothing while already listening; may be called
     /// again after <see cref="Stop"/>.</summary>
@@ -88,6 +108,7 @@ public sealed class BridgeHost : IDisposable
                 return;
             }
 
+            (_user, _owner) = CurrentIdentity();
             _session = StartSession();
         }
     }
@@ -139,6 +160,21 @@ public sealed class BridgeHost : IDisposable
         return session;
     }
 
+    /// <summary>Stops <paramref name="session"/> for good because its pipe name was taken: a new instance would join
+    /// the other owner's pipe, so none is made until the next <see cref="Start"/> (which needs the name free).</summary>
+    private void Abandon(Session session)
+    {
+        lock (_gate)
+        {
+            if (ReferenceEquals(_session, session))
+            {
+                _session = null;
+            }
+        }
+
+        session.Stop();
+    }
+
     [SupportedOSPlatform("windows")]
     private async Task AcceptLoopAsync(Session session, NamedPipeServerStream? listening)
     {
@@ -159,9 +195,11 @@ public sealed class BridgeHost : IDisposable
                 }
                 catch (Exception e) when (e is OperationCanceledException or IOException or ObjectDisposedException)
                 {
-                    // Stopped, or a client connected and vanished at once: drop this instance and make another.
-                    session.Release(listening);
-                    listening = null;
+                    // Stopped, or a client connected and vanished at once: drop this instance and make another. The
+                    // replacement comes first, while the failed one still keeps the pipe name ours.
+                    var failed = listening;
+                    listening = !ct.IsCancellationRequested && session.Slots.Wait(0) ? TryCreate(session) : null;
+                    session.Release(failed);
                     continue;
                 }
 
@@ -223,18 +261,31 @@ public sealed class BridgeHost : IDisposable
         }
     }
 
-    /// <summary>A new tracked instance for a slot the caller holds; on failure the slot is given back and null returned.</summary>
+    /// <summary>A new tracked instance for a slot the caller holds; on failure the slot is given back and null returned.
+    /// With no instance of the session open the name may be free or someone else's, so the instance must be the first
+    /// one; otherwise it joins ours and its owner is checked (a mismatch abandons the session).</summary>
     [SupportedOSPlatform("windows")]
     private NamedPipeServerStream? TryCreate(Session session)
     {
+        var first = session.IsEmpty;
         NamedPipeServerStream instance;
         try
         {
-            instance = CreateInstance(firstInstance: false);
+            instance = CreateInstance(firstInstance: first);
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
+            // A handle that was just released can hold the name for a moment (a first instance then fails): the
+            // caller tries again after RetryDelay.
             session.Slots.Release();
+            return null;
+        }
+
+        if (!first && !IsOurs(instance))
+        {
+            DisposeQuietly(instance);
+            session.Slots.Release();
+            Abandon(session);
             return null;
         }
 
@@ -260,14 +311,70 @@ public sealed class BridgeHost : IDisposable
             outBufferSize: 0,
             CreateSecurity());
 
-    /// <summary>Allow the current user, deny NETWORK (remote clients), owner = the current user.</summary>
+    /// <summary>True when <paramref name="instance"/>'s owner is the one this host sets: an instance that joined a pipe
+    /// someone else created carries theirs (an owner cannot be set to another account without SeRestorePrivilege).</summary>
     [SupportedOSPlatform("windows")]
-    internal static PipeSecurity CreateSecurity()
+    private bool IsOurs(NamedPipeServerStream instance)
+    {
+        try
+        {
+            var owner = InstanceOwnerReader is { } read
+                ? read(instance)
+                : instance.GetAccessControl().GetOwner(typeof(SecurityIdentifier)) as SecurityIdentifier;
+            return owner is not null && _owner is not null && owner.Equals(_owner);
+        }
+        catch (Exception)
+        {
+            return false; // unreadable counts as not ours
+        }
+    }
+
+    /// <summary>True when the connected client runs as this host's user, read by impersonating it (which needs data
+    /// read from the pipe first). An anonymous client, or one whose token cannot be read, is not.</summary>
+    [SupportedOSPlatform("windows")]
+    private bool IsSameUser(NamedPipeServerStream stream)
+    {
+        try
+        {
+            SecurityIdentifier? client = null;
+            if (ClientUserReader is { } read)
+            {
+                client = read(stream);
+            }
+            else
+            {
+                stream.RunAsClient(() =>
+                {
+                    using var identity = WindowsIdentity.GetCurrent(TokenAccessLevels.Query);
+                    client = identity.User;
+                });
+            }
+
+            return client is not null && _user is not null && client.Equals(_user);
+        }
+        catch (Exception)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>The current token's user and its default owner (BUILTIN\Administrators when elevated).</summary>
+    [SupportedOSPlatform("windows")]
+    internal static (SecurityIdentifier User, SecurityIdentifier Owner) CurrentIdentity()
     {
         using var identity = WindowsIdentity.GetCurrent();
         var user = identity.User ?? throw new InvalidOperationException("The current user has no SID.");
+        return (user, identity.Owner ?? user);
+    }
+
+    /// <summary>Allow the current user, deny NETWORK (remote clients), owner = the token's default owner (what
+    /// <see cref="PipeOptions.CurrentUserOnly"/> clients compare with their <see cref="WindowsIdentity.Owner"/>).</summary>
+    [SupportedOSPlatform("windows")]
+    internal static PipeSecurity CreateSecurity()
+    {
+        var (user, owner) = CurrentIdentity();
         var security = new PipeSecurity();
-        security.SetOwner(user);
+        security.SetOwner(owner);
         security.AddAccessRule(new PipeAccessRule(user,
             PipeAccessRights.ReadWrite | PipeAccessRights.CreateNewInstance | PipeAccessRights.Synchronize,
             AccessControlType.Allow));
@@ -276,7 +383,8 @@ public sealed class BridgeHost : IDisposable
         return security;
     }
 
-    /// <summary>One connection: read the request line, run it, write the response line, close.</summary>
+    /// <summary>One connection: read the request line, check the client's user, run it, write the response line, close.</summary>
+    [SupportedOSPlatform("windows")]
     private async Task ServeAsync(Session session, NamedPipeServerStream stream)
     {
         try
@@ -287,7 +395,7 @@ public sealed class BridgeHost : IDisposable
             {
                 read.CancelAfter(ReadTimeout);
                 var (status, line) = await LineIO.ReadLineAsync(stream, MaxMessageBytes, read.Token).ConfigureAwait(false);
-                if (status == LineStatus.Empty)
+                if (status == LineStatus.Empty || !IsSameUser(stream))
                 {
                     return;
                 }
@@ -301,8 +409,7 @@ public sealed class BridgeHost : IDisposable
             var bytes = LineIO.ToLine(response, BridgeJsonContext.Default.BridgeResponse);
             if (bytes.Length > MaxMessageBytes + 1)
             {
-                bytes = LineIO.ToLine(BridgeResponse.Failure(BridgeErrorCodes.Internal,
-                    "The answer is larger than 1 MB; ask for fewer tasks (a smaller limit or a shorter range)."),
+                bytes = LineIO.ToLine(BridgeResponse.Failure(BridgeErrorCodes.Internal, OversizeMessage),
                     BridgeJsonContext.Default.BridgeResponse);
             }
 
@@ -372,6 +479,18 @@ public sealed class BridgeHost : IDisposable
         BridgeResponse.Failure(BridgeErrorCodes.Closing,
             "Doba is closing or Claude access was just turned off; nothing was changed. Try again once Doba is open with Claude access on.");
 
+    private static void DisposeQuietly(NamedPipeServerStream stream)
+    {
+        try
+        {
+            stream.Dispose();
+        }
+        catch (Exception)
+        {
+            // Closing a broken pipe can throw; the handle is gone either way.
+        }
+    }
+
     /// <summary>One Start…Stop period: its cancellation, its pipe instances and its connection slots.</summary>
     private sealed class Session : IDisposable
     {
@@ -385,6 +504,18 @@ public sealed class BridgeHost : IDisposable
         public CancellationToken Token { get; }
 
         public Session() => Token = _cts.Token;
+
+        /// <summary>No instance of this session is open: the pipe name may be free, or someone else's.</summary>
+        public bool IsEmpty
+        {
+            get
+            {
+                lock (_streams)
+                {
+                    return _streams.Count == 0;
+                }
+            }
+        }
 
         /// <summary>Adds an instance; false (the caller disposes it) once the session stopped.</summary>
         public bool Track(NamedPipeServerStream stream)
@@ -444,17 +575,5 @@ public sealed class BridgeHost : IDisposable
 
         /// <summary>Same as <see cref="Stop"/> (which disposes the cancellation source once cancelled).</summary>
         public void Dispose() => Stop();
-
-        private static void DisposeQuietly(NamedPipeServerStream stream)
-        {
-            try
-            {
-                stream.Dispose();
-            }
-            catch (Exception)
-            {
-                // Closing a broken pipe can throw; the handle is gone either way.
-            }
-        }
     }
 }

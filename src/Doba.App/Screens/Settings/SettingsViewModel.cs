@@ -25,6 +25,7 @@ public sealed partial class SettingsViewModel : ScreenViewModel
     private readonly SwitchRow _claudeRow;
     private readonly SegmentRow _claudeLevelRow;
     private readonly ButtonsRow _claudeConnectRow;
+    private readonly string _mcpExePath;
     private ThemeMode _theme;
 
     public SettingsViewModel(ScreenServices services)
@@ -33,11 +34,13 @@ public sealed partial class SettingsViewModel : ScreenViewModel
     }
 
     /// <summary>Rows read and write <paramref name="settings"/> (tests pass a recording wrapper of the app's service).</summary>
-    internal SettingsViewModel(ScreenServices services, ISettingsService settings)
+    /// <param name="mcpExePath">Doba.Mcp.exe for Connect Claude (default: <see cref="ClaudeConnect.McpExePath"/>).</param>
+    internal SettingsViewModel(ScreenServices services, ISettingsService settings, string? mcpExePath = null)
         : base(services)
     {
         ArgumentNullException.ThrowIfNull(settings);
         _settings = settings;
+        _mcpExePath = mcpExePath ?? ClaudeConnect.McpExePath;
         var app = services.App;
         var s = _settings;
 
@@ -50,11 +53,15 @@ public sealed partial class SettingsViewModel : ScreenViewModel
         _claudeLevelRow = SegmentRow.Create("claudeLevel", "Claude can", "Editing includes deleting tasks.", s,
             [(ClaudeAccessLevel.Read, "Read"), (ClaudeAccessLevel.ReadWrite, "Read & edit")],
             x => x.ClaudeAccessLevel, (x, v) => x with { ClaudeAccessLevel = v });
-        _claudeConnectRow = new ButtonsRow("claudeConnect", "Connect Claude", ClaudeConnect.McpExePath,
+        _claudeConnectRow = new ButtonsRow("claudeConnect", "Connect Claude", _mcpExePath,
             [new RowButton("Copy for Claude Desktop", CopyForDesktopCommand), new RowButton("Copy for Claude Code", CopyForCodeCommand)])
         {
             MonoDescription = true,
         };
+        if (!File.Exists(_mcpExePath))
+        {
+            ShowClaudeMessage(McpMissing, isError: true);
+        }
 
         _tabs = new Dictionary<SettingsTab, IReadOnlyList<SettingsRow>>
         {
@@ -146,10 +153,14 @@ public sealed partial class SettingsViewModel : ScreenViewModel
     internal const string ClaudeDemoDescription = "Not available in demo mode.";
 
     /// <summary>Shown under Connect Claude after "Copy for Claude Desktop".</summary>
-    internal const string CopiedForDesktop = "Copied — paste it into Claude Desktop's config";
+    internal const string CopiedForDesktop =
+        "Copied — add the \"doba\" entry to \"mcpServers\" in Claude Desktop's config (Settings › Developer › Edit Config)";
 
-    /// <summary>Shown under Connect Claude after "Copy for Claude Code".</summary>
-    internal const string CopiedForCode = "Copied — run it in a terminal";
+    /// <summary>Shown under Connect Claude after "Copy for Claude Code" (the command is quoted for PowerShell).</summary>
+    internal const string CopiedForCode = "Copied — run it in PowerShell";
+
+    /// <summary>Shown under Connect Claude (and instead of copying) when Doba.Mcp.exe is not beside Doba.exe.</summary>
+    internal const string McpMissing = "Doba.Mcp.exe is missing next to Doba.exe, so Claude cannot start it. Reinstall Doba.";
 
     /// <summary>Shown under Connect Claude when another app holds the clipboard.</summary>
     internal const string CopyFailed = "Could not copy: the clipboard is busy. Try again.";
@@ -179,10 +190,10 @@ public sealed partial class SettingsViewModel : ScreenViewModel
     public ISettingsClipboard? Clipboard { get; set; }
 
     /// <summary>What "Copy for Claude Desktop" copies (for this Doba.Mcp.exe and this data folder).</summary>
-    public string ClaudeDesktopConfig => ClaudeConnect.DesktopConfig(ClaudeConnect.McpExePath, DataFolder, BridgeNames.DefaultDataFolder());
+    public string ClaudeDesktopConfig => ClaudeConnect.DesktopConfig(_mcpExePath, DataFolder, BridgeNames.DefaultDataFolder());
 
     /// <summary>What "Copy for Claude Code" copies.</summary>
-    public string ClaudeCodeCommand => ClaudeConnect.CodeCommand(ClaudeConnect.McpExePath, DataFolder, BridgeNames.DefaultDataFolder());
+    public string ClaudeCodeCommand => ClaudeConnect.CodeCommand(_mcpExePath, DataFolder, BridgeNames.DefaultDataFolder());
 
     /// <summary>The rows of any tab (tests, and the shell if it pre-renders tabs).</summary>
     public IReadOnlyList<SettingsRow> RowsOf(SettingsTab tab) => _tabs[tab];
@@ -364,6 +375,12 @@ public sealed partial class SettingsViewModel : ScreenViewModel
     {
         if (Clipboard is not { } clipboard)
         {
+            return;
+        }
+
+        if (!File.Exists(_mcpExePath))
+        {
+            ShowClaudeMessage(McpMissing, isError: true);
             return;
         }
 

@@ -14,8 +14,8 @@ namespace Doba.App;
 /// <param name="ExitAfterFirstFrame"><c>--exit-after-first-frame</c>: quit once the first frame is on screen.</param>
 /// <param name="Demo"><c>--demo</c>: DemoData and the fixed demo clock; nothing read from or written to disk, no
 /// autostart, no global hotkey.</param>
-/// <param name="DataFolder"><c>--data &lt;folder&gt;</c>: this data folder instead of %LOCALAPPDATA%\Doba (the
-/// registry is never touched).</param>
+/// <param name="DataFolder"><c>--data &lt;folder&gt;</c>: this data folder, as a full path, instead of
+/// %LOCALAPPDATA%\Doba (the registry is never touched).</param>
 /// <param name="Minimized"><c>--minimized</c> (what "Launch at startup" passes): start hidden in the tray, or minimised
 /// when the tray is off.</param>
 /// <param name="SelfCheck"><c>--selfcheck</c>: run the Windows platform diagnostics on a demo window and exit.</param>
@@ -84,7 +84,13 @@ internal sealed record StartupFlags(bool Perf, bool ExitAfterFirstFrame, bool De
                         return false;
                     }
 
-                    parsed = parsed with { DataFolder = folder };
+                    if (FullFolder(folder) is not { } full)
+                    {
+                        error = $"--data needs a valid folder path (got '{folder}')";
+                        return false;
+                    }
+
+                    parsed = parsed with { DataFolder = full };
                     break;
                 case "--perf-idle-seconds":
                     if (!TryValue(args, ref i, out var idle, out error))
@@ -147,6 +153,21 @@ internal sealed record StartupFlags(bool Perf, bool ExitAfterFirstFrame, bool De
     /// <summary>The data folder this launch opens (the default %LOCALAPPDATA%\Doba unless <c>--data</c>); null for
     /// <c>--demo</c> and <c>--selfcheck</c>, which read nothing from disk.</summary>
     public string? DataFolderInUse => Demo || SelfCheck ? null : DataFolder ?? DataLocation.Default().Folder;
+
+    /// <summary>The <c>--data</c> folder as a full path without a trailing separator, resolved once against the
+    /// current directory at launch (a file dialog can change that directory later); null when it is not a valid path.
+    /// The single-instance mutex, the database, the Claude pipe name and Settings all use this one value.</summary>
+    private static string? FullFolder(string folder)
+    {
+        try
+        {
+            return Path.TrimEndingDirectorySeparator(Path.GetFullPath(folder));
+        }
+        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            return null;
+        }
+    }
 
     private static bool TryCount(string text, int max, out int value) =>
         int.TryParse(text, NumberStyles.None, CultureInfo.InvariantCulture, out value) && value >= 1 && value <= max;

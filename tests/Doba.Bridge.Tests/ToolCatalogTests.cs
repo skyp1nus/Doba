@@ -5,7 +5,8 @@ namespace Doba.Bridge.Tests;
 
 public sealed class ToolCatalogTests
 {
-    // name, read-only, destructive, idempotent (the plan's table).
+    // name, read-only, destructive, idempotent (the plan's table; set_task_done and move_task overwrite data, so they are
+    // destructive in MCP's sense: not only additive).
     public static TheoryData<string, bool, bool, bool> Expected => new()
     {
         { "get_today", true, false, true },
@@ -16,8 +17,8 @@ public sealed class ToolCatalogTests
         { "get_task", true, false, true },
         { "create_task", false, false, false },
         { "update_task", false, true, true },
-        { "set_task_done", false, false, true },
-        { "move_task", false, false, true },
+        { "set_task_done", false, true, true },
+        { "move_task", false, true, true },
         { "delete_task", false, true, false },
     };
 

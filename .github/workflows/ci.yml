@@ -46,6 +46,14 @@ jobs:
       - name: Publish Doba.Mcp NativeAOT win-x64
         run: dotnet publish src/Doba.Mcp -c Release -r win-x64 -o artifacts/doba-win-x64 -warnaserror
 
+      # Data › Connect Claude points at this file: the publish fails without it.
+      - name: Check Doba.Mcp.exe is next to Doba.exe
+        shell: pwsh
+        run: |
+          foreach ($exe in "artifacts/doba-win-x64/Doba.exe", "artifacts/doba-win-x64/Doba.Mcp.exe") {
+            if (-not (Test-Path $exe)) { throw "$exe was not published" }
+          }
+
       # The two steps below run the real executable with demo data. They are informational:
       # a hosted runner has no GPU, no Mica and may have no notification area, so their
       # results are printed but do not fail the job. Neither touches real data or the Run key.

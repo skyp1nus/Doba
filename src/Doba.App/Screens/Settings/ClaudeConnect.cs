@@ -69,15 +69,25 @@ public static class ClaudeConnect
     }
 
     /// <summary>
-    /// The Claude Code command: <c>claude mcp add --scope user doba -- "&lt;exe&gt;"</c>, plus
-    /// <c> --data "&lt;folder&gt;"</c> for a non-default folder (an .exe needs no <c>cmd /c</c>).
+    /// The Claude Code command, for PowerShell (Windows' default terminal): <c>claude mcp add --scope user doba --
+    /// '&lt;exe&gt;'</c>, plus <c> --data '&lt;folder&gt;'</c> for a non-default folder (an .exe needs no
+    /// <c>cmd /c</c>). Single quotes keep <c>$</c>, backticks, parentheses and <c>%</c> literal; a quote in a path is
+    /// doubled. A drive root is written as <c>D:\.</c>, so no argument ends in a backslash (which would escape the
+    /// closing quote once PowerShell re-quotes it for the native command line).
     /// </summary>
     public static string CodeCommand(string exePath, string dataFolder, string defaultFolder)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(exePath);
         var custom = CustomFolder(dataFolder, defaultFolder);
         var command = "claude mcp add --scope user " + ServerName + " -- " + Quote(exePath);
-        return custom is null ? command : command + " --data " + Quote(custom);
+        if (custom is null)
+        {
+            return command;
+        }
+
+        // Only a root keeps its separator after Normalize; "D:\." is the same folder to Doba.Mcp (GetFullPath).
+        var folder = Path.EndsInDirectorySeparator(custom) ? custom + "." : custom;
+        return command + " --data " + Quote(folder);
     }
 
     private static string? CustomFolder(string dataFolder, string defaultFolder) =>
@@ -85,5 +95,20 @@ public static class ClaudeConnect
 
     private static string Normalize(string path) => Path.TrimEndingDirectorySeparator(Path.GetFullPath(path));
 
-    private static string Quote(string value) => "\"" + value + "\"";
+    /// <summary>A PowerShell single-quoted string. PowerShell also takes the typographic single quotes (‘ ’ ‚ ‛) as
+    /// quotes, so they are doubled too.</summary>
+    private static string Quote(string value)
+    {
+        var quoted = new StringBuilder(value.Length + 2).Append('\'');
+        foreach (var c in value)
+        {
+            quoted.Append(c);
+            if (c is '\'' or '\u2018' or '\u2019' or '\u201A' or '\u201B')
+            {
+                quoted.Append(c);
+            }
+        }
+
+        return quoted.Append('\'').ToString();
+    }
 }

@@ -42,6 +42,16 @@ public class TaskQueriesTests
     }
 
     [Fact]
+    public void In_range_at_the_first_day_of_the_calendar_is_empty_with_spans_in_the_store()
+    {
+        var store = Store(T(1, D, D.AddDays(2)), T(2, D));
+
+        Assert.Empty(TaskQueries.InRange(store, DateOnly.MinValue, DateOnly.MinValue.AddDays(5), includeDone: true));
+        Assert.Empty(store.SpansOverlapping(DateOnly.MinValue, DateOnly.MinValue));
+        Assert.Equal([1L], store.SpansOverlapping(DateOnly.MinValue, D).Select(t => t.Id));
+    }
+
+    [Fact]
     public void In_range_of_one_day_and_an_inverted_range()
     {
         var store = Store(T(1, D), T(2, D.AddDays(1)));

@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text;
 using System.Text.Json;
 using Doba.Bridge.Internal;
 using Doba.Bridge.Wire;
@@ -16,11 +17,18 @@ namespace Doba.Bridge;
 /// read), arguments (names, nulls, types, ranges), then the task id (<see cref="BridgeErrorCodes.NotFound"/>) and the
 /// editor (<see cref="BridgeErrorCodes.Conflict"/>). A change is exactly one store mutation (Add, Update or Delete),
 /// or none when it would change nothing.</para>
-/// <para>Every result carries <c>today</c>; lists carry notes cut to <see cref="ToolCatalog.ListNotesLength"/>
-/// characters (<c>notes_truncated: true</c>).</para>
+/// <para>Every result carries <c>today</c>; lists and change results carry notes cut to
+/// <see cref="ToolCatalog.ListNotesLength"/> characters (<c>notes_truncated: true</c>), get_task to
+/// <see cref="ToolCatalog.TaskNotesLength"/>. get_today's lists hold at most <see cref="ToolCatalog.TodayGroupLimit"/>
+/// tasks each. A change that was applied is always answered as a success: if even the cut task is too large to send
+/// (a huge title), the result holds only its id (<c>task_too_large: true</c>).</para>
 /// </remarks>
 public static class ToolExecutor
 {
+    /// <summary>Largest change result, in UTF-8 bytes: well under <see cref="BridgeHost.MaxMessageBytes"/>, so the host
+    /// never replaces the answer to an applied change with an error.</summary>
+    internal const int MaxChangeResultBytes = BridgeHost.MaxMessageBytes / 2;
+
     /// <summary>The <see cref="BridgeErrorCodes.ReadOnly"/> message.</summary>
     public const string ReadOnlyMessage =
         "Doba lets Claude read tasks only. To allow changes: Doba → Settings → Data → Claude can → Read & edit.";
@@ -114,8 +122,13 @@ public static class ToolExecutor
                 foreach (var (key, name) in s_todayGroups)
                 {
                     var group = model.Groups.FirstOrDefault(g => g.Key == key);
-                    var tasks = group is null ? Enumerable.Empty<TaskItem>() : group.Items.Select(r => store.Get(r.Id)).OfType<TaskItem>();
-                    TaskJson.WriteTasks(w, name, tasks, ToolCatalog.ListNotesLength);
+                    List<TaskItem> tasks = group is null ? [] : group.Items.Select(r => store.Get(r.Id)).OfType<TaskItem>().ToList();
+                    TaskJson.WriteTasks(w, name, tasks.Take(ToolCatalog.TodayGroupLimit), ToolCatalog.ListNotesLength);
+                    if (tasks.Count > ToolCatalog.TodayGroupLimit)
+                    {
+                        w.WriteBoolean(name + "_truncated", true);
+                        w.WriteNumber(name + "_total", tasks.Count);
+                    }
                 }
             });
         }
@@ -214,7 +227,7 @@ public static class ToolExecutor
             return Ok(w =>
             {
                 w.WritePropertyName("task");
-                TaskJson.WriteTask(w, found);
+                TaskJson.WriteTask(w, found, ToolCatalog.TaskNotesLength);
             });
         }
 
@@ -287,11 +300,7 @@ public static class ToolExecutor
             }
 
             _context.Store.Delete(existing.Id);
-            return Ok(w =>
-            {
-                w.WritePropertyName("deleted");
-                TaskJson.WriteTask(w, existing);
-            });
+            return Applied("deleted", existing, changed: null);
         }
 
         // ---------- helpers ----------
@@ -363,12 +372,40 @@ public static class ToolExecutor
             return Changed(_context.Store.Get(existing.Id) ?? task, true);
         }
 
-        private BridgeResponse Changed(TaskItem task, bool changed) => Ok(w =>
+        private BridgeResponse Changed(TaskItem task, bool changed) => Applied("task", task, changed);
+
+        /// <summary>The result of a change: the task under <paramref name="name"/> with cut notes (plus <c>changed</c>
+        /// when given). Always a success: when even that is over <see cref="MaxChangeResultBytes"/> (a huge title), only
+        /// the id is sent, with <c>task_too_large: true</c>.</summary>
+        private BridgeResponse Applied(string name, TaskItem task, bool? changed)
         {
-            w.WritePropertyName("task");
-            TaskJson.WriteTask(w, task);
-            w.WriteBoolean("changed", changed);
-        });
+            var full = Ok(w =>
+            {
+                w.WritePropertyName(name);
+                TaskJson.WriteTask(w, task, ToolCatalog.ListNotesLength);
+                if (changed is { } c)
+                {
+                    w.WriteBoolean("changed", c);
+                }
+            });
+            if (Encoding.UTF8.GetByteCount(full.Result!.Value.GetRawText()) <= MaxChangeResultBytes)
+            {
+                return full;
+            }
+
+            return Ok(w =>
+            {
+                w.WriteStartObject(name);
+                w.WriteNumber("id", task.Id);
+                w.WriteEndObject();
+                if (changed is { } c)
+                {
+                    w.WriteBoolean("changed", c);
+                }
+
+                w.WriteBoolean("task_too_large", true);
+            });
+        }
 
         private BridgeResponse PageResult(IReadOnlyList<TaskItem> all, int limit, int offset, Action<Utf8JsonWriter>? head) =>
             Ok(w =>

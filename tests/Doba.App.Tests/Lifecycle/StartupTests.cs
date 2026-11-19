@@ -72,6 +72,28 @@ public class StartupTests
         Assert.Contains("--data", error, StringComparison.Ordinal);
     }
 
+    // Resolved once, at launch: a file dialog (Export/Import) can change the current directory later, and the mutex,
+    // database, Claude pipe name and Settings › Connect Claude must all keep naming the same folder.
+    [Theory]
+    [InlineData(@"artifacts\manual")]
+    [InlineData(@".\artifacts\manual\")]
+    [InlineData(@"artifacts\x\..\manual")]
+    public void A_relative_data_folder_becomes_a_full_path_at_parse_time(string folder)
+    {
+        var expected = Path.Combine(Environment.CurrentDirectory, "artifacts", "manual");
+
+        Assert.Equal(expected, StartupFlags.Parse(["--data", folder]).DataFolder);
+        Assert.Equal(@"D:\x", StartupFlags.Parse(["--data", @"D:\x\"]).DataFolder);
+    }
+
+    [Fact]
+    public void A_data_folder_that_is_not_a_path_is_an_error()
+    {
+        Assert.False(StartupFlags.TryParse(["--data", "D:\\a\0b"], out var flags, out var error));
+        Assert.Contains("--data needs a valid folder path", error, StringComparison.Ordinal);
+        Assert.Equal(StartupFlags.None, flags);
+    }
+
     [Theory]
     [InlineData("", true)]
     [InlineData("--minimized", true)]

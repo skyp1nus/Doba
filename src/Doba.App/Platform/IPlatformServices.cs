@@ -101,7 +101,7 @@ public interface IClaudeBridge : IDisposable
 {
     bool IsSupported { get; }
 
-    /// <summary>True between <see cref="Start"/> and <see cref="Stop"/>.</summary>
+    /// <summary>True between <see cref="Start"/> and <see cref="Stop"/>, unless the pipe stopped itself (its name was taken).</summary>
     bool IsRunning { get; }
 
     /// <summary>

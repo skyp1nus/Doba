@@ -22,17 +22,21 @@ public sealed class ClaudeBridge : IClaudeBridge
 
     public bool IsSupported => true;
 
-    public bool IsRunning => _host is not null;
+    /// <summary>The host listens. False again once it stopped itself (its pipe name was taken meanwhile), so the next
+    /// settings change starts a new one, which fails while the name stays taken.</summary>
+    public bool IsRunning => _host is { IsListening: true };
 
     public void Start(string dataFolder, Func<BridgeRequest, BridgeResponse> execute)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(dataFolder);
         ArgumentNullException.ThrowIfNull(execute);
         ObjectDisposedException.ThrowIf(_disposed, this);
-        if (_host is not null)
+        if (IsRunning)
         {
             return;
         }
+
+        Stop(); // a host that stopped itself
 
         var gate = new Gate();
         var host = new BridgeHost(BridgeNames.PipeName(dataFolder), (request, ct) => DispatchAsync(request, gate, execute, ct));

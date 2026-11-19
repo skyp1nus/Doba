@@ -31,8 +31,15 @@ public static class ToolCatalog
 
     public const int MaxSearchLimit = 50;
 
-    /// <summary>Notes longer than this are cut in list results (<c>notes_truncated: true</c>).</summary>
+    /// <summary>Notes longer than this are cut in list and change results (<c>notes_truncated: true</c>).</summary>
     public const int ListNotesLength = 200;
+
+    /// <summary>Notes longer than this are cut in <see cref="GetTask"/>'s result, which keeps it well under the
+    /// bridge's 1 MB answer limit.</summary>
+    public const int TaskNotesLength = 100_000;
+
+    /// <summary>Most tasks in each of <see cref="GetToday"/>'s lists.</summary>
+    public const int TodayGroupLimit = 50;
 
     /// <summary>Sent once per session (initialize / server/discover); the model reads it as context.</summary>
     public const string ServerInstructions =
@@ -47,6 +54,8 @@ public static class ToolCatalog
         "Dates are YYYY-MM-DD in the user's local calendar, times are HH:mm (24-hour), priority is " +
         "none|low|medium|high|asap.";
 
+    private const string ChangeResult = " Notes in the result are cut to 200 characters (notes_truncated: true).";
+
     private const string TaskShape =
         "A task is {id, title, notes, date, end, days, time, duration_minutes, priority, tag, done}; date is null " +
         "for Inbox tasks, end is the last day of a multi-day task.";
@@ -57,7 +66,9 @@ public static class ToolCatalog
             "Returns today's date (YYYY-MM-DD), weekday, local time (HH:mm), UTC offset and first day of the week, " +
             "plus the tasks Doba shows on Today: overdue open tasks, multi-day tasks covering today, today's timed and " +
             "untimed tasks, and today's completed ones. Call this first so that words like 'tomorrow' or 'next Monday' can be " +
-            "turned into YYYY-MM-DD. " + TaskShape,
+            "turned into YYYY-MM-DD. Each list holds at most 50 tasks; when one is cut, <list>_truncated is true and " +
+            "<list>_total gives its size: use list_tasks (overdue tasks are dated) or list_inbox for the rest. Notes are " +
+            "cut to 200 characters. " + TaskShape,
             """{"type":"object","properties":{},"additionalProperties":false}""",
             ReadOnly: true, Destructive: false, Idempotent: true),
 
@@ -113,8 +124,8 @@ public static class ToolCatalog
             ReadOnly: true, Destructive: false, Idempotent: true),
 
         new(GetTask, "Get a task",
-            "Returns one task by id, with its full notes. Ids come from get_today, list_tasks, list_inbox or " +
-            "search_tasks. " + TaskShape,
+            "Returns one task by id, with its full notes (up to 100,000 characters; notes_truncated: true beyond). Ids " +
+            "come from get_today, list_tasks, list_inbox or search_tasks. " + TaskShape,
             """
             {"type":"object","properties":{
               "id":{"type":"integer","minimum":1}
@@ -128,7 +139,7 @@ public static class ToolCatalog
             "'time' and 'duration_minutes' (0-1440, 0 = unspecified) are only for a single-day task with a date. " +
             "Without 'priority' the user's default priority is used. 'tag' must be one of the existing tags " +
             "(see list_tags); only existing tags are accepted, new ones cannot be created here. " + Formats +
-            " Needs the 'Read & edit' access level.",
+            " Needs the 'Read & edit' access level." + ChangeResult,
             """
             {"type":"object","properties":{
               "title":{"type":"string","minLength":1},
@@ -148,7 +159,7 @@ public static class ToolCatalog
             "'time', 'tag' or 'date' (clearing the date moves the task to the Inbox). null is not accepted as a " +
             "value. The same rules as create_task apply: 'days' 1-14, 'time' only for a single-day task with a " +
             "date, 'duration_minutes' 0-1440, only existing tags. " + Formats + " Fails while the task is open in " +
-            "Doba's editor. Returns the updated task. Needs the 'Read & edit' access level.",
+            "Doba's editor. Returns the updated task. Needs the 'Read & edit' access level." + ChangeResult,
             """
             {"type":"object","properties":{
               "id":{"type":"integer","minimum":1},
@@ -168,30 +179,35 @@ public static class ToolCatalog
 
         new(SetTaskDone, "Mark a task done or not done",
             "Marks one task as done (done: true) or not done (done: false). Nothing changes if it already is. " +
-            "Fails while the task is open in Doba's editor. Returns the task. Needs the 'Read & edit' access level.",
+            "Fails while the task is open in Doba's editor. Returns the task. Needs the 'Read & edit' access level." +
+            ChangeResult,
             """
             {"type":"object","properties":{
               "id":{"type":"integer","minimum":1},
               "done":{"type":"boolean"}
             },"required":["id","done"],"additionalProperties":false}
             """,
-            ReadOnly: false, Destructive: false, Idempotent: true),
+            // Destructive in MCP's sense (not only additive: it overwrites the done state), like update_task.
+            ReadOnly: false, Destructive: true, Idempotent: true),
 
         new(MoveTask, "Move a task to another day",
             "Moves one task to another day. 'date' is YYYY-MM-DD, or \"inbox\" to make the task undated. A " +
             "multi-day task moves whole and keeps its length; moving to the Inbox removes its time and span. Fails " +
-            "while the task is open in Doba's editor. Returns the task. Needs the 'Read & edit' access level.",
+            "while the task is open in Doba's editor. Returns the task. Needs the 'Read & edit' access level." +
+            ChangeResult,
             """
             {"type":"object","properties":{
               "id":{"type":"integer","minimum":1},
               "date":{"type":"string","pattern":"^(\\d{4}-\\d{2}-\\d{2}|inbox)$","description":"YYYY-MM-DD, or \"inbox\"."}
             },"required":["id","date"],"additionalProperties":false}
             """,
-            ReadOnly: false, Destructive: false, Idempotent: true),
+            // Destructive: it overwrites the date, and moving to the Inbox drops the time and span for good.
+            ReadOnly: false, Destructive: true, Idempotent: true),
 
         new(DeleteTask, "Delete a task",
             "Deletes one task by id, permanently. Only delete what the user asked to delete. Fails while the task is " +
-            "open in Doba's editor. Needs the 'Read & edit' access level.",
+            "open in Doba's editor. Needs the 'Read & edit' access level. Returns the deleted task; its notes are cut " +
+            "to 200 characters.",
             """
             {"type":"object","properties":{
               "id":{"type":"integer","minimum":1}

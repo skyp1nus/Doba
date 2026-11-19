@@ -28,15 +28,15 @@ request for its result. That run (pull request #1, 2026-11-19) was green: Releas
 | §10 CI on `windows-latest` builds, tests, publishes NativeAOT, uploads | Workflow in `.github/workflows/ci.yml`; its steps were run locally in the same configuration (Release build, Release tests, AOT publish, `--perf`, `--selfcheck`). It runs once, on the pull request into `main`. |
 | §10 README and HANDOFF | This file and `README.md`. |
 
-**Tests.** 1347 tests, all green on `feature/mcp` with the Claude (MCP) feature (Debug, `dotnet test`, 2026-11-19;
+**Tests.** 1377 tests, all green on `feature/mcp` with the Claude (MCP) feature (Debug, `dotnet test`, 2026-11-19;
 the `dev → main` run above had 1088, before the feature):
 
 | Project | Tests | Covers |
 |---|---|---|
-| `Doba.Core.Tests` | 286 | store, date math, projections (incl. the week lane cap, year fit, labels), navigation, dialog rules, carry-over, Claude's task edits (`TaskEdits`, `TaskQueries`), golden fixtures, projection timing |
+| `Doba.Core.Tests` | 287 | store, date math, projections (incl. the week lane cap, year fit, labels), navigation, dialog rules, carry-over, Claude's task edits (`TaskEdits`, `TaskQueries`), golden fixtures, projection timing |
 | `Doba.Storage.Tests` | 129 | database, write-behind writer incl. failure handling and transient retry, backup, JSON import / export (Claude access never in the file), load timing |
-| `Doba.Bridge.Tests` | 160 | tool executor per tool and rule, tool catalog, wire format, pipe host / client and its ACL, architecture rules, `Doba.Mcp.exe` end to end over stdio (also green against the published NativeAOT exe with `DOBA_MCP_EXE`) |
-| `Doba.App.Tests` | 772 | headless UI: screens, shell, overlays, keyboard, motion, lifecycle, platform plan, single instance, Claude bridge on a real pipe and end to end through `Doba.Mcp.exe`, Settings › Data Claude rows, screenshots, performance |
+| `Doba.Bridge.Tests` | 173 | tool executor per tool and rule, tool catalog, wire format, pipe host / client and its ACL, architecture rules, `Doba.Mcp.exe` end to end over stdio (also green against the published NativeAOT exe with `DOBA_MCP_EXE`) |
+| `Doba.App.Tests` | 788 | headless UI: screens, shell, overlays, keyboard, motion, lifecycle, platform plan, single instance, Claude bridge on a real pipe and end to end through `Doba.Mcp.exe`, Settings › Data Claude rows, screenshots, performance |
 
 The counts are from the test runner's own summary of the final run.
 **Gates used for every package and fix.** `dotnet build -warnaserror` (0 warnings; trim and AOT analyzers on),
@@ -267,7 +267,7 @@ Write the outcome next to each item.
     quit from the tray, start again. Expected: + › Connectors lists `doba` with 11 tools; "what is on today?" calls
     `get_today` (Claude asks first) and answers with the copy's tasks. Record which config file Edit Config opened and
     where the `mcp*.log` files are, so README can name them.
-43. Claude Code: Copy for Claude Code, run the command in a terminal. Expected: `claude mcp list` shows `doba` connected;
+43. Claude Code: Copy for Claude Code, run the command in PowerShell. Expected: `claude mcp list` shows `doba` connected;
     in a session `/mcp` lists its tools; asking for today's tasks works.
 44. Level: with Read, ask Claude to create a task. Expected: refused with the "Read & edit" hint, nothing changes in
     Doba. Switch to Read & edit and ask again: the task appears in Doba at once (no restart, no refresh). Open that task

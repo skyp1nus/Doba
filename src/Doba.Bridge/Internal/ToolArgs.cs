@@ -58,7 +58,8 @@ internal sealed class ToolArgs
         return e.GetString();
     }
 
-    /// <summary>A whole number in [<paramref name="min"/>, <paramref name="max"/>].</summary>
+    /// <summary>A whole number in [<paramref name="min"/>, <paramref name="max"/>]. Written as 3, 3.0 or 1e2 alike (JSON
+    /// Schema's "integer" accepts any number with no fraction); 2.5 and strings are refused.</summary>
     public long? GetInteger(string name, long min, long max)
     {
         if (!TryGet(name, out var e))
@@ -66,7 +67,7 @@ internal sealed class ToolArgs
             return null;
         }
 
-        if (e.ValueKind != JsonValueKind.Number || !e.TryGetInt64(out var value))
+        if (e.ValueKind != JsonValueKind.Number || !TryGetWhole(e, out var value))
         {
             return FailNull<long>($"'{name}' must be a whole number{(max == long.MaxValue ? ", " : " ")}{Range(min, max)}.");
         }
@@ -77,6 +78,24 @@ internal sealed class ToolArgs
         }
 
         return value;
+    }
+
+    private static bool TryGetWhole(JsonElement e, out long value)
+    {
+        if (e.TryGetInt64(out value))
+        {
+            return true;
+        }
+
+        // 3.0, 1e2: TryGetInt64 wants the plain integer form. Out of decimal's range (1e400) fails here too.
+        if (e.TryGetDecimal(out var d) && d == decimal.Truncate(d) && d >= long.MinValue && d <= long.MaxValue)
+        {
+            value = (long)d;
+            return true;
+        }
+
+        value = 0;
+        return false;
     }
 
     public bool? GetBoolean(string name)

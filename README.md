@@ -183,7 +183,9 @@ updates at once and the change is saved exactly like one you made yourself.
 - **Claude access** — the switch. While it is off Doba does not listen at all (the pipe does not exist).
 - **Claude can** — **Read** (the default) or **Read & edit**. Editing includes deleting tasks. The level is checked on
   every call, so a change here applies to the next call.
-- **Connect Claude** — copies what each client needs (below). The row shows the path of `Doba.Mcp.exe`.
+- **Connect Claude** — copies what each client needs (below). The row shows the path of `Doba.Mcp.exe`; if that file
+  is missing next to `Doba.exe`, the row says so and copies nothing. A plain `dotnet build` / `dotnet run` copies the
+  development `Doba.Mcp` next to `Doba.exe` too.
 
 **Doba must be running.** The server never starts Doba; when it is not running Claude gets an error that says so.
 Two reasons: Claude Desktop from the Microsoft Store runs as a packaged (MSIX) app, and a Doba started by it would write
@@ -212,13 +214,16 @@ place than the file you edited; Edit Config opens the one it uses. Claude Deskto
 
 ### Connect Claude Code
 
-1. In Doba: turn on **Claude access**, then **Copy for Claude Code**. The clipboard holds a command like:
+1. In Doba: turn on **Claude access**, then **Copy for Claude Code**. The clipboard holds a command for PowerShell like:
 
    ```powershell
-   claude mcp add --scope user doba -- "C:\…\Doba.Mcp.exe" --data "D:\…\my-data"
+   claude mcp add --scope user doba -- 'C:\…\Doba.Mcp.exe' --data 'D:\…\my-data'
    ```
 
-2. Run it in a terminal. `claude mcp list` then shows `doba` as connected; inside a session `/mcp` shows its state and
+   Single quotes keep `$`, backticks and `%` in a path literal (a `'` in a path is doubled); a drive root is written
+   as `D:\.`.
+
+2. Run it in PowerShell. `claude mcp list` then shows `doba` as connected; inside a session `/mcp` shows its state and
    tools.
 3. Claude Code asks before each tool call. To stop being asked for some tools, allow them with `/permissions`, using
    names like `mcp__doba__get_today` or `mcp__doba__list_tasks`.
@@ -230,12 +235,12 @@ priorities `none | low | medium | high | asap`.
 
 | Tool | Level | What it does |
 |---|---|---|
-| `get_today` | Read | Today's date, weekday, time, UTC offset and week start, and the tasks on the Today screen. |
+| `get_today` | Read | Today's date, weekday, time, UTC offset and week start, and the tasks on the Today screen (at most 50 per list; a cut list says its total). |
 | `list_tasks` | Read | Tasks from `from` to `to` (at most 92 days), done ones only with `include_done`, paged. |
 | `list_inbox` | Read | Undated (Inbox) tasks in Inbox order, paged. |
 | `search_tasks` | Read | Tasks whose title contains the text (titles only), at most 50. |
 | `list_tags` | Read | Your tags and how many open tasks each has. |
-| `get_task` | Read | One task by id, with its full notes (lists cut notes at 200 characters). |
+| `get_task` | Read | One task by id, with its full notes up to 100,000 characters (lists and the answers to changes cut notes at 200). |
 | `create_task` | Read & edit | A new task; without `date` it goes to the Inbox. Only existing tags. |
 | `update_task` | Read & edit | Changes the given fields; a missing field stays as it is, `clear: [...]` empties `notes`, `time`, `tag` or `date`. |
 | `set_task_done` | Read & edit | Marks a task done or not done. |

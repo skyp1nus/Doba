@@ -681,16 +681,61 @@ public sealed class SettingsScreenTests
         }
 
         Assert.Contains(data.Path.Replace(@"\", @"\\", StringComparison.Ordinal), desktop, StringComparison.Ordinal);
-        Assert.Equal("Copied — paste it into Claude Desktop's config", connect.Message);
+        // A merge into an existing config, not a paste of the whole object over it.
+        const string desktopMessage =
+            "Copied — add the \"doba\" entry to \"mcpServers\" in Claude Desktop's config (Settings › Developer › Edit Config)";
+        Assert.Equal(desktopMessage, connect.Message);
         Assert.False(connect.IsError);
         window.UpdateLayout();
-        Assert.Contains("Copied — paste it into Claude Desktop's config", VisibleTexts(f.View));
+        Assert.Contains(desktopMessage, VisibleTexts(f.View));
 
         Click(window, ClaudeButtons(f.View).Single(b => b.Content as string == "Copy for Claude Code"));
         await f.Vm.CopyForCodeCommand.ExecutionTask!;
-        Assert.Equal("claude mcp add --scope user doba -- \"" + ClaudeConnect.McpExePath + "\" --data \"" + data.Path + "\"", clipboard.Texts[1]);
-        Assert.Equal("Copied — run it in a terminal", connect.Message);
+        Assert.Equal("claude mcp add --scope user doba -- '" + ClaudeConnect.McpExePath + "' --data '" + data.Path + "'", clipboard.Texts[1]);
+        Assert.Equal("Copied — run it in PowerShell", connect.Message);
         window.Close();
+    }
+
+    [AvaloniaFact]
+    public async Task A_missing_doba_mcp_exe_is_said_under_connect_and_nothing_is_copied()
+    {
+        using var data = new TempFolder();
+        var missing = Path.Combine(data.Path, "no-such-folder", ClaudeConnect.McpExeName);
+        using var f = Fixture.OnDisk(data, AppSettings.Default with { ClaudeAccess = true }, mcpExePath: missing);
+        var clipboard = new RecordingClipboard();
+        f.Vm.Clipboard = clipboard;
+        var window = f.Show(SettingsTab.Data);
+        var connect = (ButtonsRow)f.Vm.RowsOf(SettingsTab.Data)[5];
+
+        Assert.Equal(missing, connect.Description);
+        Assert.Equal("Doba.Mcp.exe is missing next to Doba.exe, so Claude cannot start it. Reinstall Doba.", connect.Message);
+        Assert.True(connect.IsError);
+        window.UpdateLayout();
+        Assert.Contains(SettingsViewModel.McpMissing, VisibleTexts(f.View));
+
+        await f.Vm.CopyForDesktopCommand.ExecuteAsync(null);
+        await f.Vm.CopyForCodeCommand.ExecuteAsync(null);
+        Assert.Empty(clipboard.Texts);
+        Assert.Equal(SettingsViewModel.McpMissing, connect.Message);
+        Assert.True(connect.IsError);
+
+        // The file appears (e.g. after a repair): copying works again.
+        Directory.CreateDirectory(Path.GetDirectoryName(missing)!);
+        await File.WriteAllBytesAsync(missing, [], TestContext.Current.CancellationToken);
+        await f.Vm.CopyForCodeCommand.ExecuteAsync(null);
+        Assert.Equal("claude mcp add --scope user doba -- '" + missing + "' --data '" + data.Path + "'", Assert.Single(clipboard.Texts));
+        Assert.Equal(SettingsViewModel.CopiedForCode, connect.Message);
+        Assert.False(connect.IsError);
+        window.Close();
+    }
+
+    [AvaloniaFact]
+    public void The_tests_have_doba_mcp_exe_next_to_the_app_as_a_build_has()
+    {
+        Assert.True(File.Exists(ClaudeConnect.McpExePath), "CopyNextToApp.targets did not copy " + ClaudeConnect.McpExePath);
+        using var f = new Fixture();
+        var connect = (ButtonsRow)f.Vm.RowsOf(SettingsTab.Data)[5];
+        Assert.Equal(string.Empty, connect.Message);
     }
 
     [AvaloniaFact]
@@ -879,14 +924,15 @@ public sealed class SettingsScreenTests
         /// <param name="app">A database-backed app (its platform is used as is); null builds the demo app on recording
         /// autostart and shell.</param>
         /// <param name="settings">The demo app's settings (default: the defaults).</param>
-        public Fixture(bool autostartSupported = true, AppServices? app = null, AppSettings? settings = null)
+        /// <param name="mcpExePath">Doba.Mcp.exe for Connect Claude (default: the one next to the app).</param>
+        public Fixture(bool autostartSupported = true, AppServices? app = null, AppSettings? settings = null, string? mcpExePath = null)
         {
             Autostart = new RecordingAutostart(autostartSupported);
             Shell = new RecordingShell();
             App = app ?? AppServices.CreateDemo(settings, PlatformServices.NoOp() with { Autostart = Autostart, Shell = Shell });
             var actions = new TaskActions(App.Store, App.Settings, App.Platform.Shell, App.Clock);
             Services = new ScreenServices(App, actions, new RecordingCommands(), () => null);
-            Vm = new SettingsViewModel(Services);
+            Vm = mcpExePath is null ? new SettingsViewModel(Services) : new SettingsViewModel(Services, App.Settings, mcpExePath);
             View = new SettingsView { DataContext = Vm };
             new ThemeService(Application.Current!).Apply(App.Settings.Current);
         }
@@ -904,7 +950,7 @@ public sealed class SettingsScreenTests
         public SettingsView View { get; }
 
         /// <summary>Outside demo mode: a database in <paramref name="folder"/>, the demo clock, no-op platform.</summary>
-        public static Fixture OnDisk(TempFolder folder, AppSettings? settings = null)
+        public static Fixture OnDisk(TempFolder folder, AppSettings? settings = null, string? mcpExePath = null)
         {
             var app = AppServices.Open(folder.Location, DemoData.CreateClock(), PlatformServices.NoOp());
             if (settings is not null)
@@ -912,7 +958,7 @@ public sealed class SettingsScreenTests
                 app.Settings.Update(_ => settings);
             }
 
-            return new Fixture(app: app);
+            return new Fixture(app: app, mcpExePath: mcpExePath);
         }
 
         public Window Show(SettingsTab tab)

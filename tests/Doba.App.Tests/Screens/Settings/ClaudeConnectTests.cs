@@ -58,16 +58,43 @@ public class ClaudeConnectTests
     [Fact]
     public void Code_command_for_the_default_folder()
     {
-        Assert.Equal(@"claude mcp add --scope user doba -- ""C:\Program Files\Doba\Doba.Mcp.exe""",
+        Assert.Equal(@"claude mcp add --scope user doba -- 'C:\Program Files\Doba\Doba.Mcp.exe'",
             ClaudeConnect.CodeCommand(Exe, Default, Default));
     }
 
     [Fact]
     public void Code_command_for_another_folder()
     {
-        Assert.Equal(@"claude mcp add --scope user doba -- ""C:\Program Files\Doba\Doba.Mcp.exe"" --data ""D:\dev\Doba\artifacts\manual""",
+        Assert.Equal(@"claude mcp add --scope user doba -- 'C:\Program Files\Doba\Doba.Mcp.exe' --data 'D:\dev\Doba\artifacts\manual'",
             ClaudeConnect.CodeCommand(Exe, Custom, Default));
     }
+
+    /// <summary>The command is for PowerShell: single quotes keep $, backticks, parentheses and % literal (inside double
+    /// quotes "$2026" would expand to nothing); a quote inside is doubled, typographic ones too.</summary>
+    [Theory]
+    [InlineData(@"C:\Users\a$2026\Doba.Mcp.exe", @"'C:\Users\a$2026\Doba.Mcp.exe'")]
+    [InlineData(@"C:\Users\a`b\Doba.Mcp.exe", @"'C:\Users\a`b\Doba.Mcp.exe'")]
+    [InlineData(@"C:\Users\O'Brien\Doba.Mcp.exe", @"'C:\Users\O''Brien\Doba.Mcp.exe'")]
+    [InlineData(@"C:\Users\O’Brien\Doba.Mcp.exe", @"'C:\Users\O’’Brien\Doba.Mcp.exe'")]
+    [InlineData(@"C:\Program Files (x86)\%TEMP%\Doba.Mcp.exe", @"'C:\Program Files (x86)\%TEMP%\Doba.Mcp.exe'")]
+    public void Code_command_quotes_the_exe_for_powershell(string exe, string quoted) =>
+        Assert.Equal("claude mcp add --scope user doba -- " + quoted, ClaudeConnect.CodeCommand(exe, Default, Default));
+
+    [Theory]
+    [InlineData(@"D:\data $x", @" --data 'D:\data $x'")]
+    [InlineData(@"D:\it's `here` 100%", @" --data 'D:\it''s `here` 100%'")]
+    [InlineData(@"D:\", @" --data 'D:\.'")]
+    [InlineData(@"E:\\", @" --data 'E:\.'")]
+    public void Code_command_quotes_the_data_folder_and_no_argument_ends_in_a_backslash(string folder, string tail)
+    {
+        var command = ClaudeConnect.CodeCommand(Exe, folder, Default);
+        Assert.EndsWith(tail, command, StringComparison.Ordinal);
+        Assert.DoesNotContain(@"\'", command, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_root_folder_written_with_a_dot_is_the_same_folder_to_doba_mcp() =>
+        Assert.Equal(BridgeNames.PipeName(@"D:\"), BridgeNames.PipeName(@"D:\."));
 
     [Theory]
     [InlineData(@"C:\Users\someone\AppData\Local\Doba", true)]
@@ -86,7 +113,7 @@ public class ClaudeConnectTests
     [Fact]
     public void A_custom_folder_is_passed_as_a_full_path_without_a_trailing_separator()
     {
-        Assert.EndsWith(@" --data ""D:\dev\Doba\artifacts\manual""", ClaudeConnect.CodeCommand(Exe, Custom + @"\", Default), StringComparison.Ordinal);
+        Assert.EndsWith(@" --data 'D:\dev\Doba\artifacts\manual'", ClaudeConnect.CodeCommand(Exe, Custom + @"\", Default), StringComparison.Ordinal);
     }
 
     [Fact]

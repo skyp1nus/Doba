@@ -490,4 +490,103 @@ public sealed class ToolExecutorTests
         Assert.Equal(1, _persistence.Deletes);
         Fails(ToolCatalog.DeleteTask, """{"id":1}""", BridgeErrorCodes.NotFound);
     }
+
+    // ---------- numbers written as 3.0, far dates, size limits ----------
+
+    [Fact]
+    public void Whole_numbers_written_with_a_fraction_or_exponent_are_accepted()
+    {
+        Seed(T(1, "One", date: Today));
+        var created = Ok(ToolCatalog.CreateTask, """{"title":"Trip","date":"2026-11-20","days":3.0,"priority":"low"}""");
+        Assert.Equal(3, created.GetProperty("task").GetProperty("days").GetInt32());
+        Assert.Equal(Today.AddDays(3), _store.Get(created.GetProperty("task").GetProperty("id").GetInt64())!.End);
+
+        Assert.Equal([1L], Ids(Ok(ToolCatalog.ListTasks, """{"from":"2026-11-19","limit":1e2,"offset":0.0}""")));
+        Assert.Equal("One", Ok(ToolCatalog.GetTask, """{"id":1.00}""").GetProperty("task").GetProperty("title").GetString());
+        Assert.Equal(1, Ok(ToolCatalog.SearchTasks, """{"query":"one","limit":5E0}""").GetProperty("tasks").GetArrayLength());
+    }
+
+    [Theory]
+    [InlineData("""{"title":"x","date":"2026-11-20","days":2.5}""", "'days' must be a whole number")]
+    [InlineData("""{"title":"x","date":"2026-11-20","days":1e400}""", "'days' must be a whole number")]
+    [InlineData("""{"title":"x","date":"2026-11-20","days":1.5e1}""", "'days' must be from 1 to 14; got 15")]
+    [InlineData("""{"title":"x","date":"2026-11-20","duration_minutes":-0.5}""", "'duration_minutes' must be a whole number")]
+    public void Fractions_and_out_of_range_numbers_are_still_refused(string args, string expected)
+    {
+        Assert.Contains(expected, Fails(ToolCatalog.CreateTask, args, BridgeErrorCodes.InvalidArgs).Message, StringComparison.Ordinal);
+        Assert.Empty(_events);
+    }
+
+    [Fact]
+    public void List_tasks_from_the_first_day_of_the_calendar_is_an_empty_list()
+    {
+        Seed(T(1, "Trip", date: Today, end: Today.AddDays(2)));
+        var r = Ok(ToolCatalog.ListTasks, """{"from":"0001-01-01","to":"0001-01-05","include_done":true}""");
+        Assert.Empty(Ids(r));
+        Assert.Equal(0, r.GetProperty("total").GetInt32());
+    }
+
+    [Fact]
+    public void Get_today_cuts_each_list_at_fifty_and_says_how_many_there_are()
+    {
+        var overdue = Enumerable.Range(1, ToolCatalog.TodayGroupLimit + 10).Select(i => T(i, "Old " + i, date: Today.AddDays(-1)));
+        Seed([.. overdue, T(100, "Read", date: Today)]);
+        var r = Ok(ToolCatalog.GetToday);
+
+        Assert.Equal(ToolCatalog.TodayGroupLimit, r.GetProperty("overdue").GetArrayLength());
+        Assert.True(r.GetProperty("overdue_truncated").GetBoolean());
+        Assert.Equal(ToolCatalog.TodayGroupLimit + 10, r.GetProperty("overdue_total").GetInt32());
+        Assert.Equal([100L], Ids(r, "anytime"));
+        Assert.False(r.TryGetProperty("anytime_truncated", out _));
+        Assert.False(r.TryGetProperty("anytime_total", out _));
+        // The clock comes first, before any list.
+        Assert.Equal(["today", "weekday", "now", "utc_offset", "week_start"], r.EnumerateObject().Take(5).Select(p => p.Name));
+    }
+
+    [Fact]
+    public void A_change_to_a_task_with_huge_notes_answers_with_cut_notes_and_get_task_cuts_too()
+    {
+        var huge = new string('n', BridgeHost.MaxMessageBytes + 1000);
+        Seed(T(1, "Big", date: Today, notes: huge));
+
+        var updated = Ok(ToolCatalog.UpdateTask, """{"id":1,"priority":"high"}""").GetProperty("task");
+        Assert.Equal(ToolCatalog.ListNotesLength, updated.GetProperty("notes").GetString()!.Length);
+        Assert.True(updated.GetProperty("notes_truncated").GetBoolean());
+        Assert.Equal(Priority.High, _store.Get(1)!.Priority);
+        Assert.Equal(huge, _store.Get(1)!.Notes); // only the answer is cut
+
+        foreach (var (tool, args) in new[]
+        {
+            (ToolCatalog.SetTaskDone, """{"id":1,"done":true}"""),
+            (ToolCatalog.MoveTask, """{"id":1,"date":"2026-11-25"}"""),
+        })
+        {
+            var task = Ok(tool, args).GetProperty("task");
+            Assert.True(task.GetProperty("notes_truncated").GetBoolean());
+        }
+
+        var got = Ok(ToolCatalog.GetTask, """{"id":1}""").GetProperty("task");
+        Assert.Equal(ToolCatalog.TaskNotesLength, got.GetProperty("notes").GetString()!.Length);
+        Assert.True(got.GetProperty("notes_truncated").GetBoolean());
+
+        var deleted = Ok(ToolCatalog.DeleteTask, """{"id":1}""").GetProperty("deleted");
+        Assert.Equal(ToolCatalog.ListNotesLength, deleted.GetProperty("notes").GetString()!.Length);
+        Assert.Null(_store.Get(1));
+    }
+
+    [Fact]
+    public void A_change_whose_task_is_too_large_to_send_is_still_a_success()
+    {
+        var title = new string('t', BridgeHost.MaxMessageBytes);
+        Seed(T(1, title, date: Today));
+
+        var r = Ok(ToolCatalog.SetTaskDone, """{"id":1,"done":true}""");
+
+        Assert.True(r.GetProperty("changed").GetBoolean());
+        Assert.True(r.GetProperty("task_too_large").GetBoolean());
+        Assert.Equal(["id"], r.GetProperty("task").EnumerateObject().Select(p => p.Name));
+        Assert.Equal(1, r.GetProperty("task").GetProperty("id").GetInt64());
+        Assert.True(_store.Get(1)!.Done);
+        Assert.True(System.Text.Encoding.UTF8.GetByteCount(r.GetRawText()) < BridgeHost.MaxMessageBytes);
+    }
 }

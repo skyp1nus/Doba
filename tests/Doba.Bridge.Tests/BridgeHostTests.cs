@@ -299,7 +299,9 @@ public sealed class BridgeHostTests
         var security = pipe.GetAccessControl();
         using var identity = WindowsIdentity.GetCurrent();
         var user = identity.User!;
-        Assert.Equal(user, security.GetOwner(typeof(SecurityIdentifier)));
+        // The token's default owner, which CurrentUserOnly clients compare with theirs (Administrators when elevated).
+        Assert.Equal(identity.Owner, security.GetOwner(typeof(SecurityIdentifier)));
+        Assert.Equal((user, identity.Owner!), BridgeHost.CurrentIdentity());
 
         var rules = security.GetAccessRules(true, true, typeof(SecurityIdentifier)).Cast<PipeAccessRule>().ToList();
         var allows = rules.Where(r => r.AccessControlType == AccessControlType.Allow).ToList();
@@ -325,6 +327,114 @@ public sealed class BridgeHostTests
         Assert.Equal(BridgeErrorCodes.Unauthorized, r.Error!.Code);
         Assert.Equal(BridgeClient.UnauthorizedMessage, r.Error.Message);
         Assert.False(waiting.IsCompleted);
+    }
+
+    // ---- pipe-name squatting and client identity (seams stand in for another account) -----------------------------
+
+    [SupportedOSPlatform("windows")]
+    private static SecurityIdentifier Stranger() => new(WellKnownSidType.WorldSid, null);
+
+    private static Task<BridgeResponse> Answer(BridgeRequest request, CancellationToken ct, ref int requests)
+    {
+        Interlocked.Increment(ref requests);
+        using var doc = JsonDocument.Parse("""{"answered":true}""");
+        return Task.FromResult(BridgeResponse.Success(doc.RootElement.Clone()));
+    }
+
+    [Fact]
+    [SupportedOSPlatform("windows")]
+    public async Task A_joined_instance_with_another_owner_stops_the_host_instead_of_serving_on_it()
+    {
+        using var folder = new TempDataFolder();
+        var requests = 0;
+        using var host = new BridgeHost(BridgeNames.PipeName(folder.Path), (r, ct) => Answer(r, ct, ref requests))
+        {
+            // Every instance after the first looks as if it joined a pipe someone else created under the name.
+            InstanceOwnerReader = _ => Stranger(),
+        };
+        host.Start();
+        Assert.True(host.IsListening);
+
+        var r = await Call(folder.Path, ToolCatalog.GetToday);
+
+        Assert.False(r.Ok);
+        await Wait.UntilAsync(() => !host.IsListening, "the host to stop");
+        Assert.Equal(0, Volatile.Read(ref requests)); // the connection was closed, not served
+        Assert.Equal(BridgeErrorCodes.NotRunning, (await Call(folder.Path, ToolCatalog.GetToday)).Error!.Code);
+
+        // Start needs the name free again (FirstPipeInstance) and then serves as before.
+        host.Start();
+        Assert.True(host.IsListening);
+    }
+
+    [Fact]
+    [SupportedOSPlatform("windows")]
+    public async Task Instances_with_our_owner_keep_the_host_listening()
+    {
+        using var folder = new TempDataFolder();
+        var requests = 0;
+        var checks = 0;
+        using var host = new BridgeHost(BridgeNames.PipeName(folder.Path), (r, ct) => Answer(r, ct, ref requests))
+        {
+            InstanceOwnerReader = pipe =>
+            {
+                Interlocked.Increment(ref checks);
+                return (SecurityIdentifier?)pipe.GetAccessControl().GetOwner(typeof(SecurityIdentifier));
+            },
+        };
+        host.Start();
+
+        for (var i = 0; i < 3; i++)
+        {
+            Assert.True((await Call(folder.Path, ToolCatalog.GetToday)).Ok);
+        }
+
+        Assert.True(host.IsListening);
+        Assert.Equal(3, Volatile.Read(ref requests));
+        Assert.True(Volatile.Read(ref checks) >= 3, "every instance after the first is checked");
+    }
+
+    [Fact]
+    [SupportedOSPlatform("windows")]
+    public async Task A_client_of_another_user_is_closed_unanswered_and_the_host_goes_on()
+    {
+        using var folder = new TempDataFolder();
+        var requests = 0;
+        var stranger = true;
+        using var host = new BridgeHost(BridgeNames.PipeName(folder.Path), (r, ct) => Answer(r, ct, ref requests))
+        {
+            ClientUserReader = _ => Volatile.Read(ref stranger) ? Stranger() : BridgeHost.CurrentIdentity().User,
+        };
+        host.Start();
+
+        var refused = await Call(folder.Path, ToolCatalog.GetToday);
+        Assert.Equal(BridgeErrorCodes.Internal, refused.Error!.Code);
+        Assert.Equal(BridgeClient.ClosedMessage, refused.Error.Message);
+        Assert.Equal(0, Volatile.Read(ref requests));
+        Assert.True(host.IsListening);
+
+        Volatile.Write(ref stranger, false);
+        Assert.True((await Call(folder.Path, ToolCatalog.GetToday)).Ok);
+        Assert.Equal(1, Volatile.Read(ref requests));
+    }
+
+    [Fact]
+    public async Task An_answer_over_one_megabyte_is_replaced_with_a_neutral_error()
+    {
+        using var folder = new TempDataFolder();
+        var big = new string('x', BridgeHost.MaxMessageBytes);
+        using var host = new BridgeHost(BridgeNames.PipeName(folder.Path), (_, _) =>
+        {
+            using var doc = JsonDocument.Parse("\"" + big + "\"");
+            return Task.FromResult(BridgeResponse.Success(doc.RootElement.Clone()));
+        });
+        host.Start();
+
+        var r = await Call(folder.Path, ToolCatalog.GetToday);
+
+        Assert.Equal(BridgeErrorCodes.Internal, r.Error!.Code);
+        Assert.Equal(BridgeHost.OversizeMessage, r.Error.Message);
+        Assert.DoesNotContain("limit", r.Error.Message, StringComparison.Ordinal);
     }
 
     /// <summary>A pipe owned by the current user whose ACL denies the user read/write: what a pipe of Doba running as
