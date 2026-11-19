@@ -9,6 +9,9 @@ public enum Density { Comfortable, Compact }
 /// <summary>Screen shown when the app starts ("Open on launch").</summary>
 public enum LaunchView { Today, Week, Inbox }
 
+/// <summary>What Claude may do with the tasks through the MCP server (Settings → Data → "Claude can").</summary>
+public enum ClaudeAccessLevel { Read, ReadWrite }
+
 /// <summary>All user settings. Defaults match the design prototype.</summary>
 public sealed record AppSettings
 {
@@ -39,6 +42,12 @@ public sealed record AppSettings
     public bool KeepInTray { get; init; } = true;
 
     public bool DailyBackup { get; init; } = true;
+
+    /// <summary>Claude Desktop / Claude Code may reach the tasks through Doba.Mcp (the bridge pipe exists only while on).</summary>
+    public bool ClaudeAccess { get; init; }
+
+    /// <summary>Read only, or read and edit (which includes deleting). Checked on every request.</summary>
+    public ClaudeAccessLevel ClaudeAccessLevel { get; init; } = ClaudeAccessLevel.Read;
 
     // The sidebar's collapsed state is not a setting: it is kept in memory only (DECISIONS "Sidebar collapsed state").
 

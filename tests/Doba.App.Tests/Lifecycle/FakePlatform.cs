@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using Doba.App.Platform;
+using Doba.Bridge.Wire;
 
 namespace Doba.App.Tests.Lifecycle;
 
@@ -115,7 +116,60 @@ internal sealed class FakeTray(bool supported = true) : ITrayIcon
     }
 }
 
-/// <summary>The four fakes bundled as <see cref="PlatformServices"/> (the shell integration stays a no-op).</summary>
+/// <summary>
+/// A Claude bridge that only records: no pipe. <see cref="Execute"/> is what the app handed to the last
+/// <see cref="Start"/>; <see cref="OnStart"/> / <see cref="OnStop"/> let a test look at the app at that moment.
+/// </summary>
+internal sealed class FakeBridge(bool supported = true) : IClaudeBridge
+{
+    public List<string> Starts { get; } = [];
+
+    public int Stops { get; private set; }
+
+    public bool IsDisposed { get; private set; }
+
+    public Func<BridgeRequest, BridgeResponse>? Execute { get; private set; }
+
+    public Action? OnStart { get; set; }
+
+    public Action? OnStop { get; set; }
+
+    public bool IsSupported => supported;
+
+    public bool IsRunning { get; private set; }
+
+    public void Start(string dataFolder, Func<BridgeRequest, BridgeResponse> execute)
+    {
+        if (IsRunning)
+        {
+            return;
+        }
+
+        OnStart?.Invoke(); // may throw, like a pipe that cannot be created
+        Starts.Add(dataFolder);
+        Execute = execute;
+        IsRunning = true;
+    }
+
+    public void Stop()
+    {
+        Stops++;
+        if (IsRunning)
+        {
+            OnStop?.Invoke();
+        }
+
+        IsRunning = false;
+    }
+
+    public void Dispose()
+    {
+        IsDisposed = true;
+        IsRunning = false;
+    }
+}
+
+/// <summary>The five fakes bundled as <see cref="PlatformServices"/> (the shell integration stays a no-op).</summary>
 internal sealed class FakePlatform
 {
     public FakeAutostart Autostart { get; init; } = new();
@@ -126,11 +180,14 @@ internal sealed class FakePlatform
 
     public FakeTray Tray { get; init; } = new();
 
+    public FakeBridge Bridge { get; init; } = new();
+
     public PlatformServices Services => PlatformServices.NoOp() with
     {
         Autostart = Autostart,
         Hotkey = Hotkey,
         Preferences = Preferences,
         Tray = Tray,
+        Bridge = Bridge,
     };
 }

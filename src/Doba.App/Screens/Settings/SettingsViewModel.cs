@@ -1,8 +1,10 @@
 using System.Diagnostics;
 using System.Globalization;
+using System.Runtime.InteropServices;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Doba.App.Services;
+using Doba.Bridge;
 using Doba.Core.Model;
 using Doba.Core.Navigation;
 using Doba.Storage;
@@ -20,6 +22,10 @@ public sealed partial class SettingsViewModel : ScreenViewModel
     private readonly ISettingsService _settings;
     private readonly IReadOnlyDictionary<SettingsTab, IReadOnlyList<SettingsRow>> _tabs;
     private readonly ButtonsRow _transferRow;
+    private readonly SwitchRow _claudeRow;
+    private readonly SegmentRow _claudeLevelRow;
+    private readonly ButtonsRow _claudeConnectRow;
+    private readonly string _mcpExePath;
     private ThemeMode _theme;
 
     public SettingsViewModel(ScreenServices services)
@@ -28,16 +34,34 @@ public sealed partial class SettingsViewModel : ScreenViewModel
     }
 
     /// <summary>Rows read and write <paramref name="settings"/> (tests pass a recording wrapper of the app's service).</summary>
-    internal SettingsViewModel(ScreenServices services, ISettingsService settings)
+    /// <param name="mcpExePath">Doba.Mcp.exe for Connect Claude (default: <see cref="ClaudeConnect.McpExePath"/>).</param>
+    internal SettingsViewModel(ScreenServices services, ISettingsService settings, string? mcpExePath = null)
         : base(services)
     {
         ArgumentNullException.ThrowIfNull(settings);
         _settings = settings;
+        _mcpExePath = mcpExePath ?? ClaudeConnect.McpExePath;
         var app = services.App;
         var s = _settings;
 
         _transferRow = new ButtonsRow("io", "Export & import", "Move your tasks as a single JSON file.",
             [new RowButton("Export", ExportCommand), new RowButton("Import", ImportCommand)]);
+
+        // Claude (MCP): the switch only writes the setting; ClaudeAccessService opens and closes the bridge pipe.
+        _claudeRow = new SwitchRow("claude", "Claude access", app.IsDemo ? ClaudeDemoDescription : ClaudeDescription, s,
+            x => x.ClaudeAccess, (x, v) => x with { ClaudeAccess = v });
+        _claudeLevelRow = SegmentRow.Create("claudeLevel", "Claude can", "Editing includes deleting tasks.", s,
+            [(ClaudeAccessLevel.Read, "Read"), (ClaudeAccessLevel.ReadWrite, "Read & edit")],
+            x => x.ClaudeAccessLevel, (x, v) => x with { ClaudeAccessLevel = v });
+        _claudeConnectRow = new ButtonsRow("claudeConnect", "Connect Claude", _mcpExePath,
+            [new RowButton("Copy for Claude Desktop", CopyForDesktopCommand), new RowButton("Copy for Claude Code", CopyForCodeCommand)])
+        {
+            MonoDescription = true,
+        };
+        if (!File.Exists(_mcpExePath))
+        {
+            ShowClaudeMessage(McpMissing, isError: true);
+        }
 
         _tabs = new Dictionary<SettingsTab, IReadOnlyList<SettingsRow>>
         {
@@ -84,11 +108,15 @@ public sealed partial class SettingsViewModel : ScreenViewModel
                 new SwitchRow("backup", "Daily backup", "Keeps the last 7 days of backups next to your data.", s,
                     x => x.DailyBackup, (x, v) => x with { DailyBackup = v }),
                 _transferRow,
+                _claudeRow,
+                _claudeLevelRow,
+                _claudeConnectRow,
             ],
             [SettingsTab.Shortcuts] = [],
         };
 
         Rows = _tabs[SettingsTab.Appearance];
+        SyncClaudeRows(_settings.Current);
         _theme = app.Settings.Current.Theme;
         if (_theme == ThemeMode.System)
         {
@@ -113,7 +141,29 @@ public sealed partial class SettingsViewModel : ScreenViewModel
     ];
 
     /// <summary>The Data tab's footnote.</summary>
-    public static string DataFootnote => "Everything is stored locally on this PC. There is no account and no sync between devices yet.";
+    public static string DataFootnote =>
+        "Everything is stored locally on this PC. There is no account and no sync between devices yet. " +
+        "Claude sees your tasks only while Claude access is on.";
+
+    /// <summary>Data › Claude access, normally.</summary>
+    internal const string ClaudeDescription =
+        "Let Claude Desktop and Claude Code see your tasks through MCP. Tasks Claude reads are sent to Anthropic.";
+
+    /// <summary>Data › Claude access in demo mode (there is no data folder for Claude to reach).</summary>
+    internal const string ClaudeDemoDescription = "Not available in demo mode.";
+
+    /// <summary>Shown under Connect Claude after "Copy for Claude Desktop".</summary>
+    internal const string CopiedForDesktop =
+        "Copied — add the \"doba\" entry to \"mcpServers\" in Claude Desktop's config (Settings › Developer › Edit Config)";
+
+    /// <summary>Shown under Connect Claude after "Copy for Claude Code" (the command is quoted for PowerShell).</summary>
+    internal const string CopiedForCode = "Copied — run it in PowerShell";
+
+    /// <summary>Shown under Connect Claude (and instead of copying) when Doba.Mcp.exe is not beside Doba.exe.</summary>
+    internal const string McpMissing = "Doba.Mcp.exe is missing next to Doba.exe, so Claude cannot start it. Reinstall Doba.";
+
+    /// <summary>Shown under Connect Claude when another app holds the clipboard.</summary>
+    internal const string CopyFailed = "Could not copy: the clipboard is busy. Try again.";
 
     /// <summary>The tab whose content is shown (from <see cref="ScreenViewModel.State"/>).</summary>
     [ObservableProperty]
@@ -135,6 +185,15 @@ public sealed partial class SettingsViewModel : ScreenViewModel
 
     /// <summary>Supplies export/import streams; the view sets the system pickers when it is attached.</summary>
     public ISettingsFilePicker? FilePicker { get; set; }
+
+    /// <summary>Takes the Connect Claude texts; the view sets the window's clipboard when it is attached.</summary>
+    public ISettingsClipboard? Clipboard { get; set; }
+
+    /// <summary>What "Copy for Claude Desktop" copies (for this Doba.Mcp.exe and this data folder).</summary>
+    public string ClaudeDesktopConfig => ClaudeConnect.DesktopConfig(_mcpExePath, DataFolder, BridgeNames.DefaultDataFolder());
+
+    /// <summary>What "Copy for Claude Code" copies.</summary>
+    public string ClaudeCodeCommand => ClaudeConnect.CodeCommand(_mcpExePath, DataFolder, BridgeNames.DefaultDataFolder());
 
     /// <summary>The rows of any tab (tests, and the shell if it pre-renders tabs).</summary>
     public IReadOnlyList<SettingsRow> RowsOf(SettingsTab tab) => _tabs[tab];
@@ -217,7 +276,9 @@ public sealed partial class SettingsViewModel : ScreenViewModel
         try
         {
             app.Store.ReplaceAll(data.Tasks, data.Tags);
-            _settings.Update(_ => data.Settings); // AppLifecycle reconciles the Run entry with "Launch at startup"
+            // AppLifecycle reconciles the Run entry with "Launch at startup". Claude access is not in an export, and
+            // the current values are kept: a file can never turn it on (or off).
+            _settings.Update(cur => data.Settings with { ClaudeAccess = cur.ClaudeAccess, ClaudeAccessLevel = cur.ClaudeAccessLevel });
             await app.FlushAsync().ConfigureAwait(true);
         }
         finally
@@ -304,6 +365,50 @@ public sealed partial class SettingsViewModel : ScreenViewModel
         }
     }
 
+    [RelayCommand]
+    private Task CopyForDesktop() => CopyAsync(ClaudeDesktopConfig, CopiedForDesktop);
+
+    [RelayCommand]
+    private Task CopyForCode() => CopyAsync(ClaudeCodeCommand, CopiedForCode);
+
+    private async Task CopyAsync(string text, string copied)
+    {
+        if (Clipboard is not { } clipboard)
+        {
+            return;
+        }
+
+        if (!File.Exists(_mcpExePath))
+        {
+            ShowClaudeMessage(McpMissing, isError: true);
+            return;
+        }
+
+        bool done;
+        try
+        {
+            done = await clipboard.TrySetTextAsync(text).ConfigureAwait(true);
+        }
+        catch (Exception ex) when (ex is TimeoutException or ExternalException)
+        {
+            // Another app holds the clipboard: Avalonia gives up opening it with a TimeoutException; OLE errors are
+            // COMExceptions.
+            ShowClaudeMessage(CopyFailed, isError: true);
+            return;
+        }
+
+        if (done)
+        {
+            ShowClaudeMessage(copied, isError: false);
+        }
+    }
+
+    private void ShowClaudeMessage(string message, bool isError)
+    {
+        _claudeConnectRow.IsError = isError;
+        _claudeConnectRow.Message = message;
+    }
+
     private static string Count(int n) => n == 1 ? "1 task" : string.Create(CultureInfo.InvariantCulture, $"{n} tasks");
 
     private void ShowTransferMessage(string message, bool isError)
@@ -321,6 +426,17 @@ public sealed partial class SettingsViewModel : ScreenViewModel
                 row.Sync(settings);
             }
         }
+
+        SyncClaudeRows(settings);
+    }
+
+    /// <summary>Level and Connect follow the switch; in demo mode all three are off (no data folder to reach).</summary>
+    private void SyncClaudeRows(AppSettings settings)
+    {
+        var demo = Services.App.IsDemo;
+        _claudeRow.IsEnabled = !demo;
+        _claudeLevelRow.IsEnabled = !demo && settings.ClaudeAccess;
+        _claudeConnectRow.IsEnabled = !demo && settings.ClaudeAccess;
     }
 
     private void OnSettingsChanged(object? sender, AppSettings settings)

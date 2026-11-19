@@ -63,6 +63,20 @@ fresh reviewer agent, with no literal colours/durations outside tokens and `Moti
 - [x] **P5.4 Independent review** _(done 2026-11-19: eight fresh reviewers — Core, Storage, shell/services/platform, screens/controls, dialogs/overlays, motion, KICKOFF conformance, visual incl. 1100×700 — 72 findings (3 blockers, all the missing single-instance guard); fixed by five fixers and a last integration pass: single instance, strict flags, startup and save errors shown, window fitted to the screen, small-window fits, focus after save, projection rules back in Core, transient write retry)_ — fresh reviewer agents: code review of the whole solution and a final visual review of all screenshots; findings fixed.
 - [x] **P5.5 Docs** _(done 2026-11-19: README, `docs/HANDOFF.md` with the manual Windows checklist and the final performance table, ARCHITECTURE as built, DECISIONS, design-system, MOTION-REVIEW)_ — README (what, build, run, publish, shortcuts, data location), HANDOFF (verified how, Needs Windows verification with steps, perf numbers, gaps), pull request / branch summary.
 
+## Feature — Claude (MCP)
+
+Plan agreed with the owner on 2026-11-19 (`feature/mcp`). Doba stays local; Claude reaches it only while the owner
+allows it. Design and reasons: `docs/DECISIONS.md` (from "MCP SDK" to "Bridge lifecycle"), `docs/ARCHITECTURE.md` §5.10.
+
+- [x] **M1 SDK spike and API** _(done 2026-11-19: `ModelContextProtocol.Core` 2.4.0 through handlers, no host / DI; NativeAOT publish of `Doba.Mcp` 0 warnings)_ — `Doba.Mcp` on the SDK, `Doba.Bridge` public API.
+- [x] **M2 Core rules** _(done 2026-11-19: `TaskEdits` / `TaskPatch` check only the given fields and return an error instead of correcting; `TaskQueries.InRange`; `AppSettings.ClaudeAccess` / `ClaudeAccessLevel`, stored but never exported or imported)_ — task rules for Claude's edits in Core, settings in Storage.
+- [x] **M3 Bridge and server** _(done 2026-11-19: 11 tools in `ToolCatalog`, `ToolExecutor`, pipe host / client with the current-user ACL + Deny NETWORK, `Doba.Mcp.exe` over stdio in both protocol eras; `tests/Doba.Bridge.Tests` 160 green, also against the published NativeAOT exe via `DOBA_MCP_EXE`)_ — `Doba.Bridge`, `Doba.Mcp`.
+- [x] **M4 App** _(done 2026-11-19: `ClaudeBridge` runs requests on the UI thread behind a closing gate; `ClaudeAccessService` follows the setting, opens the pipe after the first frame and carry-over, stops it first on Exit / session end; Settings › Data rows Claude access / Claude can / Connect Claude with copy to the clipboard; real-pipe tests `ClaudePipeTests` and the end-to-end `ClaudeMcpEndToEndTests` (Doba.Mcp.exe → pipe → store → Today screen) green)_ — the bridge in the app and the Settings rows.
+- [x] **M5 Integration** _(done 2026-11-19: `dotnet build -warnaserror` 0 warnings; `dotnet test` 1377 green after the review fixes (Core 287, Storage 129, Bridge 173, App 788); both NativeAOT publishes into `artifacts\doba-win-x64` 0 warnings; CI publishes `Doba.Mcp` next to `Doba.exe`; README, ARCHITECTURE, DECISIONS, HANDOFF updated)_ — one branch, docs, CI.
+
+Open (the owner's check on the real PC; written without a checkbox so the Stop hook stays quiet): connect Claude
+Desktop (MSIX) and Claude Code to a `--data` copy and try the tools — `docs/HANDOFF.md` §3, steps 41–45.
+
 ## Blocked
 
 (none)
@@ -86,3 +100,5 @@ Still needs a person. Exact steps and expected results: `docs/HANDOFF.md` sectio
 - Display scaling 125–150 % and a 1366×768 screen: opening size and centring, crisp text and hairlines, every screen usable at 1100×700 (35–38).
 - Cold start after reboot: `scripts\perf.ps1 -PrepareCold`, reboot, `scripts\perf.ps1 -Cold`, budget 400 ms (39).
 - A mid-range PC or integrated GPU: `scripts\perf.ps1` for the Week frame budget and the blurred dialog fades (40).
+- Claude (MCP) on a `--data` copy: the Settings rows, Claude Desktop (MSIX) and Claude Code connected, Read versus
+  Read & edit, the editor conflict, access off and Doba not running (41–45).
