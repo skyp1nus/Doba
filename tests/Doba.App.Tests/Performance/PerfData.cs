@@ -11,7 +11,7 @@ namespace Doba.App.Tests.Performance;
 /// </summary>
 internal static class PerfData
 {
-    /// <summary>The 348 demo seed tasks (titles, tags, priorities, spans, times) with their dates moved by
+    /// <summary>The 355 demo seed tasks (titles, tags, priorities, spans, times) with their dates moved by
     /// <c>today − DemoData.Today</c>, so a real-clock launch shows the same mix around its own today.</summary>
     public static IReadOnlyList<TaskItem> DemoLike(DateOnly today)
     {

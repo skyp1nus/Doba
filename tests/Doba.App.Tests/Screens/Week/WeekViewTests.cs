@@ -140,8 +140,8 @@ public class WeekViewTests
 
         // The same cards and "+N more" as the design (docs/design/screens/week.png).
         int[] perCell = [.. Enumerable.Range(0, 2).SelectMany(r => s.Cells(r).Select(c => Scene.Cards(c).Count))];
-        Assert.Equal([4, 3, 3, 3, 3, 2, 4, 2], perCell);
-        Assert.Equal("+2 more", Scene.More(s.Cells(1)[2])!.Content);
+        Assert.Equal([4, 3, 3, 3, 3, 2, 5, 5], perCell);
+        Assert.Equal("+5 more", Scene.More(s.Cells(1)[2])!.Content);
         Assert.Equal(["API migration to the new gateway", "Portfolio site redesign"],
             s.Bars(0).Select(b => ((TaskRowViewModel)b.DataContext!).Title));
         Assert.Equal(["Portfolio site redesign"], s.Bars(1).Select(b => ((TaskRowViewModel)b.DataContext!).Title));

@@ -81,8 +81,8 @@ public class DayScreenTests
         Assert.Equal(model.Items.Select(r => r.Id), Cards(view).Select(c => ((TaskRowViewModel)c.DataContext!).Id));
         Assert.Empty(vm.Spans);
         Assert.Empty(SpanRows(view));
-        Assert.Equal("4 / 6 done", vm.Progress);
-        Assert.Equal("4 / 6 done", view.ProgressText.Text);
+        Assert.Equal("5 / 10 done", vm.Progress);
+        Assert.Equal("5 / 10 done", view.ProgressText.Text);
         Assert.False(view.EmptyText.IsVisible);
 
         // By time: the untimed task comes last.
@@ -313,8 +313,8 @@ public class DayScreenTests
         Assert.Contains("done", card.TitleButton.Classes);
         Assert.Same(block, vm.Schedule.Blocks.Single(b => b.Id == row.Id));
         Assert.True(block.Row.Done);
-        Assert.Equal("5 / 6 done", vm.Progress);
-        Assert.Equal("5 / 6 done", view.ProgressText.Text);
+        Assert.Equal("6 / 10 done", vm.Progress);
+        Assert.Equal("6 / 10 done", view.ProgressText.Text);
         window.Close();
     }
 

@@ -77,6 +77,8 @@
                     Classes.done="{Binding Row.Done}"
                     Classes.dimmed="{Binding Row.Dimmed}"
                     Margin="{Binding Margin}"
+                    Width="{Binding Width}"
+                    HorizontalAlignment="Left"
                     Padding="{Binding ContentPadding}"
                     Height="{Binding Height}"
                     Command="{Binding Row.ToggleCommand}"

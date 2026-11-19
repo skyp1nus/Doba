@@ -116,10 +116,10 @@ public class SidebarTests
         Assert.Equal(expected.TodayCount.ToString(System.Globalization.CultureInfo.InvariantCulture), s.Named<SidebarItem>("TodayItem").Count);
         Assert.Null(s.Named<SidebarItem>("CalendarItem").Count);
 
-        // Demo data as in docs/design/screens/week.png: Inbox 6, Today 2, work 12 / personal 6 / learning 6.
-        Assert.Equal((6, 2), (s.ViewModel.InboxCount, s.ViewModel.TodayCount));
+        // Demo data as in the prototype's seed: Inbox 6, Today 5, work 16 / personal 6 / learning 6.
+        Assert.Equal((6, 5), (s.ViewModel.InboxCount, s.ViewModel.TodayCount));
         Assert.Equal(["work", "personal", "learning"], s.TagRows().Select(r => r.Label));
-        Assert.Equal(["12", "6", "6"], s.TagRows().Select(r => r.Count));
+        Assert.Equal(["16", "6", "6"], s.TagRows().Select(r => r.Count));
     }
 
     [AvaloniaFact]

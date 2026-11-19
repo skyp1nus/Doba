@@ -365,6 +365,117 @@ internal static class Shapes
         };
     }
 
+    // ---------- schedule ----------
+
+    /// <summary>A whole number as an integer (as JSON.stringify writes it), otherwise the double.</summary>
+    public static JsonNode Num(double v) => v == Math.Floor(v) && Math.Abs(v) < int.MaxValue ? JsonValue.Create((int)v) : JsonValue.Create(v);
+
+    /// <summary>A copy of the fixture row <paramref name="r"/> with <paramref name="values"/> (computed here) in place of its outputs.</summary>
+    public static JsonObject With(JsonObject r, params (string Key, object? Value)[] values)
+    {
+        var o = r.DeepClone().AsObject();
+        foreach (var (k, v) in values)
+        {
+            o[k] = v switch
+            {
+                null => null,
+                bool b => JsonValue.Create(b),
+                int i => JsonValue.Create(i),
+                long l => JsonValue.Create(l),
+                double d => Num(d),
+                string s => JsonValue.Create(s),
+                _ => throw new ArgumentException("unsupported " + v.GetType().Name, nameof(values)),
+            };
+        }
+
+        return o;
+    }
+
+    public static TaskItem Task(JsonNode j) => new(
+        (long)j["id"]!,
+        (string)j["title"]!,
+        string.Empty,
+        Date(j["date"]),
+        null,
+        Time(j["time"]),
+        (int)j["dur"]!,
+        (Priority)(int)j["prio"]!,
+        (string?)j["tag"],
+        (bool)j["done"]!);
+
+    public static JsonObject Placement(long id, ColumnPlacement p) => p.IsHidden
+        ? new JsonObject { ["id"] = id, ["hidden"] = true }
+        : new JsonObject { ["id"] = id, ["col"] = p.Column, ["span"] = p.Span, ["cols"] = p.Columns };
+
+    public static JsonObject ColumnOverflow(ColumnOverflow o) => new()
+    {
+        ["col"] = o.Column,
+        ["cols"] = o.Columns,
+        ["start"] = o.Start,
+        ["end"] = o.End,
+        ["ids"] = new JsonArray([.. o.Ids.Select(i => (JsonNode)i)]),
+    };
+
+    /// <summary>The rendered schedule column (the prototype's schedData), with the case's inputs copied from <paramref name="c"/>.</summary>
+    public static JsonObject Schedule(ScheduleModel m, JsonObject c)
+    {
+        var o = new JsonObject();
+        foreach (var k in (string[])["name", "kind", "view", "anchor", "today", "filter", "ovf", "tasks"])
+        {
+            o[k] = c[k]?.DeepClone();
+        }
+
+        o["blocks"] = new JsonArray([.. m.Blocks.Where(b => !b.IsHidden).OrderBy(b => b.Row.Id).Select(b => (JsonNode)new JsonObject
+        {
+            ["id"] = b.Row.Id,
+            ["col"] = b.Placement.Column,
+            ["span"] = b.Placement.Span,
+            ["cols"] = b.Placement.Columns,
+            ["left"] = Num(b.X),
+            ["w"] = Num(b.Width),
+            ["top"] = Num(b.Top),
+            ["h"] = Num(b.Height),
+            ["meta"] = b.Meta,
+            ["tall"] = b.IsTall,
+            ["chkTop"] = Num(b.CheckTop),
+            ["gripH"] = Num(b.GripHeight),
+            ["label"] = b.AccessibleLabel,
+            ["tip"] = b.ToolTip,
+            ["chkLabel"] = b.CheckLabel,
+            ["dim"] = b.Row.Dimmed,
+        })]);
+        o["hidden"] = new JsonArray([.. m.Blocks.Where(b => b.IsHidden).Select(b => b.Row.Id).Order().Select(i => (JsonNode)i)]);
+        o["overflows"] = new JsonArray([.. m.Overflows.Select(v => (JsonNode)new JsonObject
+        {
+            ["start"] = v.Start,
+            ["left"] = Num(v.X),
+            ["top"] = Num(v.Top),
+            ["w"] = Num(v.Width),
+            ["h"] = Num(v.Height),
+            ["tall"] = v.IsTall,
+            ["text"] = v.Text,
+            ["label"] = v.AccessibleLabel,
+        })]);
+        var open = c["ovf"] is { } start ? m.Overflows.Single(v => v.Start == (int)start) : null;
+        o["pop"] = open is null ? null : new JsonObject
+        {
+            ["left"] = Num(ScheduleLayout.PopoverLeft),
+            ["top"] = Num(open.PopoverTop),
+            ["below"] = open.PopoverBelow,
+            ["head"] = open.PopoverHead,
+            ["label"] = open.PopoverLabel,
+            ["rows"] = new JsonArray([.. open.Rows.Select(r => (JsonNode)new JsonObject
+            {
+                ["id"] = r.Row.Id,
+                ["title"] = r.Row.Title,
+                ["range"] = r.Range,
+                ["chkLabel"] = r.CheckLabel,
+                ["done"] = r.Row.Done,
+            })]),
+        };
+        return o;
+    }
+
     public static JsonObject Created(TaskItem t) => new()
     {
         ["date"] = t.Date is { } d ? Iso(d) : null,

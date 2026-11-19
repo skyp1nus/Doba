@@ -3,8 +3,9 @@
 //   node tests/Doba.Core.Tests/Golden/generate.js
 //
 // Loads the `Component` class from docs/design/design-reference.dc.html, runs seed(), the screen projections
-// (weekData, monthData, yearData, dayData, inboxData, todayData), renderVals() (header, sidebar, dialog labels) and the
-// navigation commands, and writes semantic JSON (no colours or CSS) to ./fixtures. The C# golden tests map Doba.Core's
+// (weekData, monthData, yearData, dayData, inboxData, todayData), renderVals() (header, sidebar, dialog labels, the
+// schedule column), the navigation commands and the schedule's layoutDay / sbCompute / sbKey / sbAuto / durLabel / sbVis,
+// and writes semantic JSON (no colours or CSS) to ./fixtures. The C# golden tests map Doba.Core's
 // records to the same shapes and compare. Node is only needed to regenerate the fixtures, never to run the tests.
 'use strict';
 const fs = require('fs');
@@ -27,7 +28,11 @@ class DCLogic {
 }
 // wheelScroll debounces with setTimeout; run callbacks synchronously so a scroll commits immediately.
 const syncTimers = { setTimeout: (fn) => { fn(); return 0; }, clearTimeout: () => {} };
-const Component = new Function('DCLogic', 'setTimeout', 'clearTimeout', src + '\nreturn Component;')(DCLogic, syncTimers.setTimeout, syncTimers.clearTimeout);
+// sbAuto asks for animation frames; the schedule cases below run one frame by hand.
+const frames = { next: null };
+const raf = { request: (fn) => { frames.next = fn; return 1; }, cancel: () => { frames.next = null; } };
+const Component = new Function('DCLogic', 'setTimeout', 'clearTimeout', 'requestAnimationFrame', 'cancelAnimationFrame', src + '\nreturn Component;')(
+  DCLogic, syncTimers.setTimeout, syncTimers.clearTimeout, raf.request, raf.cancel);
 
 const ACCENT = '#9FB4C7';
 const PR = { low: 1, med: 2, high: 3, asap: 4 };
@@ -402,6 +407,195 @@ const navigation = [
   ], '2026-11-16'),
 ];
 
+// ---------- schedule ----------
+// The schedule column: the overlap layout (layoutDay), the rendered column (renderVals().sc = schedData), the drag math
+// (sbCompute), the arrow keys (sbKey), the autoscroll speed (sbAuto), durLabel and the content tiers (sbVis).
+
+const schedule = [];
+const px = (v) => parseFloat(v);
+const num = (s) => +String(s).slice(1); // synthetic layout ids 't1'..'t9' → 1..9 (string and numeric order agree)
+
+function layoutCase(name, items) {
+  const c = make();
+  const L = c.layoutDay(items.map(([id, start, dur]) => ({ id: id, start: start, end: start + Math.max(dur, 30) })), 3);
+  schedule.push({
+    name: 'layout-' + name, kind: 'layout',
+    items: items.map(([id, start, dur]) => ({ id: num(id), start: start, dur: dur })),
+    pos: items.map(([id]) => {
+      const p = L.pos[id];
+      return p.hidden ? { id: num(id), hidden: true } : { id: num(id), col: p.col, span: p.span, cols: p.cols };
+    }),
+    overflows: L.overflows.map((o) => ({ col: o.col, cols: o.cols, start: o.start, end: o.end, ids: o.ids.map(num) }))
+  });
+}
+const at = (n, start, dur) => Array.from({ length: n }, (_, i) => ['t' + (i + 1), start, dur]);
+layoutCase('empty', []);
+layoutCase('single', [['t1', 570, 60]]);
+layoutCase('two-at-once', at(2, 600, 60));
+layoutCase('three-at-once', at(3, 600, 60));
+layoutCase('four-at-once', at(4, 600, 60));
+layoutCase('five-at-once', at(5, 600, 60));
+layoutCase('six-at-once', at(6, 600, 60));
+layoutCase('partial', [['t1', 600, 60], ['t2', 630, 60]]);
+layoutCase('chain', [['t1', 600, 60], ['t2', 645, 75], ['t3', 700, 60]]);
+layoutCase('short-inside-long', [['t1', 540, 180], ['t2', 600, 15]]);
+layoutCase('touching', [['t1', 600, 60], ['t2', 660, 60]]);
+layoutCase('done-next-to-open', [['t1', 840, 90], ['t2', 870, 45], ['t3', 900, 60]]); // 15 Nov: 14:00, 14:30 (done), 15:00
+layoutCase('15-next-to-30', [['t1', 600, 15], ['t2', 615, 30]]);
+layoutCase('15-then-30-touching', [['t1', 600, 15], ['t2', 630, 30]]);
+layoutCase('unspecified-duration', [['t1', 600, 0], ['t2', 620, 0]]);
+layoutCase('span-widening', [['t1', 600, 120], ['t2', 600, 30], ['t3', 600, 30], ['t4', 630, 30]]);
+layoutCase('overflow-occupies', [['t1', 600, 120], ['t2', 600, 30], ['t3', 600, 30], ['t4', 600, 30], ['t5', 630, 60]]);
+layoutCase('equal-starts', [['t3', 600, 60], ['t1', 600, 60], ['t2', 600, 30]]);
+layoutCase('two-clusters-with-overflow', [...at(4, 600, 60), ['t5', 780, 30], ['t6', 780, 30], ['t7', 790, 30], ['t8', 795, 45], ['t9', 800, 20]]);
+layoutCase('demo-16-nov', [['t1', 540, 180], ['t2', 600, 30], ['t3', 615, 30], ['t4', 620, 40]]);
+layoutCase('sixteen-hours', [['t1', 420, 960], ['t2', 1320, 60]]);
+
+// renderVals().sc. `tasks` replaces the seed (ids 't0'..'t9' → 1..10); `ovf` opens the "+N" starting at that minute.
+function schedCase(name, view, anchor, o) {
+  o = o || {};
+  const c = make(o.today);
+  if (o.tasks) {
+    c.state.tasks = o.tasks.map(([date, title, time, dur, done, prio, tag], i) => ({
+      id: 't' + i, date: date, end: null, title: title, tag: tag || null, done: !!done, time: time, dur: dur, prio: prio || null, notes: ''
+    }));
+  }
+  c.state.view = view;
+  c.state.anchor = anchor;
+  c.state.filter = o.filter || null;
+  const d = view === 'today' ? c.TODAY : anchor;
+  if (o.ovf != null) c.state.ovf = d + '@' + o.ovf;
+  const sc = c.renderVals().sc;
+  const day = c.state.tasks.filter((t) => t.date === d && !t.end && t.time && c.mins(t.time) >= 7 * 60);
+  const L = c.layoutDay(day.map((t) => { const st = c.mins(t.time); return { id: t.id, start: st, end: st + Math.max(t.dur || 30, 30) }; }), 3);
+  const shown = new Set(sc.blocks.map((b) => b.id));
+  const byId = (a, b) => a.id - b.id;
+  schedule.push({
+    name: 'sched-' + name, kind: 'sched', view: view, anchor: anchor, today: c.TODAY, filter: o.filter || null, ovf: o.ovf == null ? null : o.ovf,
+    tasks: o.tasks ? c.state.tasks.map((t) => ({ id: idOf(t.id), date: t.date, title: t.title, tag: t.tag, done: t.done, time: t.time, dur: t.dur, prio: PR[t.prio] || 0 })) : null,
+    blocks: sc.blocks.map((b) => {
+      const p = L.pos[b.id];
+      return {
+        id: idOf(b.id), col: p.col, span: p.span, cols: p.cols, left: px(b.left), w: px(b.w), top: px(b.top), h: px(b.h),
+        meta: b.hasMeta ? b.meta : '', tall: b.dir === 'column', chkTop: px(b.chkTop), gripH: px(b.gripH),
+        label: b.label, tip: b.tip, chkLabel: b.chkLabel, dim: b.op !== '1'
+      };
+    }).sort(byId),
+    hidden: day.filter((t) => !shown.has(t.id)).map((t) => idOf(t.id)).sort((a, b) => a - b),
+    overflows: sc.ovfs.map((v) => ({
+      start: +v.key.slice(v.key.indexOf('@') + 1), left: px(v.left), top: px(v.top), w: px(v.w), h: px(v.h), tall: v.align === 'flex-start',
+      text: v.text, label: v.label
+    })),
+    pop: sc.hasPop ? {
+      left: px(sc.pop.left), top: px(sc.pop.top), below: sc.pop.origin === '100% 0%', head: sc.pop.head, label: sc.pop.label,
+      rows: sc.pop.items.map((x) => ({ id: idOf(x.key.slice(1)), title: x.title, range: x.range, chkLabel: x.chkLabel, done: x.donePressed === 'true' }))
+    } : null
+  });
+}
+schedCase('today', 'today', '2026-11-15');
+schedCase('today-filter-work', 'today', '2026-11-15', { filter: 'work' });
+schedCase('day-2026-11-15', 'day', '2026-11-15');
+schedCase('day-2026-11-16', 'day', '2026-11-16');
+schedCase('day-2026-11-16-open', 'day', '2026-11-16', { ovf: 615 });
+schedCase('day-2026-11-18', 'day', '2026-11-18');
+schedCase('midnight-today', 'today', '2026-11-16', { today: '2026-11-16', ovf: 615 });
+schedCase('midnight-day', 'day', '2026-11-16', { today: '2026-11-16' });
+const D20 = '2026-11-20';
+schedCase('late-overflow-opens-above', 'day', D20, {
+  ovf: 1320,
+  tasks: [[D20, 'Late one', '22:00', 60], [D20, 'Late two', '22:00', 60], [D20, 'Late three', '22:00', 30], [D20, 'Late four', '22:00', 30, true]]
+});
+schedCase('mixed', 'day', D20, {
+  ovf: 600,
+  tasks: [
+    [D20, 'Alpha', '10:00', 60], [D20, 'Bravo', '10:00', 60, false, 'low', 'work'], [D20, 'Charlie', '10:00', 30, false, 'high'],
+    [D20, 'Delta', '10:00', 45, true], [D20, 'Echo', '10:00', 30, false, 'asap'], [D20, 'Foxtrot', '10:00', 15],
+    [D20, 'Golf — done next to open', '12:00', 60, true], [D20, 'Hotel', '12:30', 0],
+    [D20, 'India', '14:00', 30], [D20, 'Juliet', '14:00', 30]
+  ]
+});
+schedCase('mixed-filter', 'day', D20, {
+  filter: 'work',
+  tasks: [[D20, 'Kilo', '09:00', 120, false, null, 'work'], [D20, 'Lima', '09:30', 30], [D20, 'Mike', '06:30', 60], [D20, 'November', '22:30', 30, true]]
+});
+
+// sbCompute: drag pointer travel (px) → slot.
+const dragRows = [];
+const dys = [0, 3, 5.9, 6, -6, 6.1, -6.1, 12, -12, 18, 100, -100, 1000, -1000];
+for (const [mode, pairs] of [
+  ['move', [[570, 60], [577, 30], [420, 60], [1320, 60], [1350, 30], [420, 960], [420, 1020], [600, 15]]],
+  ['resize', [[570, 60], [570, 30], [1370, 30], [1365, 15], [420, 960], [577, 30]]]
+]) {
+  for (const [s0, d0] of pairs) {
+    for (const dy of dys) {
+      for (const alt of [false, true]) {
+        const c = make();
+        c.schedScrollEl = null;
+        c.state.drag = { id: 't0', mode: mode, start: s0, dur: d0, s0: s0, d0: d0 };
+        c._dp = { id: 't0', active: true, y0: 100, cy: 100 + dy, scale: 1, alt: alt, mode: mode, s0: s0, d0: d0, cur: { start: s0, dur: d0 } };
+        c.sbCompute();
+        dragRows.push({ mode: mode, s0: s0, d0: d0, dy: dy, alt: alt, start: c.state.drag.start, dur: c.state.drag.dur });
+      }
+    }
+  }
+}
+schedule.push({ name: 'drag', kind: 'drag', rows: dragRows });
+
+// sbKey: arrow keys on a focused block (dur 0 = unspecified, drawn as 30).
+const keyRows = [];
+for (const start of [577, 570, 420, 425, 600, 1320, 1350, 1365, 1370]) {
+  for (const dur of [30, 60, 15, 0, 960]) {
+    for (const key of ['ArrowUp', 'ArrowDown']) {
+      for (const shift of [false, true]) {
+        for (const alt of [false, true]) {
+          const c = make();
+          c.state.tasks = [{ id: 't0', date: '2026-11-15', end: null, title: 'Write the weekly update', time: c.hhmm(start), dur: dur, done: false }];
+          const e = { key: key, shiftKey: shift, altKey: alt, target: { getAttribute: (k) => (k === 'data-sbm' ? '1' : null) }, preventDefault() {} };
+          c.sbKey(e, 't0');
+          const t = c.state.tasks[0];
+          const changed = c.mins(t.time) !== start || t.dur !== dur;
+          keyRows.push({ start: start, dur: dur, down: key === 'ArrowDown', shift: shift, alt: alt, changed: changed, ns: changed ? c.mins(t.time) : null, nd: changed ? t.dur : null, chip: changed ? c.state.kb.m : null });
+        }
+      }
+    }
+  }
+}
+schedule.push({ name: 'keys', kind: 'keys', rows: keyRows });
+
+// sbAuto: one frame of autoscroll for a pointer at y over a scroller [top, bottom].
+const autoRows = [];
+for (const scale of [1, 1.5]) {
+  const top = 100, bottom = 600, z = 40 * scale;
+  for (const y of [top - 50, top - 0.5, top, top + 0.5, top + 20, top + z - 0.1, top + z, top + z + 1, 350, bottom - z - 1, bottom - z, bottom - z + 0.1, bottom - 20, bottom, bottom + 0.5, bottom + 50]) {
+    const c = make();
+    const sc = { scrollHeight: 3000, clientHeight: 500, scrollTop: 1000, getBoundingClientRect: () => ({ top: top, bottom: bottom }) };
+    c.schedScrollEl = sc;
+    c.sbCompute = () => {};
+    c._dp = { active: true, cy: y, scale: scale };
+    c._raf = null;
+    frames.next = null;
+    c.sbAuto();
+    const tick = frames.next;
+    frames.next = null;
+    tick();
+    autoRows.push({ y: y, top: top, bottom: bottom, scale: scale, v: sc.scrollTop - 1000 });
+  }
+}
+schedule.push({ name: 'autoscroll', kind: 'autoscroll', rows: autoRows });
+
+// durLabel and the content tiers of sbVis.
+schedule.push({ name: 'durations', kind: 'durations', rows: [5, 15, 30, 45, 60, 75, 105, 120, 180, 960, 1005].map((m) => ({ m: m, label: base.durLabel(m) })) });
+const tierRows = [];
+for (const w of [98, 119, 119.5, 120, 139, 140, 149, 202, 219, 220, 302]) {
+  for (const h of [24, 33, 43, 44, 45, 69]) {
+    for (const active of [false, true]) {
+      const v = base.sbVis({ title: 'x', done: false }, w, h, 570, 105, ACCENT, active);
+      tierRows.push({ w: w, h: h, active: active, meta: v.hasMeta ? v.meta : '', tall: v.dir === 'column' });
+    }
+  }
+}
+schedule.push({ name: 'tiers', kind: 'tiers', rows: tierRows });
+
 // ---------- write ----------
 
 fs.mkdirSync(OUT, { recursive: true });
@@ -411,4 +605,5 @@ write('seed.json', seed);
 write('screens.json', screens);
 write('dialog.json', dialogs);
 write('navigation.json', navigation);
-console.log('seed', seed.length, 'screens', screens.length, 'dialogs', dialogs.length, 'navigation', navigation.length);
+write('schedule.json', schedule);
+console.log('seed', seed.length, 'screens', screens.length, 'dialogs', dialogs.length, 'navigation', navigation.length, 'schedule', schedule.length);

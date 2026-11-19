@@ -8,11 +8,11 @@ using Doba.Storage;
 namespace Doba.App.Tests.Performance;
 
 /// <summary>
-/// The databases <c>scripts/perf.ps1</c> launches the AOT build against: 348 demo-like tasks, 10,000 tasks, and the
+/// The databases <c>scripts/perf.ps1</c> launches the AOT build against: 355 demo-like tasks, 10,000 tasks, and the
 /// 10,000 tasks plus a dense week (the Week view filled to capacity: about 40 cards) in comfortable and in compact
 /// density. Normally written to a temp folder and checked; with <c>DOBA_PERF_SEED_DIR</c> set they are written there
-/// (folders <c>db-348</c>, <c>db-10k</c>, <c>db-dense</c>, <c>db-dense-compact</c>, dated around the real today) for the
-/// script to use.
+/// (folders <c>db-348</c> — named when the seed had 348 tasks; the script uses that name —, <c>db-10k</c>,
+/// <c>db-dense</c>, <c>db-dense-compact</c>, dated around the real today) for the script to use.
 /// </summary>
 public sealed class PerfDatabaseTests
 {
@@ -28,7 +28,7 @@ public sealed class PerfDatabaseTests
         var dense = PerfData.DenseWeek(10_000, today);
         (string Name, IReadOnlyList<TaskItem> Tasks, int Count, AppSettings? Settings)[] sets =
         [
-            ("db-348", PerfData.DemoLike(today), 348, null),
+            ("db-348", PerfData.DemoLike(today), 355, null),
             ("db-10k", PerfData.Many(10_000, today), 10_000, null),
             ("db-dense", dense, 10_000 + (7 * PerfData.DenseTasksPerDay) + PerfData.DenseBars, null),
             ("db-dense-compact", dense, 10_000 + (7 * PerfData.DenseTasksPerDay) + PerfData.DenseBars, new AppSettings { Density = Density.Compact }),

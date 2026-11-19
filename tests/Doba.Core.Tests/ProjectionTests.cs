@@ -243,14 +243,15 @@ public class ProjectionTests
         var before = Projector.Today(store, Ctx());
         var after = Projector.Today(store, Ctx(new DateOnly(2026, 11, 16)));
 
-        Assert.Equal("6 tasks · 4 done · 2 left · 3 overdue", before.Summary);
-        Assert.Equal("2 tasks · 0 done · 2 left · 5 overdue", after.Summary);
+        Assert.Equal("10 tasks · 5 done · 5 left · 3 overdue", before.Summary);
+        Assert.Equal("5 tasks · 0 done · 5 left · 8 overdue", after.Summary);
         var overdue = after.Groups.Single(g => g.Key == "over");
         Assert.Contains(overdue.Items, r => r.Title == "Water the plants and repot the ficus" && r.CanMoveToToday && r.Meta == "Sun 15 Nov");
-        Assert.Equal(["Team sync — sprint review"], after.Groups.Single(g => g.Key == "sched").Items.Select(r => r.Title));
+        Assert.Equal(["Deep work — API gateway", "Team sync — sprint review", "Quick call with design", "Code review — payments"],
+            after.Groups.Single(g => g.Key == "sched").Items.Select(r => r.Title));
 
-        Assert.Equal(2, Projector.Sidebar(store, Ctx()).TodayCount);
-        Assert.Equal(2, Projector.Sidebar(store, Ctx(new DateOnly(2026, 11, 16))).TodayCount);
+        Assert.Equal(5, Projector.Sidebar(store, Ctx()).TodayCount);
+        Assert.Equal(5, Projector.Sidebar(store, Ctx(new DateOnly(2026, 11, 16))).TodayCount);
         Assert.Equal(0, Projector.Sidebar(store, Ctx(new DateOnly(2026, 11, 13))).TodayCount);
         Assert.Equal(1, Projector.Sidebar(store, Ctx(new DateOnly(2026, 11, 14))).TodayCount);
 
@@ -568,8 +569,8 @@ public class ProjectionTests
     {
         var store = DemoStore();
 
-        // Today: 4 of 6 done → Math.round(66.67) = 67 % (the bar's width), not 0.6667.
-        Assert.Equal(0.67, Projector.Today(store, Ctx()).Progress);
+        // Today: 5 of 10 done → 50 % (the bar's width).
+        Assert.Equal(0.5, Projector.Today(store, Ctx()).Progress);
 
         // Week cells and Year months: whole percents too (prototype weekData / yearData `pct`).
         var d = new DateOnly(2026, 6, 10);
@@ -579,6 +580,10 @@ public class ProjectionTests
         Assert.Equal(0.33, Projector.Year(thirds, Ctx(), 2026).Months[5].Progress);
         var twoThirds = new TaskStore([T(1, "a", d, done: true), T(2, "b", d, done: true), T(3, "c", d)], [], NullTaskPersistence.Instance);
         Assert.Equal(0.67, Projector.Year(twoThirds, Ctx(), 2026).Months[5].Progress);
+
+        // Today with 2 of 3 done → Math.round(66.67) = 67 %, not 0.6667.
+        var todayThirds = new TaskStore([T(1, "a", Today, done: true), T(2, "b", Today, done: true), T(3, "c", Today)], [], NullTaskPersistence.Instance);
+        Assert.Equal(0.67, Projector.Today(todayThirds, Ctx()).Progress);
         Assert.Equal(0.5, Projector.WholePercent(1, 2));
         Assert.Equal(0.01, Projector.WholePercent(1, 200)); // 0.5 % rounds up, as Math.round does
         Assert.Equal(0, Projector.WholePercent(0, 0));
@@ -593,7 +598,7 @@ public class ProjectionTests
         Assert.Equal(("MON", "9", "Open Monday 9 November"), (monday.WeekdayLabel, monday.DayLabel, monday.OpenLabel));
         var preview = week.Rows[1].Cells[3];
         Assert.Equal("Open next Monday 16 November", preview.OpenLabel);
-        Assert.Equal("+2 more", week.Rows[1].Cells[2].MoreLabel);
+        Assert.Equal("+6 more", week.Rows[1].Cells[2].MoreLabel);
 
         var month = Projector.Month(store, Ctx(), Today, new MonthMetrics());
         Assert.Equal(["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"], month.WeekdayHeaders);

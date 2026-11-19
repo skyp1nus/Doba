@@ -42,8 +42,11 @@ public sealed partial class ScheduleBlockViewModel : ObservableObject
     /// <summary>Shorter than 44 px: title and range on one line.</summary>
     [ObservableProperty] public partial bool IsCompact { get; private set; }
 
-    /// <summary>Position inside the grid: left 54 (hour label 40 + gap 12 + 2), top.</summary>
+    /// <summary>Position inside the grid: left = the block's overlap column (54 for a lone block), top.</summary>
     [ObservableProperty] public partial Thickness Margin { get; private set; }
+
+    /// <summary>Width of the block's overlap columns (302 for a lone block).</summary>
+    [ObservableProperty] public partial double Width { get; private set; }
 
     /// <summary>Content padding inside the block's 1 px ring (see <see cref="ContentPaddingFor"/>).</summary>
     [ObservableProperty] public partial Thickness ContentPadding { get; private set; }
@@ -56,7 +59,8 @@ public sealed partial class ScheduleBlockViewModel : ObservableObject
         Top = ScheduleLayout.BlockTop(block.StartMinutes, ScheduleViewModel.HourHeight);
         Height = ScheduleLayout.BlockHeight(block.DurationMinutes, ScheduleViewModel.HourHeight);
         IsCompact = ScheduleLayout.IsCompact(Height);
-        Margin = new Thickness(ScheduleViewModel.BlockLeft, Top, 0, 0);
+        Width = block.Width;
+        Margin = new Thickness(block.X, Top, 0, 0);
         ContentPadding = ContentPaddingFor(Height, IsCompact);
         RangeOffset = RangeOffsetFor(Height, IsCompact);
     }
@@ -165,7 +169,8 @@ public sealed partial class ScheduleViewModel : ObservableObject
     public void Update(ScheduleModel model)
     {
         ArgumentNullException.ThrowIfNull(model);
-        KeyedSync.Apply(Blocks, model.Blocks, b => b.Row.Id, vm => vm.Id,
+        // Blocks folded into a "+N" are not drawn.
+        KeyedSync.Apply(Blocks, model.Blocks.Where(b => !b.IsHidden).ToList(), b => b.Row.Id, vm => vm.Id,
             b => new ScheduleBlockViewModel(b, _actions, _commands), (vm, b) => vm.Update(b));
         SetNow(model.NowMinutes);
     }

@@ -38,7 +38,8 @@ public class TodayScreenTests
         Assert.Equal(model.Groups.Select(g => g.Items.Count), vm.Groups.Select(g => g.Items.Count));
         Assert.Equal(model.Summary, vm.Summary);
         Assert.Equal(model.Progress, vm.Progress); // the projection's whole percent, copied
-        Assert.Equal(0.67, vm.Progress);
+        Assert.Equal(0.5, vm.Progress); // 5 of 10 done
+        Assert.DoesNotContain(model.Schedule.Blocks, b => b.IsHidden); // 15 November: at most three at once
         Assert.Equal(model.Schedule.Blocks.Select(b => b.Row.Id), vm.Schedule.Blocks.Select(b => b.Id));
 
         // The whole list fits: one row control per row, one section per group, one button per block.
@@ -68,6 +69,7 @@ public class TodayScreenTests
         var (vm, view) = Open(harness);
         var window = Host(view);
         var row = vm.Groups.Single(g => g.Key == "sched").Items[0];
+        var scheduled = vm.Groups.Single(g => g.Key == "sched").Items.Count;
         var block = vm.Schedule.Blocks.Single(b => b.Id == row.Id);
         var progress = vm.Progress;
 
@@ -75,7 +77,8 @@ public class TodayScreenTests
         Settle(window);
 
         Assert.True(row.Done);
-        Assert.DoesNotContain(vm.Groups, g => g.Key == "sched");
+        Assert.DoesNotContain(row, vm.Groups.Single(g => g.Key == "sched").Items);
+        Assert.Equal(scheduled - 1, vm.Groups.Single(g => g.Key == "sched").Items.Count);
         Assert.Contains(row, vm.Groups.Single(g => g.Key == "done").Items);
         Assert.Same(block, vm.Schedule.Blocks.Single(b => b.Id == row.Id)); // block updated in place
         Assert.True(block.Row.Done);
@@ -84,6 +87,15 @@ public class TodayScreenTests
         Assert.Equal(Project(harness).Groups.Single(g => g.Key == "done").Items.Select(r => r.Id),
             vm.Groups.Single(g => g.Key == "done").Items.Select(r => r.Id));
         Assert.Contains(Rows(view), r => ReferenceEquals(r.DataContext, row) && r.Classes.Contains("done"));
+
+        // Completing the remaining scheduled rows removes the group.
+        foreach (var other in vm.Groups.Single(g => g.Key == "sched").Items.ToList())
+        {
+            other.ToggleCommand.Execute(null);
+            Settle(window);
+        }
+
+        Assert.DoesNotContain(vm.Groups, g => g.Key == "sched");
         window.Close();
     }
 
@@ -306,7 +318,9 @@ public class TodayScreenTests
         var model = Project(harness);
         Assert.Equal(Shape(model.Groups), Shape(vm.Groups));
         Assert.Equal(model.Summary, vm.Summary);
-        Assert.Equal(model.Schedule.Blocks.Select(b => b.Row.Id), vm.Schedule.Blocks.Select(b => b.Id));
+        // 16 November: four at 10:00–10:20 → two blocks fold into "+2" and are not drawn.
+        Assert.Equal(model.Schedule.Blocks.Where(b => !b.IsHidden).Select(b => b.Row.Id), vm.Schedule.Blocks.Select(b => b.Id));
+        Assert.Equal(2, model.Schedule.Blocks.Count(b => b.IsHidden));
         Assert.All(openAnytime, r => Assert.Contains(r, vm.Groups.Single(g => g.Key == "over").Items)); // yesterday's open task is overdue
         Assert.False(vm.Schedule.HasNow); // 00:26 is off the 07–23 grid
         Assert.False(view.Schedule.NowLine.IsVisible);

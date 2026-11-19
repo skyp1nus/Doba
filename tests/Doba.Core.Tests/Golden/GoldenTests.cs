@@ -4,6 +4,7 @@ using Doba.Core.Editing;
 using Doba.Core.Model;
 using Doba.Core.Navigation;
 using Doba.Core.Projections;
+using Doba.Core.Store;
 using Doba.Core.Time;
 
 namespace Doba.Core.Tests.Golden;
@@ -16,6 +17,8 @@ public class GoldenTests
     public static TheoryData<string> DialogCases => Fixtures.Names("dialog.json");
 
     public static TheoryData<string> NavigationCases => Fixtures.Names("navigation.json");
+
+    public static TheoryData<string> ScheduleCases => Fixtures.Names("schedule.json");
 
     [Fact]
     public void Seed_matches_prototype()
@@ -174,6 +177,93 @@ public class GoldenTests
             Assert.True(Enum.Parse<SettingsTab>((string)after["tab"]!) == r.State.Tab, $"{where}: tab {after["tab"]} vs {r.State.Tab}");
             s = r.State;
             i++;
+        }
+    }
+
+    [Theory]
+    [MemberData(nameof(ScheduleCases))]
+    public void Schedule_matches_prototype(string name)
+    {
+        var c = Fixtures.Case("schedule.json", name);
+        switch ((string)c["kind"]!)
+        {
+            case "layout":
+            {
+                var items = c["items"]!.AsArray().Select(i => new ScheduleSpan((long)i!["id"]!, (int)i["start"]!, (int)i["dur"]!)).ToList();
+                var layout = ScheduleColumns.Layout(items);
+                Fixtures.Equal(c["pos"], new JsonArray([.. items.Select(i => (JsonNode)Shapes.Placement(i.Id, layout.Placements[i.Id]))]), name + " pos");
+                Fixtures.Equal(c["overflows"], new JsonArray([.. layout.Overflows.Select(o => (JsonNode)Shapes.ColumnOverflow(o))]), name + " overflows");
+                Assert.Equal(items.Count, layout.Placements.Count);
+                break;
+            }
+
+            case "sched":
+            {
+                var today = Shapes.Date(c["today"]);
+                var anchor = Shapes.Date(c["anchor"]);
+                var store = c["tasks"] is JsonArray tasks
+                    ? new TaskStore([.. tasks.Select(t => Shapes.Task(t!))], DemoData.Tags, NullTaskPersistence.Instance)
+                    : Demo.Store();
+                var ctx = Demo.Context(today, (string?)c["filter"]);
+                var model = (string)c["view"]! == "today" ? Projector.Today(store, ctx).Schedule : Projector.Day(store, ctx, anchor).Schedule;
+                Fixtures.Equal(c, Shapes.Schedule(model, c), name);
+                break;
+            }
+
+            case "drag":
+                ForEachRow(c, name, r =>
+                {
+                    var mode = (string)r["mode"]! == "move" ? ScheduleDragMode.Move : ScheduleDragMode.Resize;
+                    var slot = ScheduleEdit.Drag(mode, (int)r["s0"]!, (int)r["d0"]!, (double)r["dy"]!, (bool)r["alt"]!);
+                    return Shapes.With(r, ("start", slot.Start), ("dur", slot.Duration));
+                });
+                break;
+
+            case "keys":
+                ForEachRow(c, name, r =>
+                {
+                    var dur = (int)r["dur"]!;
+                    var slot = ScheduleEdit.Key((int)r["start"]!, dur > 0 ? dur : 30, (bool)r["down"]!, (bool)r["shift"]!, (bool)r["alt"]!);
+                    var mode = (bool)r["shift"]! ? ScheduleDragMode.Resize : ScheduleDragMode.Move;
+                    return Shapes.With(r, ("changed", slot is not null), ("ns", slot?.Start), ("nd", slot?.Duration),
+                        ("chip", slot is { } s ? ScheduleEdit.ChipMinutes(mode, s) : null));
+                });
+                break;
+
+            case "autoscroll":
+                ForEachRow(c, name, r => Shapes.With(r,
+                    ("v", ScheduleEdit.AutoScrollSpeed((double)r["y"]!, (double)r["top"]!, (double)r["bottom"]!, (double)r["scale"]!))));
+                break;
+
+            case "durations":
+                ForEachRow(c, name, r => Shapes.With(r, ("label", ScheduleEdit.DurationLabel((int)r["m"]!))));
+                break;
+
+            case "tiers":
+                ForEachRow(c, name, r =>
+                {
+                    var h = (double)r["h"]!;
+                    var meta = ScheduleLayout.Meta((double)r["w"]!, h, 570, 105, (bool)r["active"]!);
+                    return Shapes.With(r, ("meta", meta), ("tall", !ScheduleLayout.IsCompact(h)));
+                });
+                break;
+
+            default:
+                Assert.Fail("unknown kind " + c["kind"]);
+                break;
+        }
+    }
+
+    /// <summary>Compares every row of a table case with the row <paramref name="actual"/> computes from its inputs.</summary>
+    private static void ForEachRow(JsonObject c, string name, Func<JsonObject, JsonObject> actual)
+    {
+        var rows = c["rows"]!.AsArray();
+        Assert.NotEmpty(rows);
+        var i = 0;
+        foreach (var r in rows)
+        {
+            var row = r!.AsObject();
+            Fixtures.Equal(row, actual(row), $"{name} row {i++} {row.ToJsonString()}");
         }
     }
 }
