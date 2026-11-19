@@ -21,12 +21,16 @@ public partial class SettingsView : UserControl
         ProvidePicker();
     }
 
-    /// <summary>Gives the view-model the system file dialogs of this window, unless something else (a test) set one.</summary>
+    /// <summary>Gives the view-model the system file dialogs and the clipboard of this window, unless something else
+    /// (a test) set them.</summary>
     private void ProvidePicker()
     {
-        if (DataContext is SettingsViewModel { FilePicker: null } vm)
+        if (DataContext is not SettingsViewModel vm)
         {
-            vm.FilePicker = new StorageProviderFilePicker(() => TopLevel.GetTopLevel(this));
+            return;
         }
+
+        vm.FilePicker ??= new StorageProviderFilePicker(() => TopLevel.GetTopLevel(this));
+        vm.Clipboard ??= new TopLevelClipboard(() => TopLevel.GetTopLevel(this));
     }
 }

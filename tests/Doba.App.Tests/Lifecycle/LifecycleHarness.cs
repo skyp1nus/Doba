@@ -19,13 +19,14 @@ namespace Doba.App.Tests.Lifecycle;
 internal sealed class LifecycleHarness : IDisposable
 {
     private readonly bool _animationsWere;
+    private readonly FakePlatform? _platform;
     private bool _exited;
 
-    private LifecycleHarness(AppServices app, FakePlatform platform, LifecycleOptions options)
+    private LifecycleHarness(AppServices app, FakePlatform? platform, LifecycleOptions options)
     {
         _animationsWere = AppMotion.SystemAnimationsEnabled;
         App = app;
-        Platform = platform;
+        _platform = platform;
         Window = ShellComposition.CreateMainWindow(app, Application.Current!);
         Lifecycle = new AppLifecycle(app, Window, options, () => ShutdownCalls++);
         Lifecycle.Start();
@@ -39,7 +40,9 @@ internal sealed class LifecycleHarness : IDisposable
 
     public AppServices App { get; }
 
-    public FakePlatform Platform { get; }
+    /// <summary>The fakes the app runs on (not available on a harness made with <see cref="OnServices"/>).</summary>
+    public FakePlatform Platform =>
+        _platform ?? throw new InvalidOperationException("This harness runs on given platform services, not on fakes.");
 
     public MainWindow Window { get; }
 
@@ -71,6 +74,21 @@ internal sealed class LifecycleHarness : IDisposable
         seed?.Invoke(app);
 
         return new LifecycleHarness(app, platform, options ?? new LifecycleOptions());
+    }
+
+    /// <summary>A real database in <paramref name="folder"/> with a fixed clock, on the given platform services (the
+    /// Claude bridge tests: <see cref="Doba.App.Platform.PlatformServices.NoOp"/> with a real
+    /// <see cref="Doba.App.Platform.ClaudeBridge"/>).</summary>
+    public static LifecycleHarness OnServices(TempFolder folder, FixedTimeProvider clock, Doba.App.Platform.PlatformServices services,
+        Func<AppSettings, AppSettings>? settings = null)
+    {
+        var app = AppServices.Open(folder.Location, clock, services);
+        if (settings is not null)
+        {
+            app.Settings.Update(settings);
+        }
+
+        return new LifecycleHarness(app, null, new LifecycleOptions());
     }
 
     /// <summary>Runs dispatcher jobs and render ticks (the first frame, then the work posted after it).</summary>

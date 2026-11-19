@@ -1,7 +1,8 @@
 <!--
   Settings content (design-reference.dc.html lines 271–351): a scrolling column, max 780 px, of rows with a 1 px
   Border.Subtle rule on top and under each row. Row: label 14 Medium + description 12.5 muted (mono for the data
-  path), control on the right (gap 24, min height 66, padding 14 4). Shortcuts: 52 px lines with key caps. Data: a
+  path), control on the right (gap 24, min height 66, padding 14 4). A row can be disabled (SettingsRow.IsEnabled):
+  its text and control fade to Opacity.Disabled; the divider stays. Shortcuts: 52 px lines with key caps. Data: a
   footnote. The settings navigation and the page title are drawn by the shell.
 -->
 <UserControl xmlns="https://github.com/avaloniaui"
@@ -37,6 +38,19 @@
     <Style Selector="TextBlock.row-message.error">
       <Setter Property="Foreground" Value="{DynamicResource Brush.Danger}" />
     </Style>
+    <!-- A disabled row (Claude can / Connect Claude while Claude access is off; the Claude rows in demo mode): the label
+         and description fade like the row's control does (its theme's :disabled, Opacity.Disabled). -->
+    <Style Selector="StackPanel.row-text:disabled">
+      <Setter Property="Opacity" Value="{DynamicResource Opacity.Disabled}" />
+    </Style>
+    <!-- A disabled segment row (Claude can): the whole group fades, its track included (the SegmentedControl theme
+         fades only the items). The items stay at full opacity inside it, so the group fades once, not twice. -->
+    <Style Selector="ListBox.row-segment:disabled">
+      <Setter Property="Opacity" Value="{DynamicResource Opacity.Disabled}" />
+    </Style>
+    <Style Selector="ListBox.row-segment ListBoxItem:disabled">
+      <Setter Property="Opacity" Value="1" />
+    </Style>
   </UserControl.Styles>
 
   <UserControl.DataTemplates>
@@ -46,7 +60,7 @@
     </DataTemplate>
 
     <DataTemplate DataType="vm:SegmentRow">
-      <ListBox Theme="{StaticResource SegmentedControl}"
+      <ListBox Theme="{StaticResource SegmentedControl}" Classes="row-segment"
                ItemsSource="{Binding Options}"
                SelectedIndex="{Binding SelectedIndex, Mode=TwoWay}"
                AutomationProperties.Name="{Binding Label}" />
@@ -212,8 +226,8 @@
             <DataTemplate DataType="vm:SettingsRow">
               <Border MinHeight="{StaticResource Size.Settings.Row}" Padding="{DynamicResource Space.SettingsRow}"
                       BorderThickness="0,0,0,1" BorderBrush="{DynamicResource Brush.Border.Subtle}">
-                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Space.Settings.RowGap}">
-                  <StackPanel VerticalAlignment="Center">
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Space.Settings.RowGap}" IsEnabled="{Binding IsEnabled}">
+                  <StackPanel Classes="row-text" VerticalAlignment="Center">
                     <TextBlock Classes="row-label" Text="{Binding Label}" />
                     <TextBlock Classes="desc" Classes.mono="{Binding MonoDescription}" Margin="{StaticResource Space.Settings.Desc}" Text="{Binding Description}" />
                     <TextBlock Classes="desc row-message" Classes.error="{Binding IsError}" Margin="{StaticResource Space.Settings.Message}"

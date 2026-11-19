@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Doba.Mcp</RootNamespace>
+    <AssemblyName>Doba.Mcp</AssemblyName>
+    <!-- The MCP server Claude Desktop / Claude Code start over stdio. NativeAOT like Doba.exe (published into the same
+         folder); no Avalonia. It never opens the database: every call goes to the running Doba over a named pipe. -->
+    <PublishAot>true</PublishAot>
+    <TrimMode>full</TrimMode>
+    <OptimizationPreference>Speed</OptimizationPreference>
+    <StackTraceSupport>false</StackTraceSupport>
+    <UseSystemResourceKeys>false</UseSystemResourceKeys>
+    <SelfContained Condition="'$(RuntimeIdentifier)' != ''">true</SelfContained>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Doba.Bridge\Doba.Bridge.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="ModelContextProtocol.Core" />
+  </ItemGroup>
+</Project>

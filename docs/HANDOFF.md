@@ -28,14 +28,15 @@ request for its result. That run (pull request #1, 2026-11-19) was green: Releas
 | §10 CI on `windows-latest` builds, tests, publishes NativeAOT, uploads | Workflow in `.github/workflows/ci.yml`; its steps were run locally in the same configuration (Release build, Release tests, AOT publish, `--perf`, `--selfcheck`). It runs once, on the pull request into `main`. |
 | §10 README and HANDOFF | This file and `README.md`. |
 
-**Tests.** 1088 tests, all green on the final `dev`, in Debug and in Release (`dotnet test -c Release`, as CI runs
-them):
+**Tests.** 1377 tests, all green on `feature/mcp` with the Claude (MCP) feature (Debug, `dotnet test`, 2026-11-19;
+the `dev → main` run above had 1088, before the feature):
 
 | Project | Tests | Covers |
 |---|---|---|
-| `Doba.Core.Tests` | 246 | store, date math, projections (incl. the week lane cap, year fit, labels), navigation, dialog rules, carry-over, golden fixtures, projection timing |
-| `Doba.Storage.Tests` | 123 | database, write-behind writer incl. failure handling and transient retry, backup, JSON import / export, load timing |
-| `Doba.App.Tests` | 719 | headless UI: screens, shell, overlays, keyboard, motion, lifecycle, platform plan, single instance, screenshots, performance |
+| `Doba.Core.Tests` | 287 | store, date math, projections (incl. the week lane cap, year fit, labels), navigation, dialog rules, carry-over, Claude's task edits (`TaskEdits`, `TaskQueries`), golden fixtures, projection timing |
+| `Doba.Storage.Tests` | 129 | database, write-behind writer incl. failure handling and transient retry, backup, JSON import / export (Claude access never in the file), load timing |
+| `Doba.Bridge.Tests` | 173 | tool executor per tool and rule, tool catalog, wire format, pipe host / client and its ACL, architecture rules, `Doba.Mcp.exe` end to end over stdio (also green against the published NativeAOT exe with `DOBA_MCP_EXE`) |
+| `Doba.App.Tests` | 788 | headless UI: screens, shell, overlays, keyboard, motion, lifecycle, platform plan, single instance, Claude bridge on a real pipe and end to end through `Doba.Mcp.exe`, Settings › Data Claude rows, screenshots, performance |
 
 The counts are from the test runner's own summary of the final run.
 **Gates used for every package and fix.** `dotnet build -warnaserror` (0 warnings; trim and AOT analyzers on),
@@ -134,6 +135,7 @@ Everything below needs a person at the Windows PC. Use the published build:
 
 ```powershell
 dotnet publish src/Doba.App -c Release -r win-x64 -o artifacts\doba-win-x64 -warnaserror
+dotnet publish src/Doba.Mcp -c Release -r win-x64 -o artifacts\doba-win-x64 -warnaserror
 ```
 
 Most steps use a scratch data folder so your real data is not touched, e.g.
@@ -255,51 +257,68 @@ Write the outcome next to each item.
     fades show frames well over 20 ms there, the blur can be dropped (`DECISIONS.md` "Backdrop blur behind overlays").
     Also open and close the task dialog by hand (N, Esc) and judge whether it stutters.
 
+**Claude (MCP)** — on a copy, never on your real data: start
+`.\artifacts\doba-win-x64\Doba.exe --data <full path of artifacts\manual>` (any folder under `artifacts\`), with
+`Doba.Mcp.exe` published next to `Doba.exe`. How each client is connected: README › Claude (MCP).
+
+41. Settings › Data. Expected: Claude access off; "Claude can" and "Connect Claude" dimmed and inactive (the segment
+    group's track too). Turn Claude access on: both become active; "Claude can" shows Read.
+42. Claude Desktop (the Microsoft Store / MSIX build): Copy for Claude Desktop, Settings › Developer › Edit Config, merge,
+    quit from the tray, start again. Expected: + › Connectors lists `doba` with 11 tools; "what is on today?" calls
+    `get_today` (Claude asks first) and answers with the copy's tasks. Record which config file Edit Config opened and
+    where the `mcp*.log` files are, so README can name them.
+43. Claude Code: Copy for Claude Code, run the command in PowerShell. Expected: `claude mcp list` shows `doba` connected;
+    in a session `/mcp` lists its tools; asking for today's tasks works.
+44. Level: with Read, ask Claude to create a task. Expected: refused with the "Read & edit" hint, nothing changes in
+    Doba. Switch to Read & edit and ask again: the task appears in Doba at once (no restart, no refresh). Open that task
+    in Doba's edit dialog and ask Claude to rename it: refused ("open in Doba's editor"); close the dialog and it works.
+45. Turn Claude access off, ask again. Expected: "Claude access is off" with the Settings path. Quit Doba from the tray,
+    ask again: "Doba is not running (data folder: …)". Doba is never started by Claude.
 **Schedule: drag, resize, keyboard, "+N"** (Today and Day; headless tests cannot judge how a drag feels)
 
-Start with `--demo` (its 15 and 16 November have overlapping tasks) unless the step says otherwise. Steps 41–56 are
+Start with `--demo` (its 15 and 16 November have overlapping tasks) unless the step says otherwise. Steps 46–61 are
 the same on Today and in the Day view; try each on both at least once.
 
-41. Hover a schedule block. Expected: a faint lighter layer and a short bar at the bottom edge fade in (about 0.2 s);
+46. Hover a schedule block. Expected: a faint lighter layer and a short bar at the bottom edge fade in (about 0.2 s);
     the cursor is a hand; over the bar it is a vertical resize arrow.
-42. Click a block without moving the mouse. Expected: its task opens in the dialog; nothing is marked done. Click the
+47. Click a block without moving the mouse. Expected: its task opens in the dialog; nothing is marked done. Click the
     small checkbox in a block. Expected: the task is marked done (or not done) and no dialog opens.
-43. Press on "Write the weekly update", let the mouse tremble a little (under 4 px) and release. Expected: the dialog
+48. Press on "Write the weekly update", let the mouse tremble a little (under 4 px) and release. Expected: the dialog
     opens; the time is unchanged.
-44. Drag that block down. Expected: after about 4 px the copy lifts (a touch larger, with a shadow); the old place
+49. Drag that block down. Expected: after about 4 px the copy lifts (a touch larger, with a shadow); the old place
     shows a dashed outline; a time label in the hour column shows the slot; the copy steps in 15-minute slots;
     blocks under the copy fade to about half. Release: the block lands in about 0.2 s, the list on the left shows the
     new time, and the neighbours slide to their new columns. No dialog opens.
-45. Drag again holding Alt; also press and release Alt without moving. Expected: 5-minute slots, re-snapped at once
+50. Drag again holding Alt; also press and release Alt without moving. Expected: 5-minute slots, re-snapped at once
     on the Alt press or release; no window menu opens and no access-key underlines appear.
-46. Drag far up and far down. Expected: the block stops at 07:00, and with its end at 23:00, without a bounce. Then
+51. Drag far up and far down. Expected: the block stops at 07:00, and with its end at 23:00, without a bounce. Then
     make the window 1100×700 and drag towards the top and the bottom of the schedule. Expected: it scrolls by itself,
     faster closer to the edge, and stops at the ends.
-47. Press Esc during a drag, and during a resize. Expected: the copy flies back (about 0.2 s), the release does not
+52. Press Esc during a drag, and during a resize. Expected: the copy flies back (about 0.2 s), the release does not
     open the dialog, nothing is saved.
-48. Alt+Tab to another app during a drag (button still down), then come back. Expected: the drag was cancelled as by
+53. Alt+Tab to another app during a drag (button still down), then come back. Expected: the drag was cancelled as by
     Esc: nothing moved and the cursor is normal.
-49. Drag a block's bottom bar. Expected: the block grows or shrinks in place in 15-minute steps (5 with Alt), shows
+54. Drag a block's bottom bar. Expected: the block grows or shrinks in place in 15-minute steps (5 with Alt), shows
     the range and length ("09:30 – 11:15 · 1h 45m"); at least 15 minutes; its end at most 23:00; release saves.
-50. Keyboard: Tab to a block (an outline appears around it). Up / Down move it by 15 minutes (Alt: 5); Shift+Up /
+55. Keyboard: Tab to a block (an outline appears around it). Up / Down move it by 15 minutes (Alt: 5); Shift+Up /
     Down change its length; the time label stays about 1 s after the last step; holding a key repeats; at 07:00 /
     23:00 nothing happens and the column does not scroll. Enter opens the task; Space ticks it. In the Day view
     Left / Right still change the day.
-51. Narrator (Win+Ctrl+Enter). Expected after a drop: "Moved <title>, 11:15 to 12:15"; after a resize: "Resized …";
+56. Narrator (Win+Ctrl+Enter). Expected after a drop: "Moved <title>, 11:15 to 12:15"; after a resize: "Resized …";
     after Esc: "Move cancelled"; after a key step: the new time. Repeat the same step twice: read both times.
-52. Day view, 16 November: two blocks and "+2" beside them. Click "+2". Expected: a list of two tasks opens under it
+57. Day view, 16 November: two blocks and "+2" beside them. Click "+2". Expected: a list of two tasks opens under it
     (about 0.2 s; near the bottom of the day it opens above). A second click, Esc, a click elsewhere in the schedule
     or another day closes it. A row's title opens the task (the list closes); its checkbox ticks it (the list stays).
     Tasks in the list cannot be dragged. Keyboard: Tab to "+2", Enter: focus on the first row; Esc: focus back on
     "+2". Moving a block with the keyboard under a "+N" moves the focus to that "+N".
-53. Windows Settings › Accessibility › Visual effects › Animation effects off, while Doba runs. Drag a block.
+58. Windows Settings › Accessibility › Visual effects › Animation effects off, while Doba runs. Drag a block.
     Expected: the copy follows the pointer without the lift and the shadow; the drop and Esc are instant; neighbours
     jump. The time label after a key step still stays about 1 s. Turn the setting back on.
-54. At 125 % and 150 % display scaling: a slight tremble on click still opens rather than drags; the copy, the dashed
+59. At 125 % and 150 % display scaling: a slight tremble on click still opens rather than drags; the copy, the dashed
     outline and the bar are crisp; the bottom bar is easy to grab (it reaches 3 px below the block).
-55. If a pen is available: the pen drags like the mouse. On a touch screen: a tap opens or ticks; touch does not drag
+60. If a pen is available: the pen drags like the mouse. On a touch screen: a tap opens or ticks; touch does not drag
     (by decision).
-56. With `--data D:\dev\Doba\artifacts\manual` (or a scratch folder): move a block, close Doba (Quit from the tray),
+61. With `--data D:\dev\Doba\artifacts\manual` (or a scratch folder): move a block, close Doba (Quit from the tray),
     start again. Expected: the new time is kept. A task with no length set (drawn as 30 minutes) still has no length
     after a move; a resize sets one.
 
@@ -365,6 +384,11 @@ Known gaps left by the final review (not fixed, with the reason):
   its native icon only once it is in the application's `TrayIcon.Icons` collection and Doba created it standalone;
   closing then hid the window with nothing to bring it back. The icon is now attached there, `IsSupported` turns false
   when no native icon could be created (closing then quits), and `--selfcheck` fails without the native icon.
+- **Reused task id after a delete** (old `TaskStore` behaviour, see `DECISIONS.md` "Ids"): a new task gets the
+  largest id + 1, so deleting the newest task and creating another hands out the same id again. Harmless inside Doba;
+  with Claude (MCP) a stale id that Claude remembers from before the delete could now hit the new task (Claude reads
+  ids from lists and may act on an old one later). Proposed follow-up: never reuse an id (keep a high-water mark in the
+  database).
 - **Daily backup failures** go to the debugger trace only (not to `doba.log`, no notice).
 - **Database rows are not validated on load**; the store normalises every task it loads instead (bad values are
   corrected in memory and on the next write of that task).
