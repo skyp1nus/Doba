@@ -563,6 +563,71 @@ public class WeekViewTests
     }
 
     [AvaloniaFact]
+    public void A_short_row_shows_the_lanes_that_fit_and_counts_hidden_bars_in_more()
+    {
+        // The 1100 × 700 window's content area; five overlapping spans on Mon–Wed of the demo week (9–11 Nov).
+        using var s = new Scene(width: 815, height: 532);
+        var store = s.Harness.App.Store;
+        var ids = new List<long>();
+        for (var i = 0; i < 5; i++)
+        {
+            ids.Add(store.Add(new TaskItem(0, "Overlapping span " + i, string.Empty, new DateOnly(2026, 11, 9), new DateOnly(2026, 11, 11),
+                null, 0, Priority.None, null, false)).Id);
+        }
+
+        s.Settle();
+        var row = s.ViewModel.Row1;
+        var model = row.Model!;
+        Assert.True(model.LaneCount >= 5);
+        Assert.InRange(row.LaneCount, 0, model.LaneCount - 1); // fewer lanes than the projection's
+        var rowView = s.Rows()[0];
+        var rowBottom = rowView.Bounds.Height;
+
+        // No bar is cut by the row edge; the shown bars are exactly those in the visible lanes.
+        Assert.Equal(model.Spans.Where(b => b.Lane < row.LaneCount).Select(b => b.Row.Id).Order(), row.Spans.Select(b => b.Id).Order());
+        foreach (var bar in s.Bars(0))
+        {
+            Assert.True(bar.TranslatePoint(new Point(0, bar.Bounds.Height), rowView)!.Value.Y <= rowBottom + 0.5, "a bar is cut");
+        }
+
+        // Each covered day counts its hidden bars in "+N more", and the link is fully inside the row.
+        var cells = s.Cells(0);
+        for (var c = 0; c < 3; c++)
+        {
+            var hidden = model.Spans.Count(b => b.Lane >= row.LaneCount && b.Column <= c && c < b.Column + b.ColumnSpan);
+            Assert.True(hidden > 0);
+            var cellVm = row.Cells[c];
+            Assert.Equal(model.Cells[c].MoreCount + hidden, cellVm.MoreCount);
+            var more = Scene.More(cells[c]);
+            Assert.NotNull(more);
+            Assert.Equal("+" + cellVm.MoreCount + " more", more.Content);
+            Assert.True(more.TranslatePoint(new Point(0, more.Bounds.Height), rowView)!.Value.Y <= rowBottom + 0.5,
+                $"column {c}: \"+N more\" is cut");
+        }
+
+        // At the design size every lane fits, as before.
+        s.Window.Width = ScreenHarness.ContentWidth;
+        s.Window.Height = ScreenHarness.ContentHeight;
+        s.Settle();
+        Assert.Equal(s.ViewModel.Row1.Model!.LaneCount, s.ViewModel.Row1.LaneCount);
+        Assert.Equal(s.ViewModel.Row1.Model.Spans.Count, s.ViewModel.Row1.Spans.Count);
+        Assert.All(ids, id => Assert.Contains(s.ViewModel.Row1.Spans, b => b.Id == id));
+        for (var c = 0; c < 4; c++)
+        {
+            Assert.Equal(s.ViewModel.Row1.Model.Cells[c].MoreCount, s.ViewModel.Row1.Cells[c].MoreCount);
+        }
+    }
+
+    [Theory]
+    [InlineData(3, 403, 3)]   // the design's row: everything fits
+    [InlineData(7, 403, 7)]   // 86 + 7 × 36 = 338 ≤ 403 − 10 − 26
+    [InlineData(8, 403, 7)]
+    [InlineData(5, 254, 3)]   // 1100 × 700: 254 − 86 − 10 − 26 = 132 → 3 lanes
+    [InlineData(2, 100, 0)]   // not even one lane leaves room for "+N more"
+    public void Visible_lanes_leave_room_for_the_more_line(int lanes, double rowHeight, int visible) =>
+        Assert.Equal(visible, WeekRowViewModel.VisibleLanes(lanes, rowHeight));
+
+    [AvaloniaFact]
     public void Screenshot_comfortable() => Capture(null, "week-content");
 
     [AvaloniaFact]

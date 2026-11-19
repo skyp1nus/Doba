@@ -32,7 +32,13 @@ public static class AccentPalette
     };
 
     /// <summary>Settings swatch label ("Mist", "Sage", "Sand", "Gray").</summary>
-    public static string NameOf(Accent accent) => accent.ToString();
+    public static string NameOf(Accent accent) => accent switch
+    {
+        Accent.Sage => "Sage",
+        Accent.Sand => "Sand",
+        Accent.Gray => "Gray",
+        _ => "Mist",
+    };
 
     public static Color WithAlpha(Color color, byte alpha) => Color.FromArgb(alpha, color.R, color.G, color.B);
 }

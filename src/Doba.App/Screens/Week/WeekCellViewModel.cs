@@ -17,12 +17,12 @@ public sealed partial class WeekCellViewModel : ObservableObject
     private readonly Func<TaskRow, TaskRowViewModel> _createRow;
     private string? _weekdaySource;
 
-    public WeekCellViewModel(WeekDayCell cell, int laneCount, Func<TaskRow, TaskRowViewModel> createRow)
+    public WeekCellViewModel(WeekDayCell cell, int laneCount, Func<TaskRow, TaskRowViewModel> createRow, int hiddenSpans = 0)
     {
         ArgumentNullException.ThrowIfNull(cell);
         _createRow = createRow;
         Column = cell.Column;
-        Update(cell, laneCount);
+        Update(cell, laneCount, hiddenSpans);
     }
 
     /// <summary>0-based column (0..3; the row key).</summary>
@@ -51,13 +51,13 @@ public sealed partial class WeekCellViewModel : ObservableObject
     /// <summary>0..1 done share of the day's single-day tasks.</summary>
     [ObservableProperty] public partial double Progress { get; private set; }
 
-    /// <summary>Tasks that did not fit; 0 = none.</summary>
+    /// <summary>Tasks that did not fit (and multi-day bars of this day in lanes the row cannot show); 0 = none.</summary>
     [ObservableProperty] public partial int MoreCount { get; private set; }
 
     /// <summary>"+2 more".</summary>
     [ObservableProperty] public partial string MoreLabel { get; private set; } = string.Empty;
 
-    /// <summary>No single-day tasks: "Nothing here".</summary>
+    /// <summary>Nothing to show for the day: no single-day tasks and no hidden bars ("Nothing here").</summary>
     [ObservableProperty] public partial bool Empty { get; private set; }
 
     /// <summary>Multi-day lanes of the row (the cards start below them).</summary>
@@ -73,7 +73,9 @@ public sealed partial class WeekCellViewModel : ObservableObject
     /// <summary>Every column but the first draws a 1 px left separator.</summary>
     public bool HasSeparator => Column != 0;
 
-    public void Update(WeekDayCell cell, int laneCount)
+    /// <param name="hiddenSpans">Multi-day bars covering this day in lanes the short row does not show (counted in
+    /// "+N more"; see <see cref="WeekRowViewModel.VisibleLanes"/>).</param>
+    public void Update(WeekDayCell cell, int laneCount, int hiddenSpans = 0)
     {
         ArgumentNullException.ThrowIfNull(cell);
         if (!string.Equals(_weekdaySource, cell.Weekday, StringComparison.Ordinal))
@@ -84,7 +86,7 @@ public sealed partial class WeekCellViewModel : ObservableObject
 
         Month = cell.MonthShort;
         IsToday = cell.IsToday;
-        Empty = cell.Empty;
+        Empty = cell.Empty && hiddenSpans == 0;
         LaneCount = laneCount;
 
         // Progress before Date: the header's progress line jumps (no 500 ms sweep) when its day changes.
@@ -103,10 +105,11 @@ public sealed partial class WeekCellViewModel : ObservableObject
                 DayNumber, " ", DateMath.MonthNames[Date.Month - 1]);
         }
 
-        if (MoreCount != cell.MoreCount || MoreLabel.Length == 0)
+        var more = cell.MoreCount + hiddenSpans;
+        if (MoreCount != more || MoreLabel.Length == 0)
         {
-            MoreCount = cell.MoreCount;
-            MoreLabel = string.Concat("+", cell.MoreCount.ToString(CultureInfo.InvariantCulture), " more");
+            MoreCount = more;
+            MoreLabel = string.Concat("+", more.ToString(CultureInfo.InvariantCulture), " more");
         }
 
         KeyedSync.Apply(Tasks, cell.Tasks, r => r.Id, vm => vm.Id, _createRow, (vm, r) => vm.Update(r));

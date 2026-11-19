@@ -26,7 +26,7 @@
         <DoubleTransition Property="Opacity" Duration="{x:Static m:MotionTimes.Dim}" Easing="{x:Static m:Motion.EaseStd}" />
       </Transitions>
     </Button.Transitions>
-    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{StaticResource Space.Week.BarGap}">
       <c:TaskCheckBox Name="PART_Check"
                       BoxSize="14"
                       IsChecked="{Binding Done, Mode=OneWay}"

@@ -82,6 +82,9 @@ public sealed partial class YearMonthViewModel : ObservableObject
     /// <summary>The record last pushed in.</summary>
     public YearMonth Model { get; private set; } = null!;
 
+    /// <summary>The measured room for key items in this cell (null until the view's first arrange: everything shown).</summary>
+    public YearRoom? Room { get; private set; }
+
     public void Update(YearMonth month)
     {
         ArgumentNullException.ThrowIfNull(month);
@@ -91,12 +94,41 @@ public sealed partial class YearMonthViewModel : ObservableObject
         IsPast = month.IsPast;
         Stat = month.Stat;
         Progress = month.Progress;
-        MoreCount = month.MoreCount;
         ZoomTarget = month.ZoomTarget;
-        OnPropertyChanged(nameof(HasMore));
-        OnPropertyChanged(nameof(MoreLabel));
         OnPropertyChanged(nameof(OpenLabel));
-        KeyedSync.Apply(Rows, month.Rows, r => r.Id, vm => vm.Id, r => new TaskRowViewModel(r, _actions, _commands), (vm, r) => vm.Update(r));
+        ApplyFit();
+    }
+
+    /// <summary>
+    /// The cell's measured room changed (window resize): show as many key items as fit, the rest counted in "+N more".
+    /// Returns true when that changed what the cell shows.
+    /// </summary>
+    public bool SetRoom(YearRoom room)
+    {
+        if (Room == room)
+        {
+            return false;
+        }
+
+        var before = (Rows.Count, MoreCount);
+        Room = room;
+        ApplyFit();
+        return before != (Rows.Count, MoreCount);
+    }
+
+    private void ApplyFit()
+    {
+        var month = Model;
+        var (shown, more) = Room is { } room ? room.Fit(month.Rows.Count, month.MoreCount) : (month.Rows.Count, month.MoreCount);
+        if (MoreCount != more)
+        {
+            MoreCount = more;
+            OnPropertyChanged(nameof(HasMore));
+            OnPropertyChanged(nameof(MoreLabel));
+        }
+
+        IReadOnlyList<TaskRow> rows = shown == month.Rows.Count ? month.Rows : [.. month.Rows.Take(shown)];
+        KeyedSync.Apply(Rows, rows, r => r.Id, vm => vm.Id, r => new TaskRowViewModel(r, _actions, _commands), (vm, r) => vm.Update(r));
     }
 
     /// <summary>Month header or "+N more": zoom into the Month view.</summary>

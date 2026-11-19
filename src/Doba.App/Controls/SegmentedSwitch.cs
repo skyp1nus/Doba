@@ -12,7 +12,9 @@ namespace Doba.App.Controls;
 /// The page header's Year / Month / Week / Day switch: 62×30 segments, gap 2, and one indicator (Brush.Bg.Selected,
 /// radius 7) that slides under the selected segment (translateX, 420 ms ease-out) while the segment text colours change
 /// (Brush.Text.Tertiary → Brush.Text.Primary, 250 ms). With <c>SelectedIndex = -1</c> (Inbox, Today, Settings) the
-/// indicator fades out (250 ms) and parks under the first segment, like the prototype.
+/// indicator fades out (250 ms) where it is; when a level is selected again it is placed under it at once and fades in
+/// (the prototype creates a fresh switch when the calendar opens, so nothing slides). Before any level was selected it
+/// rests under the first segment.
 /// </summary>
 /// <remarks>
 /// A <see cref="ListBox"/> (keyboard arrows, selection, automation) with its own template
@@ -45,7 +47,10 @@ public class SegmentedSwitch : ListBox
         base.OnPropertyChanged(change);
         if (change.Property == SelectedIndexProperty)
         {
-            UpdateIndicator(animate: IsLoaded);
+            // The indicator slides only between levels. Coming back from "no level" (Inbox / Today / Settings, where
+            // the switch is hidden) it is placed under the level at once and only fades in, as the prototype's switch,
+            // which is created fresh when the calendar opens.
+            UpdateIndicator(animate: IsLoaded && IsEffectivelyVisible && change.GetOldValue<int>() >= 0);
         }
     }
 
@@ -71,6 +76,11 @@ public class SegmentedSwitch : ListBox
         }
 
         _indicator.Opacity = index < 0 ? 0 : 1;
+        if (index < 0 && _placed)
+        {
+            return; // fades out where it is
+        }
+
         if (container.TranslatePoint(default, host) is not { } target)
         {
             return;
@@ -96,6 +106,10 @@ public class SegmentedSwitch : ListBox
         {
             var current = Animator.Running(_indicator)?.Current ?? MotionState.Rest;
             Animator.SlideFrom(_indicator, oldX + current.X - target.X, oldY + current.Y - target.Y, M.SegIndicator, fade: false);
+        }
+        else if (Animator.IsAnimating(_indicator))
+        {
+            Animator.Reset(_indicator);
         }
 
         _placed = true;

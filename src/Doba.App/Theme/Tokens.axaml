@@ -143,6 +143,16 @@
       <SolidColorBrush x:Key="Brush.Slider.Border" Color="{StaticResource Color.Slider.Border}" />
       <SolidColorBrush x:Key="Brush.Slider.Rail" Color="{StaticResource Color.Slider.Rail}" />
 
+      <!-- Chrome tint base: rgba(22,22,24, transparency/100) over the backdrop (ThemeService.ApplyChromeOpacity reads it,
+           again when the theme variant changes). -->
+      <Color x:Key="Color.Chrome.Base">#161618</Color>
+      <!-- Shadows (box-shadow lists; Avalonia paints the last on top, so the 1 px ring comes last, DECISIONS). The ring
+           colours are this palette's Color.Border.Popover / Color.Border.Default / Color.Border.Emphasis. -->
+      <BoxShadows x:Key="Shadow.Popover">0 18 44 0 #8C000000, 0 0 0 1 #2A2A2F</BoxShadows>    <!-- Date / Time popover: 0 18 44 rgba(0,0,0,.55) -->
+      <BoxShadows x:Key="Shadow.PopoverSmall">0 16 40 0 #80000000, 0 0 0 1 #2A2A2F</BoxShadows> <!-- Priority / Tag popover: 0 16 40 rgba(0,0,0,.5) -->
+      <BoxShadows x:Key="Shadow.Dialog">0 30 80 0 #99000000, 0 0 0 1 #26262A</BoxShadows>     <!-- task dialog: 0 30 80 rgba(0,0,0,.6) -->
+      <BoxShadows x:Key="Shadow.Ring.Emphasis">inset 0 0 0 1 #3A3A40</BoxShadows>             <!-- 1 px inset ring (gallery sample) -->
+
       <!-- Package regions for palette colours and brushes (Dark). A work package adds tokens only inside its own
            region below; the shared tokens above are never moved or renamed. -->
       <!-- == Shell == -->
@@ -208,8 +218,8 @@
   <SolidColorBrush x:Key="Brush.Accent10" Color="#1A9FB4C7" />
   <SolidColorBrush x:Key="Brush.Accent15" Color="#269FB4C7" />
   <SolidColorBrush x:Key="Brush.Accent25" Color="#409FB4C7" />
-  <!-- Chrome tint over the backdrop: rgba(22,22,24, transparency/100); default 72 %. ThemeService.ApplyChromeOpacity. -->
-  <Color x:Key="Color.Chrome.Base">#161618</Color>
+  <!-- Chrome tint over the backdrop: the palette's Color.Chrome.Base at transparency/100; default 72 %. A runtime brush
+       (ThemeService.ApplyChromeOpacity sets its colour at startup and when the theme variant changes). -->
   <SolidColorBrush x:Key="Brush.Chrome" Color="#B8161618" />
 
   <!-- Fonts. Geist / Geist Mono are embedded; fallbacks match the prototype's font stacks. -->
@@ -545,7 +555,77 @@
 
 
   <!-- == Lists (Inbox / Today / Settings) == -->
-
+  <!-- Inbox (markup 200–269): page scroll padding-right 12 (the 8 px scrollbar sits in it); two columns, gap 48. -->
+  <Thickness x:Key="Space.Inbox.Scroll">0,0,12,0</Thickness>
+  <x:Double x:Key="Space.Inbox.ColumnGap">48</x:Double>
+  <!-- Inbox / Today section columns: gap 28, padding 6 0 24. -->
+  <x:Double x:Key="Space.List.SectionGap">28</x:Double>
+  <Thickness x:Key="Space.List.Sections">0,6,0,24</Thickness>
+  <!-- Today (markup 353–423): list padding-right 32; summary → progress line margin-top 12; aside padding-left 24. -->
+  <Thickness x:Key="Space.Today.Scroll">0,0,32,0</Thickness>
+  <Thickness x:Key="Space.Today.Progress">0,12,0,0</Thickness>
+  <Thickness x:Key="Space.Today.Aside">24,0,0,0</Thickness>
+  <!-- Task section (TaskGroupList): header row margin-bottom 6. -->
+  <Thickness x:Key="Space.Group.Header">0,0,0,6</Thickness>
+  <!-- List row (TaskListRow): flex gap 12; the 18 px priority button has margin-left −4 (12 − 4 = 8). -->
+  <x:Double x:Key="Size.Row.Priority">18</x:Double>
+  <Thickness x:Key="Space.Row.Priority">8,0,0,0</Thickness>
+  <Thickness x:Key="Space.Row.Gap">12,0,0,0</Thickness>
+  <x:Double x:Key="Space.Row.MetaGap">12</x:Double>
+  <!-- "Add task" row: plus icon 14 / stroke 1.8, gap 10. -->
+  <x:Double x:Key="Space.AddTask.Gap">10</x:Double>
+  <x:Double x:Key="Size.AddTask.Icon">14</x:Double>
+  <x:Double x:Key="Size.AddTask.IconStroke">1.8</x:Double>
+  <!-- Schedule (Today / Day aside): header margin 4 0 14, column bottom padding 8; hour rows 16 px centred on their line
+       (the layer overhangs the grid by 8 px top and bottom); hour label column 40, gap 12; the line sits 7 px down the
+       row; now-line: label column 46, 7 px dot 4 px after it. -->
+  <Thickness x:Key="Space.Schedule.Column">0,0,0,8</Thickness>
+  <Thickness x:Key="Space.Schedule.Header">0,4,0,14</Thickness>
+  <Thickness x:Key="Space.Schedule.HourLayer">0,-8,0,-8</Thickness>
+  <x:Double x:Key="Size.Schedule.Row">16</x:Double>
+  <GridLength x:Key="Size.Schedule.HourLabel">40</GridLength>
+  <x:Double x:Key="Space.Schedule.HourGap">12</x:Double>
+  <Thickness x:Key="Space.Schedule.Line">0,7,0,0</Thickness>
+  <GridLength x:Key="Size.Schedule.NowLabel">46</GridLength>
+  <x:Double x:Key="Size.Schedule.NowDot">7</x:Double>
+  <Thickness x:Key="Space.Schedule.NowDot">4,0,0,0</Thickness>
+  <!-- Settings (markup 271–351). Page: scroll padding-right 12, column margin 2 0 32. Row: min height 66, control gap 24,
+       description margin-top 4, export / import message margin-top 6. Shortcuts: 52 px lines, padding 0 4, gap 12,
+       key caps gap 4. Data footnote margin 18 4 0. -->
+  <Thickness x:Key="Space.Settings.Scroll">0,0,12,0</Thickness>
+  <Thickness x:Key="Space.Settings.Column">0,2,0,32</Thickness>
+  <x:Double x:Key="Size.Settings.Row">66</x:Double>
+  <x:Double x:Key="Space.Settings.RowGap">24</x:Double>
+  <Thickness x:Key="Space.Settings.Desc">0,4,0,0</Thickness>
+  <Thickness x:Key="Space.Settings.Message">0,6,0,0</Thickness>
+  <x:Double x:Key="Size.Settings.Shortcut">52</x:Double>
+  <Thickness x:Key="Space.Settings.Shortcut">4,0</Thickness>
+  <x:Double x:Key="Space.Settings.ShortcutGap">12</x:Double>
+  <x:Double x:Key="Space.Settings.KeyCapGap">4</x:Double>
+  <Thickness x:Key="Space.Settings.Footnote">4,18,4,0</Thickness>
+  <!-- Accent swatches: 22 px circles (r11), gap 10; the selection ring (2 px Bg.Main gap + 1.5 px Text.Primary, a
+       box-shadow) is drawn 3.5 px outside each circle, so the group keeps 3.5 px of padding (design 0 4: 0.5 + 3.5). -->
+  <x:Double x:Key="Size.Settings.Swatch">22</x:Double>
+  <CornerRadius x:Key="Radius.Settings.Swatch">11</CornerRadius>
+  <x:Double x:Key="Space.Settings.SwatchGap">10</x:Double>
+  <Thickness x:Key="Space.Settings.Swatches">0.5,0</Thickness>
+  <Thickness x:Key="Space.Settings.SwatchPad">3.5</Thickness>
+  <Thickness x:Key="Space.Settings.SwatchRing">-3.5</Thickness>
+  <Thickness x:Key="Space.Settings.SwatchRingWidth">1.5</Thickness>
+  <!-- Window transparency: slider 180, value 38 right-aligned, gap 8. Key caps and buttons rows: gap 8. -->
+  <x:Double x:Key="Size.Settings.Slider">180</x:Double>
+  <x:Double x:Key="Size.Settings.RangeValue">38</x:Double>
+  <x:Double x:Key="Space.Settings.ControlGap">8</x:Double>
+  <!-- Density cards: 150 wide, gap 10, padding 10, preview ↔ label 8; preview 76 px of rows with an 8 px checkbox and a
+       4 px bar; the selection ring is an inset 1.5 px box-shadow. -->
+  <x:Double x:Key="Size.Settings.Density">150</x:Double>
+  <x:Double x:Key="Space.Settings.DensityGap">10</x:Double>
+  <Thickness x:Key="Space.Settings.DensityCard">10</Thickness>
+  <x:Double x:Key="Space.Settings.DensityStack">8</x:Double>
+  <x:Double x:Key="Size.Settings.DensityPreview">76</x:Double>
+  <x:Double x:Key="Size.Settings.PreviewCheck">8</x:Double>
+  <x:Double x:Key="Size.Settings.PreviewBar">4</x:Double>
+  <Thickness x:Key="Thickness.Settings.DensityRing">1.5</Thickness>
 
   <!-- == Calendar (Week / Year) == -->
   <!-- Week: the next-week preview cell's cards (opacity 0.55; 0.2 when a tag filter also dims them). -->
@@ -560,6 +640,25 @@
   <Thickness x:Key="Space.Week.Bar">9,0</Thickness>
   <!-- Week grid: 12 px under row 1, a 1 px rule, 14 px above row 2 (rows: flex 1 1 0 after the padding). -->
   <Thickness x:Key="Space.Week.RowRule">0,12,0,14</Thickness>
+  <!-- Week day header (markup 517–531): padding 2 14 0; "● TODAY" / "NEXT WEEK →" gap 6 (6 px dot, 11 px arrow, stroke
+       2); day number row margin-top 6, gap 8; the 40 px number and "Nov" are nudged onto the prototype's glyph positions
+       (number 5 px higher, "Nov" on its baseline); progress line margin-top 14. -->
+  <Thickness x:Key="Space.Week.Header">14,2,14,0</Thickness>
+  <x:Double x:Key="Space.Week.BadgeGap">6</x:Double>
+  <x:Double x:Key="Size.Week.Dot">6</x:Double>
+  <x:Double x:Key="Size.Week.NextIcon">11</x:Double>
+  <x:Double x:Key="Size.Week.NextIconStroke">2</x:Double>
+  <Thickness x:Key="Space.Week.DayRow">0,6,0,0</Thickness>
+  <x:Double x:Key="Space.Week.DayGap">8</x:Double>
+  <Thickness x:Key="Space.Week.DayNumber">0,-5,0,5</Thickness>
+  <Thickness x:Key="Space.Week.Month">-1,0,0,2</Thickness>
+  <Thickness x:Key="Space.Week.Progress">0,14,0,0</Thickness>
+  <!-- Card list: padding 10 8 0 (WeekLayout.ListPaddingTop / ListPaddingX, which the card fitting uses); "Nothing here"
+       padding 6; "+N more" margin-top 6 (WeekLayout.CardGap). Multi-day bar: checkbox ↔ title ↔ meta gap 8. -->
+  <Thickness x:Key="Space.Week.List">8,10,8,0</Thickness>
+  <Thickness x:Key="Space.Week.Empty">6</Thickness>
+  <Thickness x:Key="Space.Week.More">0,6,0,0</Thickness>
+  <x:Double x:Key="Space.Week.BarGap">8</x:Double>
 
   <!-- Year (design-reference lines 425–454, yearData `cell`): cell padding top 6 (first row) / 18, right 22 (0 in the
        last column), bottom 12, left 22 (0 in the first column); a 1 px Border.Subtle rule left / on top except at the

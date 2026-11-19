@@ -32,8 +32,8 @@
     </Style>
   </UserControl.Styles>
 
-  <StackPanel Margin="0,0,0,8">
-    <Grid Name="PART_Header" ColumnDefinitions="*,Auto" Margin="0,4,0,14">
+  <StackPanel Margin="{StaticResource Space.Schedule.Column}">
+    <Grid Name="PART_Header" ColumnDefinitions="*,Auto" Margin="{StaticResource Space.Schedule.Header}">
       <TextBlock Classes="section" Text="SCHEDULE" VerticalAlignment="Center" />
       <TextBlock Grid.Column="1" Classes="label" Text="{x:Static c:ScheduleViewModel.RangeLabel}" VerticalAlignment="Center" />
     </Grid>
@@ -41,7 +41,7 @@
     <Panel Name="PART_Grid" Height="{x:Static c:ScheduleViewModel.GridHeight}" VerticalAlignment="Top">
       <!-- Hour rows are 16 px tall and centred on their line, so the first/last overhang the grid by 8 px: the layer is
            extended by that much (and rows are placed at their line's top) so nothing clips them. -->
-      <ItemsControl Name="PART_Hours" ItemsSource="{x:Static c:ScheduleViewModel.Hours}" IsHitTestVisible="False" Margin="0,-8,0,-8">
+      <ItemsControl Name="PART_Hours" ItemsSource="{x:Static c:ScheduleViewModel.Hours}" IsHitTestVisible="False" Margin="{StaticResource Space.Schedule.HourLayer}">
         <ItemsControl.ItemsPanel>
           <ItemsPanelTemplate>
             <Panel />
@@ -51,9 +51,13 @@
           <DataTemplate x:DataType="c:ScheduleHour">
             <!-- The 1 px line is centred on the hour's top (top − 0.5 … top + 0.5), which Chromium paints on the
                  pixel row above the top: row offset 7, not the 7.5 → 8 that centring would round to. -->
-            <Grid Margin="{Binding Margin}" Height="16" VerticalAlignment="Top" ColumnDefinitions="40,*" ColumnSpacing="12">
+            <Grid Margin="{Binding Margin}" Height="{StaticResource Size.Schedule.Row}" VerticalAlignment="Top" ColumnSpacing="{StaticResource Space.Schedule.HourGap}">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="{StaticResource Size.Schedule.HourLabel}" />
+                <ColumnDefinition Width="*" />
+              </Grid.ColumnDefinitions>
               <TextBlock Classes="meta" Text="{Binding Label}" VerticalAlignment="Center" />
-              <Border Grid.Column="1" Classes="divider" VerticalAlignment="Top" Margin="0,7,0,0" />
+              <Border Grid.Column="1" Classes="divider" VerticalAlignment="Top" Margin="{StaticResource Space.Schedule.Line}" />
             </Grid>
           </DataTemplate>
         </ItemsControl.ItemTemplate>
@@ -115,16 +119,20 @@
       <Grid Name="PART_Now"
             IsVisible="{Binding HasNow}"
             Margin="{Binding NowMargin}"
-            Height="16"
+            Height="{StaticResource Size.Schedule.Row}"
             VerticalAlignment="Top"
-            ColumnDefinitions="46,Auto,*"
             ZIndex="2"
             IsHitTestVisible="False">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="{StaticResource Size.Schedule.NowLabel}" />
+          <ColumnDefinition Width="Auto" />
+          <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
         <Border Background="{DynamicResource Brush.Bg.Main}">
-          <TextBlock Classes="meta accent" Text="{Binding NowLabel}" LineHeight="16" VerticalAlignment="Center" />
+          <TextBlock Classes="meta accent" Text="{Binding NowLabel}" LineHeight="{StaticResource Size.Schedule.Row}" VerticalAlignment="Center" />
         </Border>
-        <Ellipse Grid.Column="1" Width="7" Height="7" Margin="4,0,0,0" Fill="{DynamicResource Brush.Accent}" VerticalAlignment="Center" />
-        <Border Grid.Column="2" Height="1" Background="{DynamicResource Brush.Accent}" VerticalAlignment="Top" Margin="0,7,0,0" />
+        <Ellipse Grid.Column="1" Width="{StaticResource Size.Schedule.NowDot}" Height="{StaticResource Size.Schedule.NowDot}" Margin="{StaticResource Space.Schedule.NowDot}" Fill="{DynamicResource Brush.Accent}" VerticalAlignment="Center" />
+        <Border Grid.Column="2" Height="1" Background="{DynamicResource Brush.Accent}" VerticalAlignment="Top" Margin="{StaticResource Space.Schedule.Line}" />
       </Grid>
     </Panel>
   </StackPanel>

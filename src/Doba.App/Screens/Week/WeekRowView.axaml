@@ -98,28 +98,28 @@
               <Button Classes="day-header"
                       Theme="{StaticResource Button.Header}"
                       Height="{x:Static w:WeekLayout.HeaderHeight}"
-                      Padding="14,2,14,0"
+                      Padding="{StaticResource Space.Week.Header}"
                       HorizontalAlignment="Stretch"
                       Click="OnOpenDay"
                       AutomationProperties.Name="{Binding OpenLabel}">
                 <StackPanel>
                   <Grid ColumnDefinitions="*,Auto">
                     <TextBlock Classes="label" Text="{Binding Weekday}" />
-                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" IsVisible="{Binding IsToday}">
-                      <Ellipse Width="6" Height="6" Fill="{DynamicResource Brush.Accent}" VerticalAlignment="Center" />
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="{StaticResource Space.Week.BadgeGap}" IsVisible="{Binding IsToday}">
+                      <Ellipse Width="{StaticResource Size.Week.Dot}" Height="{StaticResource Size.Week.Dot}" Fill="{DynamicResource Brush.Accent}" VerticalAlignment="Center" />
                       <TextBlock Classes="label accent" Text="TODAY" />
                     </StackPanel>
-                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" IsVisible="{Binding IsPreview}">
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="{StaticResource Space.Week.BadgeGap}" IsVisible="{Binding IsPreview}">
                       <TextBlock Classes="label" Text="NEXT WEEK" />
-                      <c:Icon Data="{StaticResource Icon.ArrowRight}" Size="11" StrokeWidth="2"
+                      <c:Icon Data="{StaticResource Icon.ArrowRight}" Size="{StaticResource Size.Week.NextIcon}" StrokeWidth="{StaticResource Size.Week.NextIconStroke}"
                               Foreground="{DynamicResource Brush.Text.Muted}" VerticalAlignment="Center" />
                     </StackPanel>
                   </Grid>
-                  <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,6,0,0">
+                  <StackPanel Orientation="Horizontal" Spacing="{StaticResource Space.Week.DayGap}" Margin="{StaticResource Space.Week.DayRow}">
                     <!-- Margins: CSS centres the 40 px line box differently; these match the prototype's glyph
                          positions (number 5 px higher, "Nov" baseline-aligned to it). -->
                     <TextBlock Classes="day-number"
-                               Margin="0,-5,0,5"
+                               Margin="{StaticResource Space.Week.DayNumber}"
                                Classes.today="{Binding IsToday}"
                                Classes.preview="{Binding IsPreview}"
                                Text="{Binding DayNumber}" />
@@ -127,9 +127,9 @@
                                FontSize="{DynamicResource FontSize.13}"
                                Text="{Binding Month}"
                                VerticalAlignment="Bottom"
-                               Margin="-1,0,0,2" />
+                               Margin="{StaticResource Space.Week.Month}" />
                   </StackPanel>
-                  <w:DayProgressLine Value="{Binding Progress}" Date="{Binding Date}" Margin="0,14,0,0" />
+                  <w:DayProgressLine Value="{Binding Progress}" Date="{Binding Date}" Margin="{StaticResource Space.Week.Progress}" />
                 </StackPanel>
               </Button>
 
@@ -137,12 +137,12 @@
               <Border Grid.Row="1" Height="{Binding LaneCount, Converter={x:Static w:WeekView.LanesHeight}}" />
 
               <!-- Cards: padding 10 8 0, gap 6; "Nothing here"; "+N more". -->
-              <Border Grid.Row="2" Classes="list" ClipToBounds="True" Padding="8,10,8,0">
+              <Border Grid.Row="2" Classes="list" ClipToBounds="True" Padding="{StaticResource Space.Week.List}">
                 <StackPanel VerticalAlignment="Top">
                   <TextBlock Classes="muted"
                              Text="Nothing here"
                              FontSize="{DynamicResource FontSize.12.5}"
-                             Padding="6"
+                             Padding="{StaticResource Space.Week.Empty}"
                              IsVisible="{Binding Empty}" />
                   <ItemsControl Classes="cards" Classes.preview="{Binding IsPreview}" ItemsSource="{Binding Tasks}">
                     <ItemsControl.ItemsPanel>
@@ -158,7 +158,7 @@
                   </ItemsControl>
                   <Button Classes="more"
                           Theme="{StaticResource Button.Link}"
-                          Margin="0,6,0,0"
+                          Margin="{StaticResource Space.Week.More}"
                           Content="{Binding MoreLabel}"
                           IsVisible="{Binding HasMore}"
                           Click="OnOpenDay" />

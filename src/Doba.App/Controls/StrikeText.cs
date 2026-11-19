@@ -30,8 +30,13 @@ public class StrikeText : TextBlock
     public static readonly StyledProperty<Color> StrikeColorProperty =
         AvaloniaProperty.Register<StrikeText, Color>(nameof(StrikeColor));
 
+    /// <summary>Alpha of the hidden strike (the strike colour, fully transparent).</summary>
+    private const byte ClearAlpha = 0;
+
     private readonly SolidColorBrush _stroke = new();
+    private readonly ColorTransition _fade = new() { Property = SolidColorBrush.ColorProperty, Easing = M.EaseStd };
     private double _strikePosition = double.NaN;
+    private bool _dataContextUpdating;
 
     public StrikeText() => UpdateStroke();
 
@@ -64,18 +69,40 @@ public class StrikeText : TextBlock
         return (Math.Round(baseline * scale) - Math.Ceiling((strikePosition * scale) + 0.5)) / scale;
     }
 
+    /// <summary>
+    /// While true, strike changes show at once (a recycled row re-pointed at another task; see <see cref="SnapScope"/>).
+    /// Also true from the start of a data-context change to its end, so a StrikeText re-pointed at another item never
+    /// fades between the two items' states.
+    /// </summary>
+    internal bool Snapping { get; set; }
+
     protected override void OnLoaded(RoutedEventArgs e)
     {
         base.OnLoaded(e);
 
         // Transitions start once the control is shown, so a card that appears already done shows its strike at once.
-        if (_stroke.Transitions is null && M.Ms(M.Strike) > TimeSpan.Zero)
+        // The duration is read again from Motion at every change (UpdateStroke): the OS animation setting can change
+        // while the app runs, and MotionSync does not see a brush's transitions. With animations off nothing is attached
+        // here (attaching invalidates the brush, i.e. repaints the text); UpdateStroke attaches it on the first animated
+        // change once they are on.
+        var duration = M.Ms(M.Strike);
+        if (_stroke.Transitions is null && duration > TimeSpan.Zero)
         {
-            _stroke.Transitions =
-            [
-                new ColorTransition { Property = SolidColorBrush.ColorProperty, Duration = M.Ms(M.Strike), Easing = M.EaseStd },
-            ];
+            _fade.Duration = duration;
+            _stroke.Transitions = [_fade];
         }
+    }
+
+    protected override void OnDataContextBeginUpdate()
+    {
+        base.OnDataContextBeginUpdate();
+        _dataContextUpdating = true;
+    }
+
+    protected override void OnDataContextEndUpdate()
+    {
+        base.OnDataContextEndUpdate();
+        _dataContextUpdating = false;
     }
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
@@ -132,6 +159,27 @@ public class StrikeText : TextBlock
 
         // "transparent" is the strike colour at alpha 0, so the fade does not pass through black (CSS interpolates
         // premultiplied colours).
-        _stroke.Color = Struck ? c : new Color(0, c.R, c.G, c.B);
+        var target = Struck ? c : new Color(ClearAlpha, c.R, c.G, c.B);
+        var duration = M.Ms(M.Strike);
+        if (Snapping || _dataContextUpdating || duration <= TimeSpan.Zero || !IsLoaded)
+        {
+            if (_stroke.Transitions is { } transitions)
+            {
+                // Removing the transitions ends a running fade at its target; the new colour is then set directly.
+                _stroke.Transitions = null;
+                _stroke.Color = target;
+                _stroke.Transitions = transitions;
+            }
+            else
+            {
+                _stroke.Color = target;
+            }
+
+            return;
+        }
+
+        _fade.Duration = duration;
+        _stroke.Transitions ??= [_fade]; // shown while animations were off, which are on now
+        _stroke.Color = target;
     }
 }

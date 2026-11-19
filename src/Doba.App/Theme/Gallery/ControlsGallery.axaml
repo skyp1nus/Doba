@@ -394,7 +394,7 @@
           </StackPanel>
         </Border>
         <Border Height="30" Width="208" HorizontalAlignment="Left" CornerRadius="{DynamicResource Radius.Item}"
-                Background="{DynamicResource Brush.Overlay.Selected}" BoxShadow="inset 0 0 0 1 #3A3A40" Padding="10,0">
+                Background="{DynamicResource Brush.Overlay.Selected}" BoxShadow="{DynamicResource Shadow.Ring.Emphasis}" Padding="10,0">
           <Grid ColumnDefinitions="16,*" ColumnSpacing="10">
             <TextBlock Classes="mono muted" Text="#" HorizontalAlignment="Center" VerticalAlignment="Center" />
             <TextBox Grid.Column="1" PlaceholderText="Tag name" />

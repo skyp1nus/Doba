@@ -1,41 +1,32 @@
-using Avalonia;
 using Avalonia.Controls;
 using Doba.App.Controls;
+using Doba.App.Screens.Week;
 
 namespace Doba.App.Screens.Inbox;
 
 /// <summary>The Inbox screen; DataContext is an <see cref="InboxViewModel"/>. Its bounds are the shell's content area.</summary>
 public partial class InboxView : UserControl
 {
+    private readonly ZoomOrigin _origin;
+
     public InboxView()
     {
         InitializeComponent();
+        _origin = new ZoomOrigin(this);
         AddHandler(TaskGroupList.FollowRequestedEvent, OnFollowRequested);
     }
 
     /// <summary>The page scroller (tests).</summary>
     internal ScrollViewer Scroller => PART_Scroll;
 
-    /// <summary>Centre of <paramref name="element"/> relative to <paramref name="area"/>, as fractions (0..1) of its size.</summary>
-    internal static Point? OriginIn(Visual area, Visual element)
-    {
-        ArgumentNullException.ThrowIfNull(area);
-        ArgumentNullException.ThrowIfNull(element);
-        var size = area.Bounds.Size;
-        if (size.Width <= 0 || size.Height <= 0
-            || element.TranslatePoint(new Point(element.Bounds.Width / 2, element.Bounds.Height / 2), area) is not { } centre)
-        {
-            return null;
-        }
-
-        return new Point(centre.X / size.Width, centre.Y / size.Height);
-    }
-
+    /// <summary>A scheduled-day link: zoom into that day from the clicked link's centre; activated from the keyboard
+    /// (Enter / Space) there is no origin, so the transition uses its default 50 % 40 % (DECISIONS "Calendar zooms from
+    /// the keyboard").</summary>
     private void OnFollowRequested(object? sender, FollowRequestedEventArgs e)
     {
         if (DataContext is InboxViewModel vm)
         {
-            vm.Follow(e.Group, OriginIn(this, e.Origin));
+            vm.Follow(e.Group, _origin.For(e.Origin));
         }
     }
 }

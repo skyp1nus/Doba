@@ -44,7 +44,6 @@ public sealed class ThemeService
         ("Density.DayCardGap", 6.0, 3.0),
     ];
 
-    private static readonly Color s_chromeBaseFallback = Color.FromRgb(22, 22, 24);
 
     private readonly Application _app;
     private readonly Dictionary<string, ColorTween> _tweens = [];
@@ -53,6 +52,23 @@ public sealed class ThemeService
     {
         ArgumentNullException.ThrowIfNull(app);
         _app = app;
+
+        // The chrome base is a palette colour (Tokens.axaml, Dark dictionary): a second palette changes it. Held weakly,
+        // so a service that is no longer used (tests create many) does not live as long as the application.
+        var service = new WeakReference<ThemeService>(this);
+        EventHandler? onVariant = null;
+        onVariant = (_, _) =>
+        {
+            if (service.TryGetTarget(out var s))
+            {
+                s.ApplyChromeOpacity(s.ChromeOpacity);
+            }
+            else
+            {
+                app.ActualThemeVariantChanged -= onVariant;
+            }
+        };
+        _app.ActualThemeVariantChanged += onVariant;
     }
 
     public Accent Accent { get; private set; } = Accent.Mist;
@@ -92,14 +108,15 @@ public sealed class ThemeService
         }
     }
 
-    /// <summary>Sets the chrome tint over the backdrop (sidebar + title bar): rgba(22,22,24, percent / 100).</summary>
+    /// <summary>Sets the chrome tint over the backdrop (sidebar + title bar): the palette's <c>Color.Chrome.Base</c>
+    /// (rgba(22,22,24) in Dark) at percent / 100. Re-applied when the theme variant changes.</summary>
     public void ApplyChromeOpacity(int percent, bool animate = false)
     {
         Dispatcher.UIThread.VerifyAccess();
         ChromeOpacity = Math.Clamp(percent, 0, 100);
         var baseColor = _app.TryGetResource(ChromeBaseColorKey, _app.ActualThemeVariant, out var value) && value is Color c
             ? c
-            : s_chromeBaseFallback;
+            : default; // no palette loaded (never in the app): no tint
         var alpha = (byte)Math.Round(ChromeOpacity / 100.0 * byte.MaxValue);
         SetBrushColor(ChromeBrushKey, AccentPalette.WithAlpha(baseColor, alpha), animate);
     }
@@ -144,7 +161,10 @@ public sealed class ThemeService
     /// Avalonia transitions do not run on them).</summary>
     internal sealed class ColorTween(SolidColorBrush brush, Color from, Color to, TimeSpan duration, Action onDone)
     {
-        private static readonly TimeSpan s_frame = TimeSpan.FromSeconds(1.0 / 60);
+        /// <summary>Tween steps per second (a 60 Hz UI-thread timer; not a motion duration).</summary>
+        private const int StepsPerSecond = 60;
+
+        private static readonly TimeSpan s_frame = TimeSpan.FromTicks(TimeSpan.TicksPerSecond / StepsPerSecond);
         private readonly long _start = Stopwatch.GetTimestamp();
         private DispatcherTimer? _timer;
 

@@ -11,8 +11,8 @@
           Command="{Binding $parent[c:AddTaskButton].Command}"
           CommandParameter="{Binding $parent[c:AddTaskButton].CommandParameter}"
           AutomationProperties.Name="{Binding $parent[c:AddTaskButton].Label}">
-    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
-      <c:Icon Data="{StaticResource Icon.Plus}" Size="14" StrokeWidth="1.8" />
+    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{StaticResource Space.AddTask.Gap}">
+      <c:Icon Data="{StaticResource Icon.Plus}" Size="{StaticResource Size.AddTask.Icon}" StrokeWidth="{StaticResource Size.AddTask.IconStroke}" />
       <TextBlock Grid.Column="1" Text="{Binding $parent[c:AddTaskButton].Label}" VerticalAlignment="Center" />
       <c:Kbd Grid.Column="2" Classes="muted" Content="{Binding $parent[c:AddTaskButton].Shortcut}"
              IsVisible="{Binding $parent[c:AddTaskButton].Shortcut, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />

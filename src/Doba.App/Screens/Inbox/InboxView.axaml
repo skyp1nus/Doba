@@ -11,14 +11,14 @@
              x:Class="Doba.App.Screens.Inbox.InboxView"
              x:DataType="local:InboxViewModel"
              c:TaskListRow.Entrances="{Binding Entrances}">
-  <ScrollViewer Name="PART_Scroll" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Padding="0,0,12,0">
-    <Grid ColumnDefinitions="*,*" ColumnSpacing="48">
-      <StackPanel Name="PART_Left" Spacing="28" Margin="0,6,0,24">
+  <ScrollViewer Name="PART_Scroll" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Padding="{StaticResource Space.Inbox.Scroll}">
+    <Grid ColumnDefinitions="*,*" ColumnSpacing="{StaticResource Space.Inbox.ColumnGap}">
+      <StackPanel Name="PART_Left" Spacing="{StaticResource Space.List.SectionGap}" Margin="{StaticResource Space.List.Sections}">
         <c:AddTaskButton Name="PART_AddTask" Command="{Binding AddTaskCommand}" />
         <ItemsControl ItemsSource="{Binding Left}">
           <ItemsControl.ItemsPanel>
             <ItemsPanelTemplate>
-              <StackPanel Spacing="28" />
+              <StackPanel Spacing="{StaticResource Space.List.SectionGap}" />
             </ItemsPanelTemplate>
           </ItemsControl.ItemsPanel>
           <ItemsControl.ItemTemplate>
@@ -29,7 +29,7 @@
         </ItemsControl>
       </StackPanel>
 
-      <StackPanel Name="PART_Right" Grid.Column="1" Spacing="28" Margin="0,6,0,24">
+      <StackPanel Name="PART_Right" Grid.Column="1" Spacing="{StaticResource Space.List.SectionGap}" Margin="{StaticResource Space.List.Sections}">
         <Grid Height="{DynamicResource Size.AddTask}" ColumnDefinitions="*,Auto">
           <TextBlock Classes="mono tertiary" FontSize="{DynamicResource FontSize.12}" Text="Scheduled" VerticalAlignment="Center" />
           <TextBlock Grid.Column="1" Classes="meta" Text="{Binding ScheduledCount}" VerticalAlignment="Center" />
@@ -37,7 +37,7 @@
         <ItemsControl ItemsSource="{Binding Right}">
           <ItemsControl.ItemsPanel>
             <ItemsPanelTemplate>
-              <StackPanel Spacing="28" />
+              <StackPanel Spacing="{StaticResource Space.List.SectionGap}" />
             </ItemsPanelTemplate>
           </ItemsControl.ItemsPanel>
           <ItemsControl.ItemTemplate>

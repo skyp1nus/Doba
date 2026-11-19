@@ -22,13 +22,13 @@ public class YearViewTests
 
     private sealed class Scene : IDisposable
     {
-        public Scene(string? filter = null, double height = ScreenHarness.ContentHeight)
+        public Scene(string? filter = null, double height = ScreenHarness.ContentHeight, double width = ScreenHarness.ContentWidth)
         {
             Harness = new ScreenHarness { FilterTag = filter };
             ViewModel = new YearViewModel(Harness.Services);
             ViewModel.Show(new NavState(AppView.Year, DemoToday));
             View = new YearView { DataContext = ViewModel };
-            Window = ScreenHarness.Host(View, ScreenHarness.ContentWidth, height);
+            Window = ScreenHarness.Host(View, width, height);
         }
 
         public ScreenHarness Harness { get; }
@@ -327,6 +327,89 @@ public class YearViewTests
         Assert.Same(november, s.ViewModel.Months[10]);
         Assert.False(s.ViewModel.Months[10].IsCurrent);
         Assert.All(s.ViewModel.Months, m => Assert.False(m.IsPast));
+    }
+
+    [Theory]
+    [InlineData(4, 0, 1000, 4, 0)]          // room to spare: all four
+    [InlineData(3, 2, 200, 3, 2)]           // three items + "+2 more": 3×28 + 2×6 + 6 + 20 = 122 fits
+    [InlineData(4, 0, 125, 3, 1)]           // four items, no more: 4×28 + 3×6 = 130 > 125 …
+    [InlineData(4, 0, 130, 4, 0)]           // … exactly 130 fits
+    [InlineData(4, 0, 129, 3, 1)]           // 129: three items (96) + 6 + 20 = 122, the fourth counted in "+1 more"
+    [InlineData(3, 2, 87, 1, 4)]            // two items (62) + 6 + 20 = 88 > 87 → one item …
+    [InlineData(3, 2, 88, 2, 3)]            // … 88 fits two; the third span joins "+N more"
+    [InlineData(2, 0, 40, 0, 2)]            // not even one item with the link: only "+2 more"
+    public void Year_room_shows_the_items_that_fit_and_counts_the_rest(int rows, int more, double height, int shown, int counted)
+    {
+        var room = new YearRoom(height, ItemHeight: 28, Gap: 6, MoreHeight: 20);
+        Assert.Equal((shown, counted), room.Fit(rows, more));
+    }
+
+    [AvaloniaFact]
+    public void At_1100x700_no_key_item_is_cut_and_hidden_items_are_counted_in_more()
+    {
+        // Content area of a 1100×700 window: 815 × 532 (the 1600×1000 one is 1315 × 832).
+        using var s = new Scene(width: ScreenHarness.ContentWidth - 500, height: ScreenHarness.ContentHeight - 300);
+        s.Window.UpdateLayout();
+        var expected = s.Expected();
+        var fewer = 0;
+        foreach (var month in s.ViewModel.Months)
+        {
+            var e = expected.Months[month.Month - 1];
+            var cell = s.Header(month.Month).GetVisualAncestors().OfType<Border>().First(b => b.Classes.Contains("cell"));
+            var bottom = cell.Bounds.Height - cell.Padding.Bottom;
+
+            // Shown items are the projection's first ones; everything not shown is in "+N more".
+            Assert.Equal(e.Rows.Take(month.Rows.Count), month.Rows.Select(r => r.Row));
+            Assert.Equal(e.Rows.Count + e.MoreCount, month.Rows.Count + month.MoreCount);
+            fewer += e.Rows.Count - month.Rows.Count;
+
+            // Nothing is cut by the cell edge: every item and the "+N more" link end inside the padded cell.
+            foreach (var item in cell.GetVisualDescendants().OfType<Button>().Where(b => b.Classes.Contains("item") && b.IsEffectivelyVisible))
+            {
+                Assert.True(item.TranslatePoint(new Point(0, item.Bounds.Height), cell)!.Value.Y <= bottom + 0.5,
+                    $"{month.Name}: an item is cut at the cell edge");
+            }
+
+            var link = cell.GetVisualDescendants().OfType<Button>().Single(b => b.Classes.Contains("more"));
+            Assert.Equal(month.MoreCount > 0, link.IsEffectivelyVisible);
+            if (link.IsEffectivelyVisible)
+            {
+                Assert.Equal("+" + month.MoreCount + " more", link.Content);
+                Assert.True(link.TranslatePoint(new Point(0, link.Bounds.Height), cell)!.Value.Y <= bottom + 0.5,
+                    $"{month.Name}: \"+N more\" is cut at the cell edge");
+            }
+        }
+
+        Assert.True(fewer > 0, "at 1100×700 some months hold fewer than the design's four key items");
+
+        // Back at the design size, every month shows the projection as is again.
+        s.Window.Width = ScreenHarness.ContentWidth;
+        s.Window.Height = ScreenHarness.ContentHeight;
+        for (var i = 0; i < 3; i++)
+        {
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            s.Window.UpdateLayout();
+        }
+
+        Assert.Equal(ScreenHarness.ContentHeight, s.View.Bounds.Height);
+        foreach (var month in s.ViewModel.Months)
+        {
+            Assert.Equal(expected.Months[month.Month - 1].Rows, month.Rows.Select(r => r.Row));
+            Assert.Equal(expected.Months[month.Month - 1].MoreCount, month.MoreCount);
+        }
+    }
+
+    [AvaloniaFact]
+    public void A_narrow_cell_trims_the_stat_before_the_now_badge()
+    {
+        using var s = new Scene(width: ScreenHarness.ContentWidth - 500, height: ScreenHarness.ContentHeight - 300);
+        var header = s.Header(11);
+        var stat = header.GetVisualDescendants().OfType<TextBlock>().First(t => t.Classes.Contains("stat"));
+        var now = header.GetVisualDescendants().OfType<TextBlock>().Single(t => t.Text == "NOW");
+        var badge = now.GetVisualParent<StackPanel>()!;
+        var statRight = stat.TranslatePoint(new Point(stat.TextLayout.WidthIncludingTrailingWhitespace, 0), header)!.Value.X;
+        var badgeLeft = badge.TranslatePoint(default, header)!.Value.X;
+        Assert.True(statRight <= badgeLeft + 0.5, $"stat ends at {statRight}, the NOW badge starts at {badgeLeft}");
     }
 
     [AvaloniaFact]

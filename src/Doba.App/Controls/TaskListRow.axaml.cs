@@ -24,8 +24,9 @@ namespace Doba.App.Controls;
 /// <see cref="TaskActions.PendingEntranceId"/> (just created / moved "→ Today") it plays the new-row entrance
 /// (opacity 0→1, translateY −8→0, <see cref="M.NewRow"/>, ease-out) — the task actions are found through the inherited
 /// <see cref="EntrancesProperty"/>, which the screen sets on its root.</para>
-/// <para>A row re-pointed at another task (virtualised container recycling) shows the new task's state at once; only
-/// changes of the same task animate.</para>
+/// <para>A row re-pointed at another task (virtualised container recycling) shows the new task's state at once — dim,
+/// checkbox, title colour and strike (<see cref="SnapScope"/> around the data-context change); only changes of the same
+/// task animate.</para>
 /// </remarks>
 public partial class TaskListRow : UserControl
 {
@@ -42,6 +43,9 @@ public partial class TaskListRow : UserControl
         AvaloniaProperty.RegisterAttached<TaskListRow, Control, TaskActions?>("Entrances", inherits: true);
 
     private TaskRowViewModel? _row;
+
+    /// <summary>Open while the data context changes on a shown row.</summary>
+    private SnapScope? _snap;
 
     /// <summary>Space is down and has already toggled the task (key repeat does not toggle again).</summary>
     private bool _spaceDown;
@@ -79,11 +83,31 @@ public partial class TaskListRow : UserControl
     /// <summary>The title text with its strike (null until the title button is templated; for tests).</summary>
     internal StrikeText? TitleText => PART_Title.Presenter?.Child as StrikeText;
 
+    /// <summary>
+    /// A shown row re-pointed at another task (virtualised container recycling) shows the new task's state at once:
+    /// the row's dim, the checkbox fill and the title colour and strike do not fade between the two tasks' states.
+    /// </summary>
+    protected override void OnDataContextBeginUpdate()
+    {
+        base.OnDataContextBeginUpdate();
+        if (IsLoaded && _snap is null)
+        {
+            _snap = SnapScope.Open(this);
+        }
+    }
+
+    protected override void OnDataContextEndUpdate()
+    {
+        base.OnDataContextEndUpdate();
+        _snap?.Dispose();
+        _snap = null;
+    }
+
     protected override void OnDataContextChanged(EventArgs e)
     {
         base.OnDataContextChanged(e);
         _row = DataContext as TaskRowViewModel;
-        ShowRow(_row);
+        PART_Title.Content = _row;
         _spaceDown = false;
         if (IsLoaded)
         {
@@ -134,22 +158,6 @@ public partial class TaskListRow : UserControl
 
     private bool IsFromCheckBox(object? source) =>
         source is Visual v && (ReferenceEquals(v, PART_Check) || PART_Check.IsVisualAncestorOf(v));
-
-    /// <summary>
-    /// Points the title at <paramref name="row"/>. The title's <see cref="StrikeText"/> animates every change of its
-    /// strike colour, which is right while the same task is completed or reopened; a row re-pointed at a task in the
-    /// other done state (virtualised container recycling) must show that state at once, so the title is rebuilt
-    /// (content cleared first, so the presenter does not reuse the old StrikeText). Same state: reused as is.
-    /// </summary>
-    private void ShowRow(TaskRowViewModel? row)
-    {
-        if (TitleText is { } title && row is not null && title.Struck != row.Done)
-        {
-            PART_Title.Content = null;
-        }
-
-        PART_Title.Content = row;
-    }
 
     private void TryEntrance()
     {

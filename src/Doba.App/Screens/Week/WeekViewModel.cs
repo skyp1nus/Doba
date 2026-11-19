@@ -128,8 +128,8 @@ public sealed partial class WeekViewModel : ScreenViewModel
             : first with { Rows = [first.Rows[0], Projector.Week(Store, ctx, anchor, MetricsFor(1)).Rows[1]] };
 
         Model = model;
-        Row1.Update(model.Rows[0]);
-        Row2.Update(model.Rows[1]);
+        Row1.Update(model.Rows[0], _row1Height);
+        Row2.Update(model.Rows[1], _row2Height);
         Dispatcher.UIThread.Post(_dropStaleEntrance, DispatcherPriority.Background);
     }
 

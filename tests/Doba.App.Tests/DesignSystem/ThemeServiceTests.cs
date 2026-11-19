@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
 using Avalonia.Media;
+using Avalonia.Styling;
 using Doba.App.Theme;
 using Doba.Core.Model;
 
@@ -124,6 +125,69 @@ public class ThemeServiceTests
             service.ApplyDensity(Density.Comfortable);
             window.Close();
         }
+    }
+
+    [AvaloniaFact]
+    public void Palette_dependent_colours_live_in_the_Dark_dictionary()
+    {
+        // Second-palette readiness (KICKOFF §6): the chrome base and the overlay shadows are palette tokens, not
+        // theme-independent values or literals in the styles.
+        var app = Application.Current!;
+        var dark = app.Styles.OfType<IResourceProvider>()
+            .Select(p => p.TryGetResource("Color.Chrome.Base", ThemeVariant.Dark, out var v) ? v : null)
+            .FirstOrDefault(v => v is not null);
+        Assert.Equal(Color.Parse("#161618"), dark);
+        Assert.False(app.Styles.OfType<IResourceProvider>().Any(p => p.TryGetResource("Color.Chrome.Base", null, out _)),
+            "Color.Chrome.Base must be a palette (theme dictionary) colour");
+        foreach (var key in new[] { "Shadow.Popover", "Shadow.PopoverSmall", "Shadow.Dialog", "Shadow.Ring.Emphasis" })
+        {
+            Assert.True(app.TryGetResource(key, ThemeVariant.Dark, out var shadow) && shadow is BoxShadows, key);
+            Assert.False(app.Styles.OfType<IResourceProvider>().Any(p => p.TryGetResource(key, null, out _)), key);
+        }
+
+        var popover = new Border { Classes = { "popover" } };
+        var window = new Window { Content = popover };
+        window.Show();
+        Assert.True(app.TryGetResource("Shadow.Popover", ThemeVariant.Dark, out var expected));
+        Assert.Equal(expected, popover.BoxShadow);
+        window.Close();
+    }
+
+    [AvaloniaFact]
+    public void The_chrome_tint_follows_the_palette_when_the_theme_variant_changes()
+    {
+        var app = Application.Current!;
+        var service = NewService();
+        var light = new ResourceDictionary { ["Color.Chrome.Base"] = Color.Parse("#F4F4F6") };
+        try
+        {
+            service.ApplyChromeOpacity(50);
+            Assert.Equal(Color.FromArgb(128, 22, 22, 24), Pixels.Resource("Brush.Chrome"));
+
+            // A stand-in second palette with its own chrome base.
+            app.Resources.ThemeDictionaries[ThemeVariant.Light] = light;
+            app.RequestedThemeVariant = ThemeVariant.Light;
+            Assert.Equal(Color.Parse("#80F4F4F6"), Pixels.Resource("Brush.Chrome"));
+
+            app.RequestedThemeVariant = ThemeVariant.Dark;
+            Assert.Equal(Color.FromArgb(128, 22, 22, 24), Pixels.Resource("Brush.Chrome"));
+        }
+        finally
+        {
+            app.RequestedThemeVariant = ThemeVariant.Dark;
+            app.Resources.ThemeDictionaries.Remove(ThemeVariant.Light);
+            service.ApplyChromeOpacity(ThemeService.DefaultChromeOpacity);
+        }
+    }
+
+    [AvaloniaFact]
+    public void Accent_names_come_from_a_switch_not_enum_name_lookup()
+    {
+        Assert.Equal("Mist", AccentPalette.NameOf(Accent.Mist));
+        Assert.Equal("Sage", AccentPalette.NameOf(Accent.Sage));
+        Assert.Equal("Sand", AccentPalette.NameOf(Accent.Sand));
+        Assert.Equal("Gray", AccentPalette.NameOf(Accent.Gray));
+        Assert.Equal(Enum.GetValues<Accent>().Length, Enum.GetValues<Accent>().Select(AccentPalette.NameOf).Distinct().Count());
     }
 
     [AvaloniaFact]

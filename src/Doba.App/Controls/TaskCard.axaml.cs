@@ -35,10 +35,14 @@ public partial class TaskCard : UserControl
     public static readonly StyledProperty<bool> ShowTagProperty =
         AvaloniaProperty.Register<TaskCard, bool>(nameof(ShowTag), true);
 
+    /// <summary>Space is down and has already toggled the task.</summary>
+    private bool _spaceDown;
+
     public TaskCard()
     {
         InitializeComponent();
         AddHandler(KeyDownEvent, OnPreviewKeyDown, RoutingStrategies.Tunnel);
+        AddHandler(KeyUpEvent, OnPreviewKeyUp, RoutingStrategies.Tunnel);
     }
 
     /// <summary>Render as a preview card (week view's next-week cell): Opacity.Week.Preview (PreviewDimmed if also dimmed).</summary>
@@ -88,13 +92,39 @@ public partial class TaskCard : UserControl
         }
     }
 
-    /// <summary>Space on any focused part of the card completes the task (before the title / priority button sees it).</summary>
+    protected override void OnDataContextChanged(EventArgs e)
+    {
+        base.OnDataContextChanged(e);
+        _spaceDown = false;
+    }
+
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnDetachedFromVisualTree(e);
+        _spaceDown = false;
+    }
+
+    /// <summary>Space on any focused part of the card completes the task (before the title / priority button sees it),
+    /// once per press: key repeat while Space is held does not toggle again (DECISIONS "Space").</summary>
     private void OnPreviewKeyDown(object? sender, KeyEventArgs e)
     {
         if (e.Key == Key.Space && e.KeyModifiers == KeyModifiers.None && DataContext is TaskRowViewModel row
             && row.ToggleCommand.CanExecute(null))
         {
-            row.ToggleCommand.Execute(null);
+            e.Handled = true;
+            if (!_spaceDown)
+            {
+                _spaceDown = true;
+                row.ToggleCommand.Execute(null);
+            }
+        }
+    }
+
+    private void OnPreviewKeyUp(object? sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Space && _spaceDown)
+        {
+            _spaceDown = false;
             e.Handled = true;
         }
     }

@@ -1,5 +1,7 @@
 using Avalonia;
+using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.VisualTree;
 using Doba.App.Controls;
@@ -123,7 +125,7 @@ public class InboxScreenTests
         var today = harness.App.DayClock.Today;
 
         var todayGroup = sections.Single(s => s.DataContext is ViewModels.TaskGroupViewModel { Key: var k } && k == DateMath.Iso(today));
-        todayGroup.LinkButton.RaiseEvent(new RoutedEventArgs(Avalonia.Controls.Button.ClickEvent));
+        Click(window, todayGroup.LinkButton); // a real pointer click: the zoom starts from the link
         var later = sections.Single(s => s.DataContext is ViewModels.TaskGroupViewModel { Key: "later" });
         later.LinkButton.RaiseEvent(new RoutedEventArgs(Avalonia.Controls.Button.ClickEvent));
 
@@ -137,6 +139,30 @@ public class InboxScreenTests
 
         var laterGroup = vm.Right.Single(g => g.Key == "later");
         Assert.Equal((AppView.Month, laterGroup.Link!.Anchor), (harness.Commands.Zooms[1].View, harness.Commands.Zooms[1].Anchor));
+        window.Close();
+    }
+
+    [AvaloniaFact]
+    public void A_group_link_activated_from_the_keyboard_zooms_without_an_origin()
+    {
+        using var harness = new ScreenHarness();
+        var (_, view) = Open(harness);
+        var window = Host(view);
+        var today = harness.App.DayClock.Today;
+        var todayGroup = view.GetVisualDescendants().OfType<TaskGroupList>()
+            .Single(s => s.DataContext is ViewModels.TaskGroupViewModel { Key: var k } && k == DateMath.Iso(today));
+
+        // A click elsewhere first must not leak its press into the keyboard activation.
+        Click(window, view.GetVisualDescendants().OfType<TaskListRow>().First());
+        harness.Commands.Edits.Clear();
+        Assert.True(todayGroup.LinkButton.Focus(NavigationMethod.Tab));
+        window.KeyPress(Key.Enter, RawInputModifiers.None, PhysicalKey.Enter, "\r");
+        window.KeyRelease(Key.Enter, RawInputModifiers.None, PhysicalKey.Enter, "\r");
+        Settle(window);
+
+        var (zoomView, anchor, origin) = Assert.Single(harness.Commands.Zooms);
+        Assert.Equal((AppView.Day, today), (zoomView, anchor));
+        Assert.Null(origin); // the transition's default 50 % 40 %
         window.Close();
     }
 

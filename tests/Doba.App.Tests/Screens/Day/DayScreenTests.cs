@@ -5,6 +5,7 @@ using Avalonia.VisualTree;
 using Doba.App.Controls;
 using Doba.App.Motion;
 using Doba.App.Screens.Day;
+using Doba.App.Tests.DesignSystem;
 using Doba.App.Tests.Support;
 using Doba.App.ViewModels;
 using Doba.Core.Model;
@@ -401,6 +402,66 @@ public class DayScreenTests
         var lines = text.TextLayout.TextLines.Count;
         Assert.Equal(22 + (lines * 18), card.Bounds.Height); // padding 11 + 11, one 18 px line each (no meta row)
         Assert.True(card.Bounds.Width <= 680);
+        window.Close();
+    }
+
+    [AvaloniaFact]
+    public void At_1100x700_the_schedule_scrolls_opens_on_the_now_line_and_reaches_every_hour()
+    {
+        using var harness = new ScreenHarness();
+        var (vm, view) = Open(harness);
+        // Content area of a 1100×700 window (the 1600×1000 one is 1315×832).
+        var window = ScreenHarness.Host(view, ScreenHarness.ContentWidth - 500, ScreenHarness.ContentHeight - 300);
+        Settle(window);
+        Assert.True(Pump.Until(() => view.ScheduleScroller.Offset.Y > 0, TimeSpan.FromSeconds(2)));
+
+        var scroller = view.ScheduleScroller;
+        Assert.True(scroller.Extent.Height > scroller.Viewport.Height);
+        Assert.True(InView(scroller, view.Schedule.NowLine)); // today at 22:26: opened on the now-line
+
+        // From the top, the evening is out of view and can be scrolled to: the 22:00 hour row and its block.
+        scroller.Offset = default;
+        Settle(window);
+        var hours = view.Schedule.GetVisualDescendants().OfType<ItemsControl>().Single(i => i.Name == "PART_Hours");
+        var hour22 = hours.GetVisualDescendants().OfType<TextBlock>().Single(t => t.Text == "22:00");
+        Assert.False(InView(scroller, hour22));
+        hour22.BringIntoView();
+        Settle(window);
+        Assert.True(InView(scroller, hour22));
+        var plan = view.Schedule.BlockList.GetVisualDescendants().OfType<Button>()
+            .Single(b => b.DataContext is ScheduleBlockViewModel { Range: "22:00 – 22:45" });
+        plan.BringIntoView();
+        Settle(window);
+        Assert.True(InView(scroller, plan));
+        Assert.Equal(vm.Schedule.Blocks.Count, view.Schedule.BlockList.GetVisualDescendants().OfType<Button>().Count());
+
+        // Another day (the cached view is reused): no now-line, so it opens on that day's earliest block (20:00, below
+        // the first screenful).
+        harness.App.Store.Add(NewTask(s_emptyDay, "Evening call", time: new TimeOnly(20, 0)));
+        scroller.Offset = default;
+        vm.Show(new NavState(AppView.Day, s_emptyDay));
+        Settle(window);
+        Assert.True(Pump.Until(() => view.Schedule.FirstBlock is { } b && InView(scroller, b), TimeSpan.FromSeconds(2)));
+        Assert.True(scroller.Offset.Y > 0);
+        Assert.False(view.Schedule.NowLine.IsVisible);
+        window.Close();
+
+        static bool InView(ScrollViewer scroller, Control element)
+        {
+            var top = element.TranslatePoint(default, scroller)!.Value.Y;
+            return top >= 0 && top + element.Bounds.Height <= scroller.Viewport.Height;
+        }
+    }
+
+    [AvaloniaFact]
+    public void At_1600x1000_the_schedule_does_not_scroll()
+    {
+        using var harness = new ScreenHarness();
+        var (_, view) = Open(harness);
+        var window = Host(view);
+        Settle(window);
+        Assert.Equal(0, view.ScheduleScroller.Offset.Y);
+        Assert.True(view.ScheduleScroller.Extent.Height <= view.ScheduleScroller.Viewport.Height);
         window.Close();
     }
 

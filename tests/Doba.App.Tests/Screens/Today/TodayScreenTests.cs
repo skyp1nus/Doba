@@ -125,6 +125,49 @@ public class TodayScreenTests
     }
 
     [AvaloniaFact]
+    public void A_recycled_row_shows_the_new_tasks_dim_checkbox_and_title_at_once()
+    {
+        using var harness = new ScreenHarness();
+        var task = Project(harness).Groups.Single(g => g.Key == "any").Items[0];
+        var dimmedDone = new TaskRowViewModel(task with { Done = true, Dimmed = true }, harness.Actions, harness.Commands);
+        var row = new TaskListRow { DataContext = dimmedDone };
+        var window = ScreenHarness.Host(row, 700, 60);
+        Settle(window);
+        Assert.True(Pump.Until(() => row.Opacity < 1, TimeSpan.FromSeconds(2))); // rested dimmed
+        var box = row.GetVisualDescendants().OfType<Border>().Single(b => b.Name == "PART_Box");
+        var presenter = row.GetVisualDescendants().OfType<Avalonia.Controls.Presenters.ContentPresenter>()
+            .Single(p => p.Name == "PART_ContentPresenter" && p.TemplatedParent is Button { Name: "PART_Title" });
+        var open = Pixels.Resource("Color.Text.Primary");
+        Assert.True(Pump.Until(() => ColorOf(presenter.Foreground) == Pixels.Resource("Color.Text.Muted"), TimeSpan.FromSeconds(2)));
+        Assert.True(Pump.Until(() => ColorOf(box.Background) == Pixels.Resource("Brush.Accent"), TimeSpan.FromSeconds(2)));
+
+        // Re-pointed at an open, undimmed task: every state is final at once (no 300 ms dim fade, no 250 ms checkbox
+        // fade, no title colour fade, no strike fade).
+        var openRow = new TaskRowViewModel(task with { Id = 999 }, harness.Actions, harness.Commands);
+        row.DataContext = openRow;
+        Assert.Equal(1, row.Opacity);
+        Assert.Equal(0, ColorOf(box.Background).A);
+        Assert.Equal(open, ColorOf(presenter.Foreground));
+        Assert.Equal(0, row.TitleText!.StrokeColor.A);
+
+        // … and back at a dimmed, done task.
+        row.DataContext = dimmedDone;
+        Assert.True(Application.Current!.TryGetResource("Opacity.Dimmed", null, out var dim));
+        Assert.Equal((double)dim!, row.Opacity, 3);
+        Assert.Equal(Pixels.Resource("Brush.Accent"), ColorOf(box.Background));
+        Assert.Equal(Pixels.Resource("Color.Text.Muted"), row.TitleText!.StrokeColor);
+
+        // Changes of the shown task still animate.
+        dimmedDone.Update(dimmedDone.Row with { Dimmed = false });
+        Assert.True(row.Opacity < 1);
+        Assert.True(Pump.Until(() => row.Opacity == 1, TimeSpan.FromSeconds(2)));
+        window.Close();
+
+        static Avalonia.Media.Color ColorOf(Avalonia.Media.IBrush? brush) =>
+            brush is Avalonia.Media.ISolidColorBrush s ? s.Color : default;
+    }
+
+    [AvaloniaFact]
     public void Move_to_today_moves_the_task_and_plays_the_entrance()
     {
         using var harness = new ScreenHarness();

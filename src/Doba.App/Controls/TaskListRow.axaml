@@ -45,21 +45,21 @@
                       AutomationProperties.Name="{Binding ToggleLabel}" />
       <Button Name="PART_Priority"
               Grid.Column="1"
-              Width="18"
-              Height="18"
-              Margin="8,0,0,0"
+              Width="{StaticResource Size.Row.Priority}"
+              Height="{StaticResource Size.Row.Priority}"
+              Margin="{StaticResource Space.Row.Priority}"
               CornerRadius="{DynamicResource Radius.Check}"
               Command="{Binding CyclePriorityCommand}"
               ToolTip.Tip="{Binding PriorityTitle}"
               AutomationProperties.Name="{Binding PriorityLabel}">
         <c:PriorityIcon Priority="{Binding Priority}" />
       </Button>
-      <!-- Content is the row view-model (set in code-behind) so a recycled row can rebuild its title: see
-           TaskListRow.ShowRow. The strike is StrikeText's crisp 1 px line (Text.Muted), always present. -->
+      <!-- Content is the row view-model (set in code-behind, OnDataContextChanged). The strike is StrikeText's crisp
+           1 px line (Text.Muted), always present; a recycled row snaps it (SnapScope). -->
       <Button Name="PART_Title"
               Grid.Column="2"
               Theme="{StaticResource Button.Title}"
-              Margin="12,0,0,0"
+              Margin="{StaticResource Space.Row.Gap}"
               HorizontalAlignment="Stretch"
               Command="{Binding OpenCommand}"
               AutomationProperties.Name="{Binding Title}">
@@ -73,7 +73,7 @@
           </DataTemplate>
         </Button.ContentTemplate>
       </Button>
-      <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="12" Margin="12,0,0,0">
+      <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="{StaticResource Space.Row.MetaGap}" Margin="{StaticResource Space.Row.Gap}">
         <TextBlock Name="PART_Tag" Classes="meta" Text="{Binding TagLabel}" IsVisible="{Binding HasTag}" VerticalAlignment="Center" />
         <TextBlock Name="PART_Meta" Classes="meta" Text="{Binding Meta}" VerticalAlignment="Center"
                    Foreground="{Binding $parent[c:TaskListRow].MetaForeground}" />

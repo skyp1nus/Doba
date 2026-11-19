@@ -12,7 +12,7 @@
              x:DataType="local:TodayViewModel"
              c:TaskListRow.Entrances="{Binding Entrances}">
   <Grid ColumnDefinitions="*,Auto">
-    <ScrollViewer Name="PART_Scroll" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Padding="0,0,32,0">
+    <ScrollViewer Name="PART_Scroll" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Padding="{StaticResource Space.Today.Scroll}">
       <!-- max-width 760: a star column capped at 760 and a near-zero star column for the rest (with an Auto column the
            Grid's layout rounding hands the capped column 1 px of slack: 761 px). -->
       <Grid>
@@ -20,16 +20,16 @@
           <ColumnDefinition Width="1000*" MaxWidth="{StaticResource Size.Today.MaxWidth}" />
           <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
-        <StackPanel Name="PART_List" Spacing="28" Margin="0,6,0,24">
+        <StackPanel Name="PART_List" Spacing="{StaticResource Space.List.SectionGap}" Margin="{StaticResource Space.List.Sections}">
           <StackPanel>
             <TextBlock Name="PART_Summary" Classes="mono tertiary" FontSize="{DynamicResource FontSize.12}" Text="{Binding Summary}" />
-            <c:ProgressLine Name="PART_Progress" Value="{Binding Progress}" Margin="0,12,0,0" />
+            <c:ProgressLine Name="PART_Progress" Value="{Binding Progress}" Margin="{StaticResource Space.Today.Progress}" />
           </StackPanel>
           <c:AddTaskButton Name="PART_AddTask" Command="{Binding AddTaskCommand}" />
           <ItemsControl ItemsSource="{Binding Groups}">
             <ItemsControl.ItemsPanel>
               <ItemsPanelTemplate>
-                <StackPanel Spacing="28" />
+                <StackPanel Spacing="{StaticResource Space.List.SectionGap}" />
               </ItemsPanelTemplate>
             </ItemsControl.ItemsPanel>
             <ItemsControl.ItemTemplate>
@@ -48,7 +48,7 @@
             Grid.Column="1"
             BorderBrush="{DynamicResource Brush.Border.Subtle}"
             BorderThickness="1,0,0,0"
-            Padding="24,0,0,0">
+            Padding="{StaticResource Space.Today.Aside}">
       <ScrollViewer Name="PART_ScheduleScroll" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
         <c:ScheduleTimeline Name="PART_Schedule" Width="{DynamicResource Size.Schedule.Width}" DataContext="{Binding Schedule}" />
       </ScrollViewer>
