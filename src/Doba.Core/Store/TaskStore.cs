@@ -83,7 +83,8 @@ public sealed class TaskStore : ITaskStore
     public TaskItem Add(TaskItem item)
     {
         ArgumentNullException.ThrowIfNull(item);
-        var id = _all.Count == 0 ? 1 : _all[^1].Id + 1;
+        // checked: an id at long.MaxValue must fail here rather than wrap to a negative id that breaks the Id order.
+        var id = _all.Count == 0 ? 1 : checked(_all[^1].Id + 1);
         var stored = Sanitize(item) with { Id = id };
         _all.Add(stored);
         _byId.Add(id, stored);
@@ -272,12 +273,26 @@ public sealed class TaskStore : ITaskStore
         return stored;
     }
 
-    /// <summary>Undated tasks cannot be spans; Notes is never null.</summary>
+    /// <summary>
+    /// Enforces the <see cref="TaskItem"/> invariants the projections rely on, whatever the source (database rows are
+    /// not validated on load): End only on dated tasks and only after Date (otherwise the task is single-day); Time
+    /// only on dated single-day tasks; Priority one of the defined values (otherwise None); Notes never null.
+    /// </summary>
     private static TaskItem Sanitize(TaskItem t)
     {
-        if (t.Date is null && t.End is not null)
+        if (t.End is { } end && (t.Date is not { } date || end <= date))
         {
             t = t with { End = null };
+        }
+
+        if (t.Time is not null && (t.Date is null || t.End is not null))
+        {
+            t = t with { Time = null };
+        }
+
+        if ((uint)t.Priority > (uint)Priority.Asap)
+        {
+            t = t with { Priority = Priority.None };
         }
 
         // Records can carry a null into a non-nullable string from deserialisation.

@@ -16,6 +16,12 @@ public static class JsonTransfer
     public const string FormatName = "doba";
     public const int FormatVersion = 1;
 
+    /// <summary>
+    /// Largest task id an import accepts (2^53, exact in a JSON number everywhere). The store gives a new task the
+    /// largest id + 1, so an id near <see cref="long.MaxValue"/> would leave no room.
+    /// </summary>
+    public const long MaxId = 1L << 53;
+
     public static Task ExportAsync(Stream destination, IReadOnlyList<TaskItem> tasks, IReadOnlyList<string> tags, AppSettings settings, CancellationToken cancellationToken = default) =>
         ExportAsync(destination, tasks, tags, settings, TimeProvider.System, cancellationToken);
 
@@ -55,7 +61,9 @@ public static class JsonTransfer
         }
         catch (JsonException ex)
         {
-            throw new FormatException($"The file is not valid JSON: {ex.Message}", ex);
+            // Our own sentence: under the NativeAOT publish (UseSystemResourceKeys) ex.Message is a bare resource key.
+            string where = ex.LineNumber is { } n ? $" (line {n + 1})" : string.Empty;
+            throw new FormatException($"The file is not valid JSON{where}.", ex);
         }
 
         using (json)
@@ -121,23 +129,31 @@ public static class JsonTransfer
 
         tasks.Sort(static (a, b) => a.Id.CompareTo(b.Id));
 
+        // Tag names go through the same normalisation as tags typed in the app ("Deep Work" → "deep-work").
         var tags = new List<string>(document.Tags?.Count ?? 0);
         var tagSet = new HashSet<string>(StringComparer.Ordinal);
         if (document.Tags is { } tagDtos)
         {
             for (int i = 0; i < tagDtos.Count; i++)
             {
-                string? tag = tagDtos[i];
-                if (string.IsNullOrWhiteSpace(tag))
-                {
-                    throw new FormatException($"Invalid tag at position {i + 1}: a tag name must not be empty.");
-                }
-
+                string? raw = tagDtos[i];
+                string tag = Tags.Normalize(raw)
+                    ?? throw new FormatException($"Invalid tag at position {i + 1}: a tag name must not be empty.");
                 if (!tagSet.Add(tag))
                 {
-                    throw new FormatException($"Invalid tag at position {i + 1}: \"{tag}\" appears more than once.");
+                    string normalised = tag == raw ? string.Empty : $" (as \"{tag}\")";
+                    throw new FormatException($"Invalid tag at position {i + 1}: \"{raw}\"{normalised} appears more than once.");
                 }
 
+                tags.Add(tag);
+            }
+        }
+
+        // A task's tag missing from the list is added to it, so every tag has its sidebar entry (in task id order).
+        foreach (var task in tasks)
+        {
+            if (task.Tag is { } tag && tagSet.Add(tag))
+            {
                 tags.Add(tag);
             }
         }
@@ -152,9 +168,9 @@ public static class JsonTransfer
             throw Invalid(index, "the entry is null.");
         }
 
-        if (dto.Id is not { } id || id <= 0)
+        if (dto.Id is not { } id || id <= 0 || id > MaxId)
         {
-            throw Invalid(index, "\"id\" must be a positive number.");
+            throw Invalid(index, "\"id\" must be a positive number up to 2^53 (9007199254740992).");
         }
 
         string title = dto.Title?.Trim() ?? string.Empty;
@@ -200,7 +216,8 @@ public static class JsonTransfer
             throw Invalid(index, "\"priority\" is not a known priority.");
         }
 
-        string? tag = string.IsNullOrWhiteSpace(dto.Tag) ? null : dto.Tag;
+        // Empty, whitespace or a bare "#" means no tag; anything else is normalised like a typed tag.
+        string? tag = Tags.Normalize(dto.Tag);
 
         return new TaskItem(id, title, dto.Notes ?? string.Empty, date, end, time, duration, priority, tag, dto.Done ?? false);
     }
@@ -254,7 +271,6 @@ public static class JsonTransfer
             LaunchAtStartup = dto.LaunchAtStartup ?? d.LaunchAtStartup,
             KeepInTray = dto.KeepInTray ?? d.KeepInTray,
             DailyBackup = dto.DailyBackup ?? d.DailyBackup,
-            SidebarCollapsed = dto.SidebarCollapsed ?? d.SidebarCollapsed,
         };
     }
 
@@ -286,6 +302,5 @@ public static class JsonTransfer
         LaunchAtStartup = s.LaunchAtStartup,
         KeepInTray = s.KeepInTray,
         DailyBackup = s.DailyBackup,
-        SidebarCollapsed = s.SidebarCollapsed,
     };
 }

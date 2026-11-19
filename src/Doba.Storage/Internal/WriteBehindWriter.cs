@@ -262,6 +262,15 @@ internal sealed class WriteBehindWriter : IAsyncDisposable
                 return;
             }
 
+            if (!IsPerOperationError(batchError))
+            {
+                // The database as a whole refused the write (locked by another process, disk full, I/O error): every
+                // replayed operation would meet the same error, a locked one only after the full busy timeout each
+                // (N × 30 s, while Exit waits for this drain). The burst fails as a whole.
+                RecordFailure(batchError, effective.Count);
+                return;
+            }
+
             // Something in the batch failed and the transaction was rolled back. Replay the operations one by one so
             // that a single bad operation does not take the rest of the burst with it.
             foreach (var op in effective)
@@ -388,9 +397,23 @@ internal sealed class WriteBehindWriter : IAsyncDisposable
         }
     }
 
-    private void RecordFailure(Exception error)
+    /// <summary>
+    /// True when <paramref name="error"/> comes from one operation's data (a constraint, a bad argument), so replaying
+    /// the burst op by op saves the others; false for errors of the database as a whole, which every operation would
+    /// hit again.
+    /// </summary>
+    internal static bool IsPerOperationError(Exception error) =>
+        error is not SqliteException sqlite || (sqlite.SqliteErrorCode & 0xFF) switch
+        {
+            SQLitePCL.raw.SQLITE_BUSY or SQLitePCL.raw.SQLITE_LOCKED or SQLitePCL.raw.SQLITE_NOMEM
+                or SQLitePCL.raw.SQLITE_READONLY or SQLitePCL.raw.SQLITE_IOERR or SQLitePCL.raw.SQLITE_CORRUPT
+                or SQLitePCL.raw.SQLITE_FULL or SQLitePCL.raw.SQLITE_CANTOPEN or SQLitePCL.raw.SQLITE_NOTADB => false,
+            _ => true,
+        };
+
+    private void RecordFailure(Exception error, int failedWrites = 1)
     {
-        _failedSinceFlush++;
+        _failedSinceFlush += failedWrites;
         _lastUnreported = error;
         Volatile.Write(ref _lastError, error);
         _onError(error);

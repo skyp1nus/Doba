@@ -19,6 +19,35 @@ public sealed class DobaDatabaseTests : IDisposable
         return db.Load();
     }
 
+    /// <summary>
+    /// Holds the background writer inside a barrier action until the returned gate is disposed, so that everything
+    /// queued meanwhile is drained as ONE burst (one transaction) afterwards. <paramref name="onWriter"/> runs on the
+    /// writer connection first.
+    /// </summary>
+    private static async Task<IAsyncDisposable> ParkWriter(DobaDatabase db, Action<SqliteConnection>? onWriter = null)
+    {
+        var parked = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new ManualResetEventSlim();
+        var barrier = db.ExecuteOnWriterAsync(connection =>
+        {
+            onWriter?.Invoke(connection);
+            parked.SetResult();
+            release.Wait(TimeSpan.FromSeconds(30));
+        }, Ct);
+        await parked.Task.WaitAsync(Ct);
+        return new Gate(release, barrier);
+    }
+
+    private sealed class Gate(ManualResetEventSlim release, Task barrier) : IAsyncDisposable
+    {
+        public async ValueTask DisposeAsync()
+        {
+            release.Set();
+            await barrier;
+            release.Dispose();
+        }
+    }
+
     [Fact]
     public async Task Open_creates_folder_and_schema_v1_from_nothing()
     {
@@ -274,12 +303,16 @@ public sealed class DobaDatabaseTests : IDisposable
     {
         await using (var db = DobaDatabase.Open(_temp.Location))
         {
-            db.Tasks.Upsert(Item(1, "before"));
-            db.Tasks.SaveTags(["before"]);
-            db.Settings.Save(AppSettings.Default with { Accent = Accent.Sand });
-            db.Tasks.ReplaceAll([Item(2, "replaced")], ["replaced"]);
-            db.Tasks.Upsert(Item(3, "after"));
-            db.Tasks.SaveTags(["replaced", "after"]);
+            // Parked writer: all six writes are drained as one burst, so Coalesce really sees them together.
+            await using (await ParkWriter(db))
+            {
+                db.Tasks.Upsert(Item(1, "before"));
+                db.Tasks.SaveTags(["before"]);
+                db.Settings.Save(AppSettings.Default with { Accent = Accent.Sand });
+                db.Tasks.ReplaceAll([Item(2, "replaced")], ["replaced"]);
+                db.Tasks.Upsert(Item(3, "after"));
+                db.Tasks.SaveTags(["replaced", "after"]);
+            }
         }
 
         var loaded = await ReopenAndLoad();
@@ -348,17 +381,21 @@ public sealed class DobaDatabaseTests : IDisposable
         var reported = new List<Exception>();
         db.WriteFailed += (_, e) => { lock (reported) { reported.Add(e.Error); } };
 
-        db.Tasks.Upsert(Item(1, "good before"));
-        db.Tasks.SaveTags(["dup", "dup"]); // UNIQUE constraint failure inside SQLite
-        db.Tasks.Upsert(Item(2, "good after"));
+        // Parked writer: the three writes are drained as ONE burst, so the failed transaction must be replayed op by op.
+        await using (await ParkWriter(db))
+        {
+            db.Tasks.Upsert(Item(1, "good before"));
+            db.Tasks.SaveTags(["dup", "dup"]); // UNIQUE constraint failure inside SQLite
+            db.Tasks.Upsert(Item(2, "good after"));
+        }
 
         var ex = await Assert.ThrowsAsync<StorageWriteException>(() => db.Tasks.FlushAsync(Ct));
         Assert.Equal(1, ex.FailedWrites);
         Assert.IsType<SqliteException>(ex.InnerException);
         Assert.Same(ex.InnerException, db.LastWriteError);
-        Assert.Single(reported);
+        Assert.Single(reported); // WriteFailed fired exactly once: for the bad op, not for the burst
 
-        // The good writes of the same burst still reached the disk.
+        // The good writes of the same burst still reached the disk (the replay).
         Assert.Equal([1L, 2], Raw.TaskIds(DbPath));
 
         // Reported once; the queue keeps working afterwards.
@@ -376,6 +413,71 @@ public sealed class DobaDatabaseTests : IDisposable
         Assert.IsType<ArgumentException>(second.InnerException);
         Assert.Equal(2, reported.Count);
     }
+
+    [Fact]
+    public async Task A_burst_refused_because_the_database_is_locked_is_not_replayed_op_by_op()
+    {
+        await using var db = DobaDatabase.Open(_temp.Location);
+        var reported = new List<Exception>();
+        db.WriteFailed += (_, e) => { lock (reported) { reported.Add(e.Error); } };
+
+        // Another process holds the write lock for the whole burst.
+        using var blocker = Raw.Open(DbPath);
+        using (var begin = blocker.CreateCommand())
+        {
+            begin.CommandText = "BEGIN IMMEDIATE;";
+            begin.ExecuteNonQuery();
+        }
+
+        const int ops = 5;
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        await using (await ParkWriter(db, connection => connection.DefaultTimeout = 1)) // 1 s busy timeout instead of 30
+        {
+            for (int i = 1; i <= ops; i++)
+            {
+                db.Tasks.Upsert(Item(i));
+            }
+        }
+
+        var ex = await Assert.ThrowsAsync<StorageWriteException>(() => db.Tasks.FlushAsync(Ct));
+        watch.Stop();
+
+        // One busy wait for the burst, not one more per op (a replay would take (1 + 5) × 1 s).
+        Assert.True(watch.Elapsed < TimeSpan.FromSeconds(3.5), $"took {watch.Elapsed.TotalSeconds:0.0} s");
+        Assert.Equal(ops, ex.FailedWrites);
+        var sqlite = Assert.IsType<SqliteException>(ex.InnerException);
+        Assert.Equal(SQLitePCL.raw.SQLITE_BUSY, sqlite.SqliteErrorCode & 0xFF);
+        Assert.Single(reported);
+
+        // Once the lock is gone, the queue keeps working.
+        using (var rollback = blocker.CreateCommand())
+        {
+            rollback.CommandText = "ROLLBACK;";
+            rollback.ExecuteNonQuery();
+        }
+
+        db.Tasks.Upsert(Item(9, "later"));
+        await db.Tasks.FlushAsync(Ct);
+        Assert.Equal([9L], Raw.TaskIds(DbPath));
+    }
+
+    [Theory]
+    [InlineData(SQLitePCL.raw.SQLITE_CONSTRAINT, true)]
+    [InlineData(SQLitePCL.raw.SQLITE_MISMATCH, true)]
+    [InlineData(SQLitePCL.raw.SQLITE_TOOBIG, true)]
+    [InlineData(SQLitePCL.raw.SQLITE_BUSY, false)]
+    [InlineData(SQLitePCL.raw.SQLITE_LOCKED, false)]
+    [InlineData(SQLitePCL.raw.SQLITE_FULL, false)]
+    [InlineData(SQLitePCL.raw.SQLITE_IOERR, false)]
+    [InlineData(SQLitePCL.raw.SQLITE_IOERR | (4 << 8), false)] // an extended I/O error code
+    [InlineData(SQLitePCL.raw.SQLITE_READONLY, false)]
+    [InlineData(SQLitePCL.raw.SQLITE_CORRUPT, false)]
+    public void Only_errors_of_one_operation_are_replayed(int code, bool perOperation) =>
+        Assert.Equal(perOperation, WriteBehindWriter.IsPerOperationError(new SqliteException("test", code)));
+
+    [Fact]
+    public void Errors_outside_SQLite_are_treated_as_per_operation() =>
+        Assert.True(WriteBehindWriter.IsPerOperationError(new ArgumentException("bad task")));
 
     [Fact]
     public async Task A_cancelled_flush_does_not_swallow_the_error()

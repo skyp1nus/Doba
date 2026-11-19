@@ -61,7 +61,8 @@ public sealed class BackupTests : IDisposable
     public async Task Keeps_only_the_newest_seven_and_ignores_other_files()
     {
         Directory.CreateDirectory(BackupFolder);
-        string[] foreign = ["notes.txt", "doba-latest.db", "doba-2026-11-01.db.tmp", "other-2026-01-01.db", "doba-2026-1-1.db", "doba-2020-01-01.dbx"];
+        // (A leftover doba-yyyy-MM-dd.db.tmp is Doba's own: see Stale_temporary_files_of_other_days_are_deleted.)
+        string[] foreign = ["notes.txt", "doba-latest.db", "doba-2026-11-01.db.tmp.bak", "doba-2026-1-1.db.tmp", "other-2026-01-01.db", "doba-2026-1-1.db", "doba-2020-01-01.dbx"];
         foreach (string name in foreign)
         {
             await File.WriteAllTextAsync(Path.Combine(BackupFolder, name), "x", Ct);
@@ -99,6 +100,30 @@ public sealed class BackupTests : IDisposable
         Assert.Equal([Today], Backup.List(BackupFolder).Select(b => b.Day));
 
         await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => Backup.RunDailyAsync(db, Today, keep: 0, cancellationToken: Ct));
+    }
+
+    [Fact]
+    public async Task Stale_temporary_files_of_other_days_are_deleted()
+    {
+        Directory.CreateDirectory(BackupFolder);
+        string stale = Path.Combine(BackupFolder, Backup.FileName(Today.AddDays(-3)) + ".tmp");
+        string older = Path.Combine(BackupFolder, Backup.FileName(Today.AddDays(-40)) + ".tmp");
+        string almost = Path.Combine(BackupFolder, Backup.FileName(Today.AddDays(-3)) + ".tmp.keep");
+        foreach (string file in new[] { stale, older, almost })
+        {
+            await File.WriteAllTextAsync(file, "a full-size copy cut short", Ct);
+        }
+
+        await using var db = DobaDatabase.Open(_temp.Location);
+        Assert.NotNull(await Backup.RunDailyAsync(db, Today, cancellationToken: Ct));
+        Assert.False(File.Exists(stale));
+        Assert.False(File.Exists(older));
+        Assert.True(File.Exists(almost)); // not the exact temporary name: never touched
+
+        // Also when today's backup already exists (the next start on the same day).
+        await File.WriteAllTextAsync(stale, "again", Ct);
+        Assert.Null(await Backup.RunDailyAsync(db, Today, cancellationToken: Ct));
+        Assert.False(File.Exists(stale));
     }
 
     [Fact]

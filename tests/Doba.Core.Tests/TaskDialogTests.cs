@@ -173,4 +173,21 @@ public class TaskDialogTests
         var none = TaskDialog.PickDate(d with { Days = 4 }, null);
         Assert.Equal((null, 1), (none.Date, none.Days));
     }
+
+    [Fact]
+    public void Days_stepper_never_cuts_a_span_longer_than_its_maximum()
+    {
+        // A 20-day task (import allows any span) opened in the dialog.
+        var task = new TaskItem(3, "Long trip", string.Empty, Today, Today.AddDays(19), null, 0, Priority.None, null, false);
+        var d = TaskDialog.EditDraft(task, Today);
+        Assert.Equal(20, d.Days);
+
+        Assert.Equal(20, TaskDialog.StepDays(d, 1).Days);   // "+" does not shorten it to 14
+        Assert.Equal(19, TaskDialog.StepDays(d, -1).Days);  // "−" takes one day off, not six
+        Assert.Equal(Today.AddDays(19), TaskDialog.ToTask(TaskDialog.StepDays(d, 1), task).End);
+
+        // Once at or under the maximum, the usual 1..14 range applies again.
+        Assert.Equal(14, TaskDialog.StepDays(d with { Days = 15 }, -1).Days);
+        Assert.Equal(14, TaskDialog.StepDays(d with { Days = 14 }, 1).Days);
+    }
 }

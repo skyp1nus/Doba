@@ -80,7 +80,14 @@ public sealed class JsonTransferTests
         Assert.Equal("system", s.GetProperty("theme").GetString());
         Assert.Equal(35, s.GetProperty("windowTransparency").GetInt32());
         Assert.Equal("high", s.GetProperty("defaultPriority").GetString());
-        Assert.True(s.GetProperty("sidebarCollapsed").GetBoolean());
+        Assert.False(s.TryGetProperty("sidebarCollapsed", out _)); // in-memory only, never exported
+    }
+
+    [Fact]
+    public async Task Sidebar_state_from_an_older_export_is_ignored()
+    {
+        var data = await Import("""{ "format": "doba", "version": 1, "settings": { "sidebarCollapsed": true, "accent": "sand" } }""");
+        Assert.Equal(AppSettings.Default with { Accent = Accent.Sand }, data.Settings);
     }
 
     [Fact]
@@ -179,6 +186,69 @@ public sealed class JsonTransferTests
     public async Task Bad_document_fields_throw_FormatException(string json, string expected)
     {
         var ex = await Assert.ThrowsAsync<FormatException>(() => Import(json));
+        Assert.Contains(expected, ex.Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("{", 1)]
+    [InlineData("{\n  \"format\": \"doba\",\n  \"version\": 1,\n  oops\n}", 4)]
+    public async Task Invalid_json_message_is_our_own_sentence_with_the_line(string json, int line)
+    {
+        var ex = await Assert.ThrowsAsync<FormatException>(() => Import(json));
+        Assert.Equal($"The file is not valid JSON (line {line}).", ex.Message);
+
+        // The framework's text (a bare resource key under the NativeAOT publish) never reaches the user.
+        Assert.IsType<JsonException>(ex.InnerException, exactMatch: false);
+        Assert.DoesNotContain(ex.InnerException!.Message, ex.Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(9007199254740993L)]
+    [InlineData(long.MaxValue)]
+    public async Task Ids_above_2_pow_53_are_rejected(long id)
+    {
+        var ex = await Assert.ThrowsAsync<FormatException>(() => Import($$"""{ "format": "doba", "version": 1, "tasks": [ { "id": {{id}}, "title": "x" } ] }"""));
+        Assert.Contains("\"id\"", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("2^53", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task The_largest_allowed_id_imports_and_the_next_new_task_follows_it()
+    {
+        var data = await Import($$"""{ "format": "doba", "version": 1, "tasks": [ { "id": {{JsonTransfer.MaxId}}, "title": "x" } ] }""");
+        Assert.Equal(JsonTransfer.MaxId, Assert.Single(data.Tasks).Id);
+        var store = new Doba.Core.Store.TaskStore(data.Tasks, data.Tags, Doba.Core.Store.NullTaskPersistence.Instance);
+        Assert.Equal(JsonTransfer.MaxId + 1, store.Add(Item(0, "next")).Id);
+    }
+
+    [Fact]
+    public async Task Imported_tags_are_normalised_like_typed_tags_and_task_tags_join_the_list()
+    {
+        var data = await Import("""
+            {
+              "format": "doba", "version": 1,
+              "tags": [ "Work", "#Deep  Work", " personal " ],
+              "tasks": [
+                { "id": 1, "title": "a", "tag": "#WORK" },
+                { "id": 2, "title": "b", "tag": " Errands Today " },
+                { "id": 3, "title": "c", "tag": "#" },
+                { "id": 4, "title": "d", "tag": "errands-today" },
+                { "id": 5, "title": "e", "tag": "deep work" }
+              ]
+            }
+            """);
+
+        Assert.Equal(["work", "deep-work", "personal", "errands-today"], data.Tags);
+        Assert.Equal(["work", "errands-today", null, "errands-today", "deep-work"], data.Tasks.Select(t => t.Tag));
+    }
+
+    [Theory]
+    [InlineData("""[ "work", "Work" ]""", "\"Work\" (as \"work\") appears more than once")]
+    [InlineData("""[ "deep work", "#deep-work" ]""", "appears more than once")]
+    [InlineData("""[ "#" ]""", "must not be empty")]
+    public async Task Tags_that_collide_or_vanish_after_normalising_are_rejected(string tags, string expected)
+    {
+        var ex = await Assert.ThrowsAsync<FormatException>(() => Import($$"""{ "format": "doba", "version": 1, "tags": {{tags}} }"""));
         Assert.Contains(expected, ex.Message, StringComparison.Ordinal);
     }
 

@@ -147,6 +147,5 @@ public static class Samples
         LaunchAtStartup = false,
         KeepInTray = false,
         DailyBackup = false,
-        SidebarCollapsed = true,
     };
 }

@@ -1,3 +1,5 @@
+using Doba.Core.Model;
+
 namespace Doba.Core.Projections;
 
 // ---------- Inbox ----------
@@ -32,6 +34,19 @@ public sealed record DayModel(DateOnly Date, string Progress, IReadOnlyList<Task
 /// <param name="LaneHeight">Multi-day lane (design 36).</param>
 public sealed record WeekMetrics(double RowHeight, Func<string, double> CardHeight, double CardGap = 6, double MoreReserve = 26, double HeaderHeight = 86, double LaneHeight = 36)
 {
+    /// <summary>
+    /// Height of a given task's card. A card's height depends on more than its title (tag, time and priority decide
+    /// how much width the title gets), so when this is set it is used instead of <see cref="CardHeight"/>.
+    /// </summary>
+    public Func<TaskItem, double>? TaskCardHeight { get; init; }
+
+    /// <summary>The height <see cref="Projector"/> fits <paramref name="task"/>'s card with.</summary>
+    public double CardHeightOf(TaskItem task)
+    {
+        ArgumentNullException.ThrowIfNull(task);
+        return TaskCardHeight is { } perTask ? perTask(task) : CardHeight(task.Title);
+    }
+
     /// <summary>The prototype's heuristic: titles longer than 26 characters wrap to two lines.</summary>
     public static WeekMetrics Design(double rowHeight = 403) => new(rowHeight, t => t.Length > 26 ? 54 : 36);
 }
@@ -56,15 +71,19 @@ public sealed record WeekModel(DateOnly WeekStart, IReadOnlyList<WeekRow> Rows);
 // ---------- Month ----------
 
 /// <param name="AvailableHeight">Height of the month body including the 26 px weekday header (design 832).</param>
-public sealed record MonthMetrics(double AvailableHeight = 832, double HeaderHeight = 26, double DayNumberHeight = 34, double LaneHeight = 24, double ItemHeight = 25);
+/// <param name="MinListRoom">Room a week row needs below its day number and lanes for a list line (list padding 4 +
+/// one 22 px chip); with less, every task of a cell is counted in "+N more" in the day-number row.</param>
+public sealed record MonthMetrics(double AvailableHeight = 832, double HeaderHeight = 26, double DayNumberHeight = 34, double LaneHeight = 24, double ItemHeight = 25, double MinListRoom = 26);
 
 /// <param name="Items">Items that fit; when more exist the last slot is used by "+N more".</param>
-public sealed record MonthDayCell(DateOnly Date, int DayNumber, bool InMonth, bool IsToday, IReadOnlyList<TaskRow> Items, int MoreCount);
+/// <param name="MoreInHeader">The row has no room for a list line (<see cref="MonthMetrics.MinListRoom"/>): Items is
+/// empty and "+<paramref name="MoreCount"/> more" (every task of the day) goes in the day-number row.</param>
+public sealed record MonthDayCell(DateOnly Date, int DayNumber, bool InMonth, bool IsToday, IReadOnlyList<TaskRow> Items, int MoreCount, bool MoreInHeader = false);
 
 /// <param name="WeekNumber">Shown as "W46".</param>
 /// <param name="IsCurrent">Contains today (label in accent).</param>
 /// <param name="ZoomTarget">Week view anchor when the week label is clicked (today if current week, else the week start).</param>
-/// <param name="RowHeight">floor((AvailableHeight − header) / weekCount).</param>
+/// <param name="RowHeight">floor((AvailableHeight − header) / weekCount); 0 when that is negative or not a number.</param>
 /// <param name="Spans">At most two lanes; further overlapping spans are not shown (prototype rule).</param>
 public sealed record MonthWeek(DateOnly WeekStart, int WeekNumber, bool IsCurrent, DateOnly ZoomTarget, double RowHeight, int LaneCount, IReadOnlyList<MonthDayCell> Days, IReadOnlyList<SpanBar> Spans);
 

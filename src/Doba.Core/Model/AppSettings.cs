@@ -40,8 +40,7 @@ public sealed record AppSettings
 
     public bool DailyBackup { get; init; } = true;
 
-    /// <summary>Sidebar collapsed to the 56 px icon rail.</summary>
-    public bool SidebarCollapsed { get; init; }
+    // The sidebar's collapsed state is not a setting: it is kept in memory only (DECISIONS "Sidebar collapsed state").
 
     public static AppSettings Default { get; } = new();
 }

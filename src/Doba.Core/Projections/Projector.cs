@@ -319,6 +319,11 @@ public static class Projector
 
         var lanes = laneEnds.Count;
         var avail = metrics.RowHeight - metrics.HeaderHeight - lanes * metrics.LaneHeight - 10;
+        if (double.IsNaN(avail))
+        {
+            avail = 0; // unmeasured or broken metrics: no card fits (every comparison with NaN would let all of them in)
+        }
+
         var cells = new List<WeekDayCell>(4);
         for (var c = 0; c < dayCount; c++)
         {
@@ -355,7 +360,7 @@ public static class Projector
 
         // The preview's progress bar is always empty in the prototype.
         var progress = preview || list.Count == 0 ? 0 : (double)doneN / list.Count;
-        return new WeekDayCell(d, column, DateMath.WeekdayShort(d.DayOfWeek), d.Day, DateMath.MonthShort[d.Month - 1],
+        return new WeekDayCell(d, column, DateMath.WeekdayShort(d.DayOfWeek), d.Day, DateMath.MonthAbbrev(d.Month),
             !preview && d == ctx.Today, preview, progress, rows, list.Count - showN, list.Count == 0);
     }
 
@@ -366,7 +371,7 @@ public static class Projector
         var n = 0;
         for (var k = 0; k < list.Count; k++)
         {
-            var h = m.CardHeight(list[k].Title) + m.CardGap;
+            var h = m.CardHeightOf(list[k]) + m.CardGap;
             var reserve = k < list.Count - 1 ? m.MoreReserve : 0;
             if (used + h + reserve > avail + m.CardGap)
             {
@@ -394,6 +399,10 @@ public static class Projector
         var gs = DateMath.WeekStart(first, ctx.WeekStart);
         var weekCount = (DateMath.DaysBetween(gs, first) + daysInMonth + 6) / 7;
         var rowHeight = Math.Floor((metrics.AvailableHeight - metrics.HeaderHeight) / weekCount);
+        if (!(rowHeight > 0))
+        {
+            rowHeight = 0; // a body shorter than the header, or NaN: never a negative row
+        }
 
         var weeks = new List<MonthWeek>(weekCount);
         for (var w = 0; w < weekCount; w++)
@@ -419,21 +428,26 @@ public static class Projector
             }
 
             var lanes = laneEnds.Count;
-            var cap = Math.Max(1, (int)Math.Floor((rowHeight - metrics.DayNumberHeight - lanes * metrics.LaneHeight - 8) / metrics.ItemHeight));
+            var room = rowHeight - metrics.DayNumberHeight - lanes * metrics.LaneHeight;
+
+            // No room for even one list line below the lanes: every task goes to "+N more" in the day-number row.
+            var headerOnly = !(room >= metrics.MinListRoom);
+            var cap = Math.Max(1, (int)Math.Floor((room - 8) / metrics.ItemHeight));
             var cells = new List<MonthDayCell>(7);
             for (var i = 0; i < 7; i++)
             {
                 var d = ws.AddDays(i);
                 var list = store.OnDate(d).ToList();
                 list.Sort(ByTime);
-                var showN = list.Count > cap ? cap - 1 : list.Count;
+                var showN = headerOnly ? 0 : (list.Count > cap ? cap - 1 : list.Count);
                 var items = new TaskRow[showN];
                 for (var k = 0; k < showN; k++)
                 {
                     items[k] = Row(list[k], ctx);
                 }
 
-                cells.Add(new MonthDayCell(d, d.Day, d.Year == first.Year && d.Month == first.Month, d == today, items, list.Count - showN));
+                cells.Add(new MonthDayCell(d, d.Day, d.Year == first.Year && d.Month == first.Month, d == today, items, list.Count - showN,
+                    headerOnly && list.Count > 0));
             }
 
             var current = ws <= today && today <= we;
@@ -498,7 +512,7 @@ public static class Projector
             }
 
             var stat = singleN > 0 ? string.Concat(Count(singleN), " tasks · ", Count(doneN), " done") : "No tasks";
-            months.Add(new YearMonth(m, DateMath.MonthNames[m - 1], isCur, isPast, stat, singleN == 0 ? 0 : (double)doneN / singleN,
+            months.Add(new YearMonth(m, DateMath.MonthName(m), isCur, isPast, stat, singleN == 0 ? 0 : (double)doneN / singleN,
                 rows, extra, isCur ? today : first));
         }
 
@@ -573,21 +587,47 @@ public static class Projector
             return [];
         }
 
-        var matches = new List<TaskItem>();
-        foreach (var t in store.All)
+        // Bounded selection: keep only the best `limit` matches, sorted, while scanning. A one-character query matches
+        // nearly every task, so sorting all matches would cost O(n log n) and a large list per keystroke; here most
+        // candidates are rejected by one compare with the last kept hit. The order is total (Id last), so the result
+        // equals a full sort followed by Take(limit).
+        var best = new TaskItem[Math.Min(limit, store.Count)];
+        var n = 0;
+        if (best.Length > 0)
         {
-            if (t.Title.Contains(q, StringComparison.OrdinalIgnoreCase))
+            foreach (var t in store.All)
             {
-                matches.Add(t);
+                if (!t.Title.Contains(q, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                if (n == best.Length)
+                {
+                    if (SearchOrder(t, best[n - 1]) >= 0)
+                    {
+                        continue;
+                    }
+
+                    n--; // the last kept hit drops out
+                }
+
+                var k = n;
+                while (k > 0 && SearchOrder(t, best[k - 1]) < 0)
+                {
+                    best[k] = best[k - 1];
+                    k--;
+                }
+
+                best[k] = t;
+                n++;
             }
         }
 
-        matches.Sort(static (x, y) => x.Done != y.Done ? (x.Done ? 1 : 0) - (y.Done ? 1 : 0) : ByDate(x, y));
-        var n = Math.Min(limit, matches.Count);
         var hits = new SearchHit[n];
         for (var i = 0; i < n; i++)
         {
-            var t = matches[i];
+            var t = best[i];
             var context = t.Date is not { } d ? "Inbox"
                 : t.End is { } e ? DateMath.SpanLabel(d, e)
                 : DateMath.ShortWithWeekday(d);
@@ -596,6 +636,10 @@ public static class Projector
 
         return hits;
     }
+
+    /// <summary>Search order: open before done, then <see cref="ByDate"/> (undated last, then Id).</summary>
+    private static int SearchOrder(TaskItem x, TaskItem y) =>
+        x.Done != y.Done ? (x.Done ? 1 : 0) - (y.Done ? 1 : 0) : ByDate(x, y);
 
     // ---------- helpers ----------
 

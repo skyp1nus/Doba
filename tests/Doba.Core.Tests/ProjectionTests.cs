@@ -250,6 +250,173 @@ public class ProjectionTests
     }
 
     [Fact]
+    public void Search_with_more_hits_than_the_limit_keeps_the_best_in_order()
+    {
+        var rnd = new Random(11);
+        var tasks = new List<TaskItem>();
+        for (var i = 1; i <= 400; i++)
+        {
+            var roll = rnd.Next(10);
+            DateOnly? date = roll < 2 ? null : Today.AddDays(rnd.Next(-60, 60));
+            DateOnly? end = date is { } d && roll == 9 ? d.AddDays(1 + rnd.Next(4)) : null;
+            tasks.Add(T(i, (i % 7 == 0 ? "Other " : "Match ") + i, date, end, done: rnd.Next(3) == 0));
+        }
+
+        var store = new TaskStore(tasks, [], NullTaskPersistence.Instance);
+        var expected = tasks
+            .Where(t => t.Title.Contains("match", StringComparison.OrdinalIgnoreCase))
+            .OrderBy(t => t.Done)
+            .ThenBy(t => t.Date is null)
+            .ThenBy(t => t.Date)
+            .ThenBy(t => t.Id)
+            .Select(t => t.Id)
+            .ToList();
+        Assert.True(expected.Count > 300);
+
+        var hits = Projector.Search(store, Ctx(), "MATCH");
+        Assert.Equal(50, hits.Count); // the default limit
+        Assert.Equal(expected.Take(50), hits.Select(h => h.Row.Id));
+        Assert.All(hits, h => Assert.False(h.Row.Done)); // enough open hits: no done one makes the cut
+
+        Assert.Equal(expected.Take(7), Projector.Search(store, Ctx(), "match", limit: 7).Select(h => h.Row.Id));
+        Assert.Equal(expected, Projector.Search(store, Ctx(), "match", limit: 1000).Select(h => h.Row.Id));
+        Assert.Equal(expected.Take(1), Projector.Search(store, Ctx(), "match", limit: 1).Select(h => h.Row.Id));
+        Assert.Empty(Projector.Search(store, Ctx(), "match", limit: 0));
+        Assert.Empty(Projector.Search(new TaskStore([], [], NullTaskPersistence.Instance), Ctx(), "m"));
+    }
+
+    [Fact]
+    public void Search_truncation_keeps_open_before_done_and_dated_before_undated()
+    {
+        var store = new TaskStore(
+        [
+            T(1, "x done dated", Today, done: true),
+            T(2, "x open undated"),
+            T(3, "x open late", Today.AddDays(30)),
+            T(4, "x done undated", done: true),
+            T(5, "x open early", Today.AddDays(-3)),
+            T(6, "x open undated 2"),
+        ], [], NullTaskPersistence.Instance);
+        Assert.Equal([5L, 3, 2], Projector.Search(store, Ctx(), "x", limit: 3).Select(h => h.Row.Id));
+        Assert.Equal([5L, 3, 2, 6, 1], Projector.Search(store, Ctx(), "x", limit: 5).Select(h => h.Row.Id));
+    }
+
+    [Fact]
+    public void Inbox_later_link_goes_to_the_earliest_later_date()
+    {
+        var store = new TaskStore(
+        [
+            T(9, "later b", Today.AddDays(20)),
+            T(3, "later far", Today.AddDays(40)),
+            T(5, "later a", Today.AddDays(20)),
+            T(7, "later span", Today.AddDays(21), Today.AddDays(23)),
+            T(2, "later done", Today.AddDays(15), done: true),
+        ], [], NullTaskPersistence.Instance);
+        var later = Projector.Inbox(store, Ctx()).Right.Single(g => g.Key == "later");
+        Assert.Equal("4 tasks", later.Count);
+        Assert.Equal(new NavTarget(AppView.Month, Today.AddDays(20)), later.Link);
+    }
+
+    [Fact]
+    public void Month_row_with_room_for_one_line_shows_one_item_or_only_more()
+    {
+        var d = new DateOnly(2026, 6, 10); // June 2026, Monday start: 5 weeks
+        TaskStore Store(int n) => new(Enumerable.Range(1, n).Select(i => T(i, "t" + i, d)), [], NullTaskPersistence.Instance);
+        MonthDayCell Cell(TaskStore s, MonthMetrics m) =>
+            Projector.Month(s, Ctx(), d, m).Weeks.Single(w => w.WeekStart <= d && d <= w.WeekStart.AddDays(6)).Days.Single(c => c.Date == d);
+
+        // Row 64 px: room below the day number 30 ≥ 26 → cap = max(1, floor((30 − 8) / 25)) = 1.
+        var oneLine = new MonthMetrics(AvailableHeight: 26 + (5 * 64));
+        var single = Cell(Store(1), oneLine);
+        Assert.Equal((1, 0, false), (single.Items.Count, single.MoreCount, single.MoreInHeader));
+        var three = Cell(Store(3), oneLine);
+        Assert.Equal((0, 3, false), (three.Items.Count, three.MoreCount, three.MoreInHeader));
+    }
+
+    [Fact]
+    public void Month_row_without_room_for_a_list_line_counts_every_task_in_the_header()
+    {
+        var d = new DateOnly(2026, 6, 10);
+        TaskStore Store(int n) => new(Enumerable.Range(1, n).Select(i => T(i, "t" + i, d)), [], NullTaskPersistence.Instance);
+        MonthDayCell Cell(TaskStore s, MonthMetrics m) =>
+            Projector.Month(s, Ctx(), d, m).Weeks.Single(w => w.WeekStart <= d && d <= w.WeekStart.AddDays(6)).Days.Single(c => c.Date == d);
+
+        // Row 55 px: room 21 < 26.
+        var tiny = new MonthMetrics(AvailableHeight: 26 + (5 * 55));
+        var one = Cell(Store(1), tiny);
+        Assert.Equal((0, 1, true), (one.Items.Count, one.MoreCount, one.MoreInHeader));
+        var three = Cell(Store(3), tiny);
+        Assert.Equal((0, 3, true), (three.Items.Count, three.MoreCount, three.MoreInHeader));
+        var other = Projector.Month(Store(1), Ctx(), d, tiny).Weeks.SelectMany(w => w.Days).Where(c => c.Date != d);
+        Assert.All(other, c => Assert.Equal((0, 0, false), (c.Items.Count, c.MoreCount, c.MoreInHeader))); // empty days: nothing to show
+
+        // Two span lanes take the room of a taller row: 134 − 34 − 48 = 52 ≥ 26 → a list; 100 − 34 − 48 = 18 → header.
+        var spans = new TaskStore([T(1, "s1", d, d.AddDays(1)), T(2, "s2", d, d.AddDays(1)), T(3, "t", d)], [], NullTaskPersistence.Instance);
+        Assert.False(Cell(spans, new MonthMetrics(AvailableHeight: 26 + (5 * 134))).MoreInHeader);
+        var shortRow = Cell(spans, new MonthMetrics(AvailableHeight: 26 + (5 * 100)));
+        Assert.Equal((0, 1, true), (shortRow.Items.Count, shortRow.MoreCount, shortRow.MoreInHeader));
+
+        // The design height never moves anything to the header.
+        Assert.All(Projector.Month(DemoStore(), Ctx(), Today, new MonthMetrics()).Weeks.SelectMany(w => w.Days), c => Assert.False(c.MoreInHeader));
+    }
+
+    [Theory]
+    [InlineData(double.NaN)]
+    [InlineData(0)]
+    [InlineData(-50)]
+    [InlineData(10)]
+    public void Month_with_degenerate_height_has_no_negative_rows_and_lists_nothing(double height)
+    {
+        var d = new DateOnly(2026, 6, 10);
+        var store = new TaskStore([T(1, "a", d), T(2, "b", d)], [], NullTaskPersistence.Instance);
+        var m = Projector.Month(store, Ctx(), d, new MonthMetrics(AvailableHeight: height));
+        Assert.All(m.Weeks, w => Assert.Equal(0, w.RowHeight));
+        var cell = m.Weeks.SelectMany(w => w.Days).Single(c => c.Date == d);
+        Assert.Equal((0, 2, true), (cell.Items.Count, cell.MoreCount, cell.MoreInHeader));
+    }
+
+    [Theory]
+    [InlineData(double.NaN)]
+    [InlineData(0)]
+    [InlineData(-100)]
+    public void Week_with_degenerate_row_height_shows_no_cards(double rowHeight)
+    {
+        var d = new DateOnly(2026, 6, 10);
+        var store = new TaskStore(Enumerable.Range(1, 4).Select(i => T(i, "Task " + i, d)), [], NullTaskPersistence.Instance);
+        var cell = Projector.Week(store, Ctx(), d, WeekMetrics.Design(rowHeight)).Rows.SelectMany(r => r.Cells).Single(c => c.Date == d && !c.IsPreview);
+        Assert.Empty(cell.Tasks);
+        Assert.Equal(4, cell.MoreCount);
+    }
+
+    [Fact]
+    public void Week_fit_uses_the_per_task_card_height_when_given()
+    {
+        var d = new DateOnly(2026, 6, 10);
+
+        // Same title twice: one card is tall (its tag and time squeeze the title onto two lines), one is short.
+        var store = new TaskStore(
+        [
+            T(1, "Standup", d, time: new TimeOnly(9, 0), tag: "work"),
+            T(2, "Standup", d),
+            T(3, "Standup", d),
+            T(4, "Standup", d),
+            T(5, "Standup", d),
+            T(6, "Standup", d),
+            T(7, "Standup", d),
+        ], [], NullTaskPersistence.Instance);
+        WeekDayCell Cell(WeekMetrics m) => Projector.Week(store, Ctx(), d, m).Rows.SelectMany(r => r.Cells).Single(c => c.Date == d && !c.IsPreview);
+
+        // By title only, every "Standup" has to be fitted with the tall card: avail 307 → 4 × 60 + 26 fit, the 5th not.
+        var byTitle = Cell(new WeekMetrics(403, _ => 54));
+        Assert.Equal(4, byTitle.Tasks.Count);
+
+        // Per task: one 54 px card and six 36 px ones (60 + 6 × 42 = 312 ≤ 307 + 6) all fit.
+        var perTask = Cell(new WeekMetrics(403, _ => 54) { TaskCardHeight = t => t.Tag is null ? 36 : 54 });
+        Assert.Equal(7, perTask.Tasks.Count);
+        Assert.Equal(0, perTask.MoreCount);
+    }
+
+    [Fact]
     public void Year_lists_spans_then_upcoming_tasks()
     {
         var y = Projector.Year(DemoStore(), Ctx(), 2026);

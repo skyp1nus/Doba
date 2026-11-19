@@ -211,7 +211,7 @@ public static class HeaderProjection
         var we = ws.AddDays(6);
         var weekLabel = "Week " + DateMath.WeekNumber(ws).ToString(CultureInfo.InvariantCulture);
         var year = new Crumb(a.Year.ToString(CultureInfo.InvariantCulture), new NavTarget(AppView.Year, a));
-        var month = new Crumb(DateMath.MonthNames[a.Month - 1], new NavTarget(AppView.Month, a));
+        var month = new Crumb(DateMath.MonthName(a.Month), new NavTarget(AppView.Month, a));
         switch (s.View)
         {
             case AppView.Inbox:
@@ -223,9 +223,9 @@ public static class HeaderProjection
             case AppView.Year:
                 return new HeaderModel([new Crumb("Calendar", null)], a.Year.ToString(CultureInfo.InvariantCulture), string.Empty);
             case AppView.Month:
-                return new HeaderModel([year], DateMath.MonthNames[a.Month - 1], string.Empty);
+                return new HeaderModel([year], DateMath.MonthName(a.Month), string.Empty);
             case AppView.Week:
-                var sub = DateMath.DayText(ws.Day) + (ws.Month == we.Month ? string.Empty : " " + DateMath.MonthShort[ws.Month - 1])
+                var sub = DateMath.DayText(ws.Day) + (ws.Month == we.Month ? string.Empty : " " + DateMath.MonthAbbrev(ws.Month))
                     + " – " + DateMath.DayMonth(we);
                 return new HeaderModel([year, month], weekLabel, sub);
             default:

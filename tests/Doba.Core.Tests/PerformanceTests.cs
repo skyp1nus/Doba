@@ -105,4 +105,47 @@ public class PerformanceTests(ITestOutputHelper output)
 
         Assert.All(results, r => Assert.True(r.Avg < BudgetMs, $"{r.Name}: {r.Avg:0.000} ms ≥ {BudgetMs} ms"));
     }
+
+    /// <summary>
+    /// The search palette re-runs Search on every keystroke, and a one-character query matches nearly every task. The
+    /// median must stay inside the plain 5 ms budget, and a call must not produce garbage in proportion to the matches
+    /// (a full sort of every hit allocated ~265 KB per keystroke and caused GC spikes).
+    /// </summary>
+    [Fact]
+    public void One_character_search_is_bounded_in_time_and_garbage()
+    {
+        var store = BuildStore();
+        var ctx = new ProjectionContext(Today, new TimeOnly(22, 26), DayOfWeek.Monday, null);
+        for (var i = 0; i < 10; i++)
+        {
+            GC.KeepAlive(Projector.Search(store, ctx, "t"));
+        }
+
+        const int runs = 41;
+        var times = new double[runs];
+        for (var i = 0; i < runs; i++)
+        {
+            var t0 = Stopwatch.GetTimestamp();
+            GC.KeepAlive(Projector.Search(store, ctx, "t"));
+            times[i] = Stopwatch.GetElapsedTime(t0).TotalMilliseconds;
+        }
+
+        Array.Sort(times);
+        var median = times[runs / 2];
+
+        var before = GC.GetAllocatedBytesForCurrentThread();
+        for (var i = 0; i < runs; i++)
+        {
+            GC.KeepAlive(Projector.Search(store, ctx, "t"));
+        }
+
+        var perCall = (GC.GetAllocatedBytesForCurrentThread() - before) / runs;
+        var line = string.Create(CultureInfo.InvariantCulture, $"Search (1 char)  median {median,7:0.000} ms   {perCall,7} bytes per call");
+        output.WriteLine(line);
+        Console.WriteLine("[perf] " + line);
+
+        Assert.Equal(50, Projector.Search(store, ctx, "t").Count);
+        Assert.True(median < 5, $"median {median:0.000} ms ≥ 5 ms");
+        Assert.True(perCall < 32 * 1024, $"{perCall} bytes per call");
+    }
 }

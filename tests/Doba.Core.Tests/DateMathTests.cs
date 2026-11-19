@@ -133,4 +133,21 @@ public class TagsTests
     [InlineData("#")]
     [InlineData(" ### ")]
     public void Normalize_returns_null_when_empty(string? raw) => Assert.Null(Tags.Normalize(raw));
+
+    [Fact]
+    public void Month_names_are_read_only()
+    {
+        Assert.Equal("November", DateMath.MonthNames[10]);
+        Assert.Equal("Nov", DateMath.MonthShort[10]);
+        Assert.Equal(("January", "Dec"), (DateMath.MonthName(1), DateMath.MonthAbbrev(12)));
+        Assert.Equal(12, DateMath.MonthNames.Count);
+        Assert.Equal(12, DateMath.MonthShort.Count);
+
+        // No caller can rewrite a label every projection shares.
+        Assert.False(DateMath.MonthNames is string[]);
+        Assert.False(DateMath.MonthShort is string[]);
+        Assert.Throws<NotSupportedException>(() => ((IList<string>)DateMath.MonthShort)[10] = "X");
+        Assert.Throws<NotSupportedException>(() => ((IList<string>)DateMath.MonthNames)[10] = "X");
+        Assert.Equal("Mon 16 Nov", DateMath.ShortWithWeekday(new DateOnly(2026, 11, 16)));
+    }
 }

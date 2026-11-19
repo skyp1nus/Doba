@@ -64,6 +64,84 @@ public class TaskStoreTests
         Assert.Throws<ArgumentException>(() => new TaskStore([T(1, "a"), T(1, "b")], [], NullTaskPersistence.Instance));
 
     [Fact]
+    public void ReplaceAll_with_duplicate_ids_throws_and_leaves_store_and_persistence_untouched()
+    {
+        var (s, p, events) = Create([T(1, "a", D15), T(2, "b")], "work");
+        Assert.Throws<ArgumentException>(() => s.ReplaceAll([T(5, "x"), T(5, "y")], ["other"]));
+        Assert.Equal([1L, 2], s.All.Select(t => t.Id));
+        Assert.Equal([1L], s.OnDate(D15).Select(t => t.Id));
+        Assert.Equal([2L], s.Undated.Select(t => t.Id));
+        Assert.Equal(["work"], s.Tags);
+        Assert.Empty(p.Calls);
+        Assert.Empty(events);
+    }
+
+    [Fact]
+    public void Deleting_the_newest_task_lets_the_next_add_reuse_its_id()
+    {
+        var (s, _, _) = Create([T(1, "a"), T(2, "b")]);
+        Assert.Equal(3, s.Add(T(0, "c")).Id);
+        s.Delete(3);
+        Assert.Equal(3, s.Add(T(0, "d")).Id); // DECISIONS "Ids": the max + 1 rule reuses a deleted newest id
+        s.Delete(1);
+        Assert.Equal(4, s.Add(T(0, "e")).Id); // an older gap is never reused
+    }
+
+    [Fact]
+    public void Add_after_the_largest_possible_id_fails_instead_of_wrapping()
+    {
+        var (s, p, events) = Create([T(long.MaxValue, "last")]);
+        Assert.Throws<OverflowException>(() => s.Add(T(0, "next")));
+        Assert.Equal([long.MaxValue], s.All.Select(t => t.Id));
+        Assert.Empty(p.Calls);
+        Assert.Empty(events);
+    }
+
+    [Fact]
+    public void Store_enforces_the_task_invariants_on_load_add_and_update()
+    {
+        var nine = new TimeOnly(9, 0);
+        var (s, _, _) = Create([
+            T(1, "end before date", D15, D15.AddDays(-2)),
+            T(2, "end on date", D15, D15),
+            T(3, "time on undated", time: nine),
+            T(4, "time on a span", D15, D15.AddDays(2), time: nine),
+            T(5, "priority 5", prio: (Priority)5),
+            T(6, "priority -1", D15, prio: (Priority)(-1)),
+            T(7, "fine", D15, D15.AddDays(1)),
+            T(8, "fine timed", D15, time: nine, prio: Priority.Asap),
+        ]);
+
+        Assert.Equal((D15, (DateOnly?)null), (s.Get(1)!.Date, s.Get(1)!.End));
+        Assert.Null(s.Get(2)!.End);
+        Assert.Null(s.Get(3)!.Time);
+        Assert.Equal(((DateOnly?)D15.AddDays(2), (TimeOnly?)null), (s.Get(4)!.End, s.Get(4)!.Time));
+        Assert.Equal(Priority.None, s.Get(5)!.Priority);
+        Assert.Equal(Priority.None, s.Get(6)!.Priority);
+        Assert.Equal(T(7, "fine", D15, D15.AddDays(1)), s.Get(7));
+        Assert.Equal(T(8, "fine timed", D15, time: nine, prio: Priority.Asap), s.Get(8));
+        Assert.Equal([1L, 2, 6, 8], s.OnDate(D15).Select(t => t.Id));
+        Assert.Equal([4L, 7], s.MultiDay.Select(t => t.Id));
+
+        // The projections that used to crash or print "-1 days" / "Day 1 of 1" now see valid tasks.
+        var ctx = new Projections.ProjectionContext(D15, nine, DayOfWeek.Monday, null);
+        Assert.NotNull(Projections.Projector.Inbox(s, ctx));
+        Assert.All(Projections.Projector.Week(s, ctx, D15, Projections.WeekMetrics.Design()).Rows.SelectMany(r => r.Spans), b => Assert.True(b.ColumnSpan >= 1));
+
+        var added = s.Add(T(0, "added", D15, D15.AddDays(-1), time: nine, prio: (Priority)9));
+        Assert.Equal((D15, (DateOnly?)null, (TimeOnly?)nine, Priority.None), (added.Date, added.End, added.Time, added.Priority));
+
+        s.Update(s.Get(7)! with { End = D15.AddDays(-5), Time = nine });
+        Assert.Equal(((DateOnly?)null, (TimeOnly?)nine), (s.Get(7)!.End, s.Get(7)!.Time));
+        Assert.DoesNotContain(s.MultiDay, t => t.Id == 7);
+        Assert.Contains(s.OnDate(D15), t => t.Id == 7);
+
+        s.Update(s.Get(8)! with { Date = null });
+        Assert.Null(s.Get(8)!.Time);
+        Assert.Contains(s.Undated, t => t.Id == 8);
+    }
+
+    [Fact]
     public void Add_assigns_max_plus_one_raises_once_and_persists()
     {
         var (s, p, events) = Create([T(7, "a", D15), T(3, "b")]);

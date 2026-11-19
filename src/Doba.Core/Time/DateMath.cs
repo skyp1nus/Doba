@@ -5,8 +5,21 @@ namespace Doba.Core.Time;
 /// <summary>Calendar arithmetic shared by every projection. Pure; all dates are local calendar days.</summary>
 public static class DateMath
 {
-    public static readonly string[] MonthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-    public static readonly string[] MonthShort = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    // Private like the weekday arrays: a shared mutable array would let one caller change every label.
+    private static readonly string[] s_monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    private static readonly string[] s_monthShort = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+    /// <summary>"January".."December", indexed by month − 1 (read-only).</summary>
+    public static IReadOnlyList<string> MonthNames { get; } = Array.AsReadOnly(s_monthNames);
+
+    /// <summary>"Jan".."Dec", indexed by month − 1 (read-only).</summary>
+    public static IReadOnlyList<string> MonthShort { get; } = Array.AsReadOnly(s_monthShort);
+
+    /// <summary>"November" for month 11.</summary>
+    public static string MonthName(int month) => s_monthNames[month - 1];
+
+    /// <summary>"Nov" for month 11.</summary>
+    public static string MonthAbbrev(int month) => s_monthShort[month - 1];
 
     private static readonly string[] s_weekdayShort = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
     private static readonly string[] s_weekdayLong = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -64,13 +77,13 @@ public static class DateMath
 
     /// <summary>"Mon 16 Nov".</summary>
     public static string ShortWithWeekday(DateOnly d) =>
-        string.Concat(s_weekdayShort[(int)d.DayOfWeek], " ", DayText(d.Day), " ", MonthShort[d.Month - 1]);
+        string.Concat(s_weekdayShort[(int)d.DayOfWeek], " ", DayText(d.Day), " ", MonthAbbrev(d.Month));
 
     /// <summary>"16 Nov".</summary>
-    public static string DayMonth(DateOnly d) => string.Concat(DayText(d.Day), " ", MonthShort[d.Month - 1]);
+    public static string DayMonth(DateOnly d) => string.Concat(DayText(d.Day), " ", MonthAbbrev(d.Month));
 
     /// <summary>"16 November".</summary>
-    public static string DayMonthLong(DateOnly d) => string.Concat(DayText(d.Day), " ", MonthNames[d.Month - 1]);
+    public static string DayMonthLong(DateOnly d) => string.Concat(DayText(d.Day), " ", MonthName(d.Month));
 
     /// <summary>
     /// Label of a multi-day range: "20–22 Nov" inside one month, "28 Oct – 2 Nov" across months
@@ -81,7 +94,7 @@ public static class DateMath
         if (start.Year == end.Year && start.Month == end.Month)
         {
             return monthInSameMonth
-                ? string.Concat(DayText(start.Day), "–", DayText(end.Day), " ", MonthShort[end.Month - 1])
+                ? string.Concat(DayText(start.Day), "–", DayText(end.Day), " ", MonthAbbrev(end.Month))
                 : string.Concat(DayText(start.Day), "–", DayText(end.Day));
         }
 

@@ -72,7 +72,7 @@ internal sealed class ExportSettings
 
     public bool? DailyBackup { get; set; }
 
-    public bool? SidebarCollapsed { get; set; }
+    // "sidebarCollapsed" from older exports is an unknown field now and ignored (the state is in-memory only).
 }
 
 /// <summary>Enums as camelCase strings ("asap", "monday"); numbers are rejected.</summary>

@@ -198,11 +198,14 @@ public static class TaskDialog
         return d.Date is { } v ? d with { Date = v.AddDays(Math.Sign(direction)) } : d;
     }
 
-    /// <summary>"Lasts N days" stepper, clamped to 1..14.</summary>
+    /// <summary>
+    /// "Lasts N days" stepper, clamped to 1..14. A longer span (an imported one) is never cut by a step: "+" leaves it
+    /// as it is and "−" shortens it by one day.
+    /// </summary>
     public static TaskDraft StepDays(TaskDraft d, int direction)
     {
         ArgumentNullException.ThrowIfNull(d);
-        return d with { Days = Math.Clamp(d.Days + Math.Sign(direction), 1, MaxDays) };
+        return d with { Days = Math.Clamp(d.Days + Math.Sign(direction), 1, Math.Max(MaxDays, d.Days)) };
     }
 
     /// <summary>‹ / › next to the time: ±15 minutes, clamped to 00:00..23:45.</summary>
@@ -224,7 +227,7 @@ public static class TaskDialog
     public static string CalendarLabel(TaskDraft d)
     {
         ArgumentNullException.ThrowIfNull(d);
-        return DateMath.MonthNames[d.CalendarMonth.Month - 1] + " " + d.CalendarMonth.Year.ToString(CultureInfo.InvariantCulture);
+        return DateMath.MonthName(d.CalendarMonth.Month) + " " + d.CalendarMonth.Year.ToString(CultureInfo.InvariantCulture);
     }
 
     /// <summary>Weekday initials over the mini calendar in configured order ("M T W T F S S" for Monday starts).</summary>
