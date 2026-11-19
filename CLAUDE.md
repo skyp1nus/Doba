@@ -2,7 +2,9 @@
 
 Doba is a local-only daily planner for Windows: .NET 11 (C# 15), Avalonia 12, CommunityToolkit.Mvvm, SQLite via
 Microsoft.Data.Sqlite, NativeAOT. Read `docs/ARCHITECTURE.md` before changing code; `docs/PROGRESS.md` is the
-project state; `docs/DECISIONS.md` lists decisions already made (do not reopen them).
+project state; `docs/DECISIONS.md` lists decisions already made (do not reopen them); `docs/HANDOFF.md` has what was
+verified, the manual Windows checks, the measured performance and the known gaps; `docs/design-system.md` is the
+token and control reference.
 
 ## Design sources (they win over everything else on visuals and motion)
 
@@ -25,19 +27,29 @@ dotnet build -warnaserror                       # whole solution; trim + AOT ana
 dotnet test                                     # Microsoft Testing Platform, all test projects
 dotnet test --project tests/Doba.Core.Tests     # one project
 dotnet test --project tests/Doba.App.Tests -- --filter-method "*Screenshot*"   # e.g. only screenshot tests
-dotnet publish src/Doba.App -c Release -r win-x64 -o artifacts\doba-win-x64 -warnaserror   # NativeAOT, 0 warnings
+dotnet publish src/Doba.App -c Release -r win-x64 -o artifacts\doba-win-x64 -warnaserror   # NativeAOT, 0 warnings (needs the MSVC "Desktop development with C++" tools)
+powershell -ExecutionPolicy Bypass -File scripts\perf.ps1    # perf against KICKOFF §7 (publishes, seeds artifacts\perf, measures)
 ```
 
 Screenshots: tests write PNGs to git-ignored `artifacts/screenshots/`. Only the lead refreshes the tracked
 `docs/screenshots/` (`$env:DOBA_SCREENSHOTS='1'` before the test run). Look at your PNGs in `artifacts/screenshots/`
 and compare them with `docs/design/screens/<name>.png`.
 
-Each agent works in its own git worktree and builds/tests only there. Never run two builds of the same checkout at
-once — concurrent builds of the same project corrupt each other's output.
+Each agent works in its own git worktree and builds/tests only there. Use absolute paths under your worktree in
+scripts: .NET file APIs called from PowerShell resolve relative paths against the process directory, not the shell's
+location. Never run two builds of the same checkout at once — concurrent builds of the same project corrupt each
+other's output.
 
-Never touch the real machine from tests or local runs: tests use `PlatformServices.NoOp()` (never
-`PlatformServices.Create()`), and the app is launched only with `--demo`, `--data <folder under artifacts\>` or
-`--selfcheck` — never against `%LOCALAPPDATA%\Doba`, the real `HKCU\...\Run` key or the global hotkey.
+Never touch the real machine from tests or local runs:
+
+- Tests use `PlatformServices.NoOp()`, fakes, or `PlatformServices.Create` with an all-off `PlatformPlan` — never a plan
+  that allows autostart, hotkey or tray.
+- Launch the app only with `--demo`, `--data <folder under artifacts\>` or `--selfcheck`, and build the argument list
+  explicitly. Never without flags: that opens `%LOCALAPPDATA%\Doba` and writes the `HKCU\...\Run` value. A `--data` run
+  does register Ctrl+Alt+N and show a tray icon while it runs (never the Run key). The parser is strict (unknown flag
+  or a missing `--data` folder → exit 2), but do not rely on that. Leave no Doba process running.
+- `Doba.exe` is a GUI exe: capture its output with
+  `Start-Process <exe> -ArgumentList … -Wait -PassThru -RedirectStandardOutput <file under artifacts\>`.
 
 ## Conventions
 
@@ -48,7 +60,10 @@ Never touch the real machine from tests or local runs: tests use `PlatformServic
 - Time comes from `TimeProvider` (`clock.Today()`, `clock.TimeOfDay()`); never `DateTime.Now`/`DateTime.Today`.
 - All "what goes where" logic is in `Doba.Core.Projections` / `Navigation` / `Editing`; views only render records.
 - Every colour, radius, font size and spacing comes from `src/Doba.App/Theme/Tokens.axaml`; every duration and
-  easing from `Doba.App.Motion.Motion`. No `#RRGGBB` or millisecond literals in views (a test enforces this).
+  easing from `Doba.App.Motion.Motion`. `DesignSystem/NoLiteralsTests` enforces it: no colour, duration, easing or
+  `Task.Delay(<n>)` literal anywhere in `src/Doba.App` except `Tokens.axaml`, `AccentPalette.cs`, `Motion.cs`,
+  `MotionTimes.cs` and `Platform/`; and in `Screens/` and `Controls/` markup no numeric margin, padding, spacing,
+  size, radius, font size, line height or stroke other than 0 / ±1 (star weights and `Auto` are fine).
 - Animate only `Opacity` and render transforms; never Margin/Width/Height (exception: none — progress bars use ScaleX).
 - Platform-specific code goes behind `Doba.App.Platform` interfaces with a no-op fallback.
 - Avalonia's API changed between 11 and 12 and memory may be outdated: confirm APIs against the installed package

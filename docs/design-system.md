@@ -1,15 +1,28 @@
 # Doba design system
 
-Everything visual comes from `src/Doba.App/Theme/` and every duration/easing from `src/Doba.App/Motion/`. Views
-contain no colour, size-less magic numbers or duration literals (`tests/Doba.App.Tests/DesignSystem/NoLiteralsTests.cs`
-fails on `#RRGGBB`, `Colors.X`, `Color.FromRgb(…)`, `TimeSpan.FromMilliseconds(<n>)`, `"0:0:0.2"`, `Duration="…"`
-anywhere in `src/Doba.App` outside `Theme/`, `Motion/` and `Platform/`).
+Everything visual comes from `src/Doba.App/Theme/` and every duration and easing from `src/Doba.App/Motion/`.
+`tests/Doba.App.Tests/DesignSystem/NoLiteralsTests.cs` enforces it:
+
+* Everywhere in `src/Doba.App` except the token definitions (`Theme/Tokens.axaml`, `Theme/AccentPalette.cs`,
+  `Motion/Motion.cs`, `Motion/MotionTimes.cs`) and `Platform/`: no colour literal (`#RRGGBB`, `Colors.X`,
+  `Brushes.X`, a named colour in a brush attribute or setter, `Color.FromRgb(<n>…)`, `new Color(<n>…)`,
+  `new SolidColorBrush(0x…)`), no duration literal (`TimeSpan.From…(<n>)`, `"0:0:0.2"`, `Duration="…"` /
+  `Delay="…"` without a binding), no easing outside Motion (`Easing="…"`, `new …Easing(`, `KeySpline`) and no
+  `Task.Delay(<n>)`. That includes the rest of `Theme/` (Styles, control themes, ThemeService, the gallery) and
+  `Motion/`.
+* In `.axaml` under `Screens/` and `Controls/` also no numeric layout value: `Margin`, `Padding`, `Spacing`,
+  `ColumnSpacing`, `RowSpacing`, `CornerRadius`, `FontSize`, `LineHeight`, `LetterSpacing`, `Width` / `Height` and
+  their min / max, `BorderThickness`, `Size`, `StrokeWidth`, `ColumnDefinitions`, `RowDefinitions`, as attributes or
+  setters. Allowed: 0, ±1 (hairline rules, one-pixel nudges), star weights and `Auto`. Control themes in
+  `Theme/Controls/` may still carry fixed sizes that are part of a control's look.
+* A two-entry allowlist covers `DayClock`'s minute-boundary timer arithmetic.
 
 The living reference is `src/Doba.App/Theme/Gallery/ControlsGallery.axaml` (rendered to
 `docs/screenshots/controls-gallery.png`): copy markup from there.
 
 ```xml
-xmlns:c="using:Doba.App.Controls"     <!-- TaskCheckBox, PriorityIcon, Icon, Kbd, Pill, ToggleSwitch, SegmentedSwitch, ProgressLine, Card -->
+xmlns:c="using:Doba.App.Controls"     <!-- TaskCheckBox, PriorityIcon, Icon, Kbd, Pill, ToggleSwitch, SegmentedSwitch, ProgressLine, Card, StrikeText, TimeWheel -->
+xmlns:sh="using:Doba.App.Shell"       <!-- SidebarItem -->
 xmlns:m="using:Doba.App.Motion"       <!-- MotionTimes / Motion for transitions -->
 xmlns:t="using:Doba.App.Theme"        <!-- ThemeConverters -->
 ```
@@ -17,7 +30,8 @@ xmlns:t="using:Doba.App.Theme"        <!-- ThemeConverters -->
 ## 1. Rules
 
 * Colours: `{DynamicResource Brush.*}` (palette lives in a `ThemeVariant` dictionary — Dark only today, Light can be
-  added with the same keys). `Color.*` exists for every brush when a `Color` is needed.
+  added with the same keys). `Color.*` exists for every brush when a `Color` is needed. The chrome base colour and the
+  box-shadow lists are palette tokens too (§2.1).
 * Accent: `Brush.Accent`, `Brush.Accent10` (0x1A), `Brush.Accent15` (0x26), `Brush.Accent25` (0x40), `Color.Accent`.
   Changed live by `ThemeService.ApplyAccent` (brushes are mutated in place; `Color.Accent` is rewritten → use DynamicResource).
 * Density: `{DynamicResource Density.*}` only (rewritten by `ThemeService.ApplyDensity`).
@@ -53,7 +67,7 @@ xmlns:t="using:Doba.App.Theme"        <!-- ThemeConverters -->
 | Bg.Track | `#232326` | progress rail, done multi-day bar ring |
 | Bg.Primary | `#E4E4E7` | primary button ("New task", "Create task") |
 | Bg.Logo | `#EDEDEF` | title-bar logo tile |
-| Bg.Shade | `rgba(5,5,6,0.6)` | dialog backdrop (+3 px blur in the prototype; blur not reproduced) |
+| Bg.Shade | `rgba(5,5,6,0.6)` | dialog backdrop; the 3 px blur behind it is `Size.Overlay.BackdropBlur`, applied by `OverlayHost` |
 | Glow.A / B / C | `#3A3A3E` / `#2A2A2E` / `#303034` | blurred background blobs behind the chrome |
 | Overlay.Faint | white 1.5 % | month cells outside the month |
 | Overlay.Stripe | white 2.2 % | next-week preview hatch (135°, 6 px stripes) |
@@ -94,7 +108,18 @@ xmlns:t="using:Doba.App.Theme"        <!-- ThemeConverters -->
 | Slider.Border / Rail | `#858585` / `#3B3B3B` | transparency slider (Chromium's native range look) |
 | Accent.Mist / Sage / Sand / Gray | `#9FB4C7` / `#A3B8A0` / `#C8B596` / `#C4C4CA` | Settings swatches |
 | Accent (+10/15/25) | runtime | today, progress, check fill, now-line, selections; 10 % bar fill, 15 % range strip, 25 % bar ring/selection |
-| Chrome (brush only) | `rgba(22,22,24, transparency %)` (default 72 %) | tint over the backdrop (sidebar + title bar) |
+| Chrome.Base (colour, Dark palette) | `#161618` | base of the chrome tint; `ThemeService.ApplyChromeOpacity` reads it at startup and on a theme-variant change |
+| Chrome (brush only, theme-independent) | `rgba(22,22,24, transparency %)` (default 72 %) | tint over the backdrop (sidebar + title bar) |
+| Shell.GlowA / B / C (`Brush.Shell.*`, Dark) | radial gradients of Glow.A / B / C | the painted backdrop glows (`Shell.Backdrop` theme); hidden while Mica / acrylic is active |
+
+Box shadows (`BoxShadows`, Dark palette; Avalonia paints the list last-on-top, so the 1 px ring comes last):
+
+| Token | Value | Use |
+|---|---|---|
+| Shadow.Popover | `0 18 44 rgba(0,0,0,.55)`, ring `#2A2A2F` | Date / Time popovers (`Border.popover`) |
+| Shadow.PopoverSmall | `0 16 40 rgba(0,0,0,.5)`, ring `#2A2A2F` | Priority / Tag popovers (`Border.popover-sm`) |
+| Shadow.Dialog | `0 30 80 rgba(0,0,0,.6)`, ring `#26262A` | task dialog, search palette (`Border.dialog`) |
+| Shadow.Ring.Emphasis | inset 1 px `#3A3A40` | gallery sample |
 
 ### 2.2 Type
 
@@ -160,6 +185,25 @@ xmlns:t="using:Doba.App.Theme"        <!-- ThemeConverters -->
 | Space.Dialog.Header / Body / Pills / Footer | 20,0,10,0 / 20,0,20,4 / 20,10,20,18 / 20,12,14,12 | |
 | Opacity.Disabled / Dimmed / HeaderHover | 0.45 / 0.3 / 0.75 | disabled controls / tag filter / `.hd:hover` |
 
+### 2.3a Package regions
+
+The tokens above are shared. Everything else is in the marked regions at the end of `Tokens.axaml` (once in the Dark
+dictionary for colours and brushes, once in the theme-independent part for sizes); new tokens go into the region of
+the area they belong to, and shared tokens are never moved or renamed. Each region comments every value with its
+source in the prototype markup and, where a value was adjusted to land on the reference pixels, why.
+
+| Region | Prefixes | Holds |
+|---|---|---|
+| Shell | `Size.Shell.*`, `Space.Shell.*`, `Thickness.Shell.*`, `Size.Overlay.BackdropBlur`, `Brush.Shell.Glow*` | title bar, page header, window default 1600×1000 and minimum 1100×700 (`Size.Shell.Window*`), backdrop blur, glows |
+| Sidebar | `Sidebar.*` | nav gap (highlight step 33), tag header, add-tag row, settings label, footer |
+| Month | `Space.Month.*`, `Radius.Month.*`, `Month.*`, `Size.Month.*` | grid paddings, bars, chips (row / lane / chip heights are in `Screens/Month/MonthLayout.cs`) |
+| Day | `Size.Day.*`, `Space.Day.*`, `LineHeight.Day.Title` | spans, cards, meta row, schedule aside |
+| Dialog | `Size.Dialog.*`, `Space.Dialog.*`, `Radius.Dialog.*`, `Thickness.Dialog.*` | task dialog and popovers; `Space.Dialog.Lift` / `Lift2` / `Raise` put single-line labels on the reference rows |
+| TimeWheel | `Size.TimeWheel.*`, `Space.TimeWheel.Band`, `Brush.TimeWheel.Mask` | 34 px rows, 70×170 column, fade mask |
+| Search | `Size.Search.*`, `Space.Search.*`, `Thickness.Search.Rule`, `Radius.Search.Footer` | palette query row, list, "More than 50" line |
+| Lists | `Space.Inbox.*`, `Space.List.*`, `Space.Today.*`, `Space.Group.*`, `Space.Row.*`, `Space.AddTask.*`, `Space.Schedule.*`, `Size.Schedule.*`, `Space.Settings.*`, `Size.Settings.*`, `Radius.Settings.Swatch` | Inbox / Today / Settings layout, list rows, schedule timeline |
+| Calendar | `Space.Week.*`, `Size.Week.*`, `Opacity.Week.*`, `Space.Year.*`, `Year.*`, `Size.Year.*` | Week header, cards, bars; Year cells (card-fitting sizes are in `Screens/Week/WeekLayout.cs`) |
+
 ### 2.4 Density (`ThemeService.DensityTable`)
 
 | Key | Comfortable | Compact | Use |
@@ -207,14 +251,13 @@ Pick named themes with `Theme="{StaticResource Button.Outline}"`. Templates live
 | `Button.PopoverDone` | 28 px, Border.Popover, 12 Medium | time popover "Done" |
 | `Button.Primary` | 30 px, Bg.Primary, Text.OnPrimary, 12.5 SemiBold, 12 0 6; disabled fades to 0.45 (200 ms) | "New task" + `Kbd.onPrimary` (gap 8) |
 | `Button.Menu` | 32 px, r6, 0 8, 13 Text.Primary, hover Overlay.Press 150 ms, `Classes="selected"` = Overlay.Selected | popover rows (icon 14 · label · tick 14, gap 10); set Foreground Text.Tertiary + Height 26/28 for popover header buttons |
-| `Button.Nav` | 32 px (tags: `Height={DynamicResource Size.TagItem}`, Normal weight), r6, 0 10, 13 Medium Text.Nav → Text.Strong (200 ms), `Classes="selected"` = Overlay.Active | sidebar (icon 16 · label · mono 11 count, gap 10). The prototype's sliding highlight is a separate rectangle (shell). |
 | `Button.Caption` / `Button.CaptionClose` | 46×40, Text.Secondary, hover Overlay.Press / CloseHover (150 ms), not focusable | caption buttons (`Icon ViewBox=10 Size=10 StrokeWidth=1`) |
 | `Button.Crumb` | mono 11, 0.88 spacing, 0 2, Muted → Primary (200 ms) | breadcrumbs (separator: `TextBlock.label.faint` "/") |
 | `Button.Link` | mono 10.5, 6 2, Muted → Primary | "+N more", week numbers, inbox day links (override FontSize/LetterSpacing/Padding per use) |
 | `Button.Dashed` | 38 px, dashed 3/2 Border.Strong, r8, 12 0 8, 13.5 Muted, hover Overlay.Hover | "Add task" (Icon.Plus 14/1.8 · label · `Kbd.muted`, gap 10) |
 | `Button.Search` | 28 px, Overlay.Field, 1 px Overlay.Active, r7, 10 0 6, 12.5 Tertiary | title-bar search (Icon.Search 14 · label · Kbd "Ctrl K", gap 8) |
 | `Button.Header` | transparent; hover fades content to 0.75 (200 ms) | week day header, year month header (`.hd`) |
-| `Button.Title` | no chrome, left, `Density.TitleSize`, Primary → White on hover (300 ms) | task titles (`.tt`); done: `Foreground=Text.Muted` + strikethrough |
+| `Button.Title` | no chrome, left, `Density.TitleSize`, Primary → White on hover (300 ms) | task titles (`.tt`); content is a `c:StrikeText` (§4.16); done: `Foreground=Text.Muted` + `Struck` |
 | `Button.Cell` | Border.Subtle top/left 1 px, hover Overlay.Cell (200 ms) | month day cells (Background Overlay.Faint outside the month) |
 | `Button.Bar` | Accent10 fill + Accent25 1 px ring, r6, 10 0; hover brightens (overlay, 200 ms) | week multi-day bars (28 px, `TaskCheckBox BoxSize=14`), day spans (38 px, r8), schedule blocks (r7); done: Bg.SpanDone / Bg.Track |
 | `ToggleButton` (default) | ghost; checked Overlay.Selected | generic |
@@ -222,8 +265,10 @@ Pick named themes with `Theme="{StaticResource Button.Outline}"`. Templates live
 
 ### 4.2 `c:TaskCheckBox` (`TaskCheckBox.axaml`)
 `BoxSize` 16 (default; lists, cards, spans), 14 (week bars), 12 (year rows), 10 (month items, no mark). Ring
-Border.Check 1.5 px → accent fill 250 ms, mark Text.OnPrimary 200 ms. Bind `IsChecked`. In cards use
-`VerticalAlignment="Top" Margin="0,1,0,0"`.
+Border.Check → accent fill 250 ms, mark Text.OnPrimary 200 ms. Bind `IsChecked`. The CSS ring is 1.5 px; the control
+snaps it down to whole device pixels, at least one (`TaskCheckBox.RingWidth(scaling)`: 1 px at 100 %, 1 px at 125 %,
+2 px at 150 %), as Chromium paints it, and re-snaps when the window's scaling changes. In cards use
+`VerticalAlignment="Top"` with the area's check-margin token (e.g. `Space.Day.Check`).
 
 ### 4.3 `c:PriorityIcon`
 `Priority="{Binding Priority}"` (Doba.Core.Model.Priority): bars 13×13 lit by rank (Low 1, Medium 2, High 3) in
@@ -289,8 +334,57 @@ TextBlock: `mono`, `label` (mono 11 0.88 Muted), `section` (label + Medium; grou
 `meta` (mono 11 Muted), `meta-sm` (mono 10.5 Muted), `title` (24 Medium), `subtitle` (15 Muted), `day-number`
 (40 Light), `month-name` (24 Light), `row-label` (14 Medium), `desc` (12.5 Muted, wraps), and colour classes
 `primary bright secondary tertiary muted faint accent warning`.
-Border: `popover` (Bg.Popover r12 + ring/shadow), `popover-sm` (r10), `dialog` (Bg.Dialog r12 + ring/shadow),
-`divider` (1 px Border.Subtle), `divider-strong` (1 px Border.Default), `vsep` (1×18 header separator).
+Border: `popover` (Bg.Popover r12 + `Shadow.Popover`), `popover-sm` (r10 + `Shadow.PopoverSmall`), `dialog`
+(Bg.Dialog r12 + `Shadow.Dialog`), `divider` (1 px Border.Subtle), `divider-strong` (1 px Border.Default), `vsep` (1×18
+header separator). Overlay views set `ClipToBounds=False` so the ring and shadow outside the panel are drawn.
+
+### 4.16 `c:StrikeText`
+A `TextBlock` for task titles whose strike-through is always there and only changes colour (transparent ↔ `Struck`
+colour, `Motion.Strike` 300 ms `EaseStd`), so completing a task never re-lays out the text. It draws its own line, not
+Avalonia's `TextDecoration`: one device pixel thick on a whole pixel row, `⌈strikeout position + ½⌉` device pixels
+above the baseline (5 px for the 11.5–13.5 px titles), as Chromium paints `line-through`. It reads the duration at
+every change (instant when OS animations are off, also when switched while running), attaches the fade only while
+animations are on, and snaps without fading on a data-context change or inside a `SnapScope`. Every task title on
+every screen is a `StrikeText` (a test checks this).
+`<c:StrikeText Text="{Binding Title}" Struck="{Binding Done}" StrikeColor="{DynamicResource Color.Text.Muted}" />`
+
+### 4.17 Sidebar (`Theme/Controls/Sidebar.axaml`, `Shell/SidebarItem.cs`)
+`sh:SidebarItem` (a `Button`) replaces the earlier `Button.Nav`. Default theme: a 32 px row, r6, padding 0 10, 13
+Medium Text.Nav; icon 16 (stroke 1.6) · label · mono 11 Text.Muted count, gap 10. Pseudo-classes: `:current` (the open
+section: text Text.Strong; its background is the separate sliding `SidebarHighlight`, 380 ms, step 33 px),
+`:selected` (own Overlay.Active background: settings tab, active tag filter), `:rail` (inherited; in the 56 px rail
+label and count fade over `Motion.RailLabels`, the Collapse icon turns 180°). `SidebarItem.Tag`: a 30 px tag row with a
+16 px badge ("#" when expanded, the upper-case initial in the rail, accent when it is the filter); the label ends in an
+ellipsis before the count. Hover / current colour changes take 200 ms.
+
+### 4.18 Shell, dialog, search and wheel themes
+* `Shell.Backdrop` (`Shell.axaml`): the painted backdrop — three radial-gradient boxes (`Brush.Shell.GlowA/B/C`) in a
+  Canvas, nothing blurred at run time; hidden while Mica / acrylic is active.
+* `Dialog.axaml`: `Button.DialogPrimary` (primary; `.inactive` fades to Opacity.Disabled but stays clickable),
+  `Button.PopoverTool` (28×28 popover tool buttons, `.text` for the calendar "Today"), `Button.Stepper` ("Lasts" − / +),
+  `Button.CalendarDay` (mini-calendar cell: 32×32 r8 square, hover ring Border.Focus 150 ms, selection accent, range
+  band Accent15; the square uses `BackgroundSizing=OuterBorderEdge` so its fill reaches its edges).
+* `Search.axaml`: `TextBox.Search` (15 px borderless query, no focus ring), `Button.SearchHit` (a `Button.Menu` row,
+  not focusable — the keyboard stays in the query box), `ScrollViewer.Search` (the 8 px bar drawn over the list's
+  right padding).
+* `TimeWheel.axaml`: `c:TimeWheel` (70×170 column, 34 px rows, numbers 15 → 19 px by a render-transform scale,
+  colour over `Motion.WheelText`, `Brush.TimeWheel.Mask` fade) and `TimeWheelBand` (the fixed 7 % white band, r8).
+* `Switches.axaml` also has the item themes `SegmentedSwitchItem`, `SegmentedControlItem`, `.Fill`, `.Mono`.
+
+## 4a. Rendering setup and pixel snapping
+
+* **Text**: `App.Initialize` gives every top level grayscale antialiasing and no hinting
+  (`TextOptions.SetTextRenderingMode(Antialias)`, `SetTextHintingMode(None)`), like the prototype's
+  `-webkit-font-smoothing: antialiased` with unhinted outlines. Glyph boxes match the references; stems carry slightly
+  more ink (Skia's text gamma, not configurable in Avalonia 12.1.6). Font weights are not altered to compensate.
+* **Whole pixels**: Avalonia rounds layout to whole pixels where Chromium keeps fractions. Where that put an element
+  1 px off the reference, a token moves it (documented next to the token: `Space.Shell.Title`, `Space.Day.Header`,
+  `Space.Dialog.Lift` / `Raise`, …). Remaining 1–2 px differences are accepted (DECISIONS "Whole-pixel layout").
+* `Controls/PixelCentring`: `Icon` and `PriorityIcon` shift their drawing so a fixed-size glyph centred in an
+  odd-slack box rounds half up, as Chromium does (layout and hit testing unchanged).
+* `Controls/SnapScope`: while open on a visual, its XAML transitions are off and every `StrikeText` under it snaps —
+  used when a recycled list row is re-pointed at another task, so it shows that task's state without fading.
+* Calendar tracks put column edges at `round(i·W/n)` and row edges at `floor(j·H/m)` (`Screens/Week/TrackGrid`).
 
 ## 5. Motion (`Motion/`)
 
@@ -317,3 +411,16 @@ Animator.Animate(dialog, new MotionState(0, 0, Motion.DialogY, Motion.DialogScal
   completes, the element stays hidden on the render thread until content is swapped, an entrance runs, or `Reset`.
   Animate a stable host (the content presenter), not freshly created content, so the composition visual exists and
   has bounds. Blur (zoom 6→0 px) is not implemented (optional in the spec).
+* `ContentTransitions` — the navigation transitions (zoom, period slide, section exit + enter, Settings in / out,
+  title fade, launch); the shell's default `IContentTransitions`.
+* `SidebarCollapse` — the 232 ↔ 56 px collapse as a 176 px composition slide of the main panel (340 ms); widths
+  change once per toggle.
+* `MotionSync` — when the OS "Animation effects" setting changes while running, sets the durations of the live
+  windows' XAML transitions to zero or back. Transitions created while animations were off stay instant until
+  re-templated.
+* `Shell/OverlayTransitions` (`AnimatedOverlayTransitions`) — dialog / palette open (shade 220 ms, panel 320 ms
+  opacity + translateY 10→0 + scale 0.97→1, ease-out), close (150 ms ease-in) and replace (shade kept). The backdrop
+  blur behind an overlay (`Size.Overlay.BackdropBlur`, 3 px) follows the shade's opacity; nothing is redrawn while the
+  shade is at rest.
+* Popovers enter in 180 ms from their top-left corner (opacity, translateY −4→0, scale 0.98→1) and close at once
+  (`Dialogs/Popovers/PopoverAnchor`).

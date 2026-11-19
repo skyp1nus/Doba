@@ -69,15 +69,20 @@ fresh reviewer agent, with no literal colours/durations outside tokens and `Moti
 
 ## Needs Windows verification
 
-Verified here by `Doba.exe --selfcheck` (NativeAOT, Windows 11): window + icon, Mica actually active, OS animation setting read, hidden message window, Ctrl+Alt+N register/unregister with a simulated press, tray icon create/remove, autostart write/read/remove against a test registry key.
+Verified here by `Doba.exe --selfcheck` (NativeAOT, Windows 11, 9/9): window + icon, Mica actually active, OS animation setting read, hidden message window receives WM_SETTINGCHANGE, Ctrl+Alt+N register/unregister with a simulated press, the managed TrayIcon object created/shown/removed (that Windows shows the icon needs a person), autostart write/read/remove against `HKCU\Software\Doba\SelfCheck`, the real Run value read only.
 
-Still needs a person (exact steps go to HANDOFF.md):
+Still needs a person. Exact steps and expected results: `docs/HANDOFF.md` section 3 (numbers in brackets).
 
-- Tray: close hides the window, left-click restores, menu Open Doba / New task / Quit, tray setting off → close quits.
-- Global hotkey Ctrl+Alt+N from another app, with Doba hidden in the tray and minimised.
-- Launch at startup: the real HKCU Run value on the default data location, and an actual start after sign-in (hidden in the tray).
-- Mica / acrylic look under the chrome tint and the transparency slider (acrylic on Windows 10 untested: this PC is Windows 11).
-- OS "Animation effects" switched off while Doba runs: everything becomes instant.
-- Session end: add a task, sign out at once, the task is there after sign-in.
-- Sleep through midnight: date rolls over, carry-over and backup happen.
-- Title bar on a real window: drag, double-click maximise, snap-layout flyout on Maximise, resize borders, mixed-DPI monitors.
+- Tray: close hides, left-click restores, menu Open Doba / New task / Quit, tray setting off → close quits, `--demo` has no tray (1–5).
+- Global hotkey Ctrl+Alt+N from another app, with Doba hidden in the tray and minimised; an open dialog is kept (6–9).
+- Launch at startup: the real HKCU Run value on the default data location, setting off/on, a start after sign-in hidden in the tray, `--data` / `--demo` leave it alone (10–13).
+- Mica look under the chrome tint and the transparency slider; Windows "Transparency effects" toggled while running; acrylic on Windows 10 untested (14–17).
+- Title bar on a real window: drag, double-click, snap-layout flyout, ONE click on Maximise / Minimise acts once, caption hover colours, maximised edges, resize limits, mixed-DPI monitors (18–24).
+- OS "Animation effects" switched off and on while Doba runs (25).
+- Session end: add a task (also right after Enter in the dialog), sign out at once, the task is there after sign-in (26).
+- Sleep through midnight: date rolls over, carry-over and backup happen, Calendar opens the new week; time-zone change while open (27–28).
+- Completion sound plays a soft click; Open folder opens Explorer; Export / Import native file pickers and their messages under NativeAOT (29–32).
+- Second instance on the same data folder brings the window forward (also from the tray); another folder runs separately (33–34).
+- Display scaling 125–150 % and a 1366×768 screen: opening size and centring, crisp text and hairlines, every screen usable at 1100×700 (35–38).
+- Cold start after reboot: `scripts\perf.ps1 -PrepareCold`, reboot, `scripts\perf.ps1 -Cold`, budget 400 ms (39).
+- A mid-range PC or integrated GPU: `scripts\perf.ps1` for the Week frame budget and the blurred dialog fades (40).

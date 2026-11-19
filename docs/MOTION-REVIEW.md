@@ -115,8 +115,8 @@ scaling, ideally on a 120 Hz or faster monitor as well as a 60 Hz one.
    whether the missing 6 px blur is noticed; if it is, it is the optional part of the spec.
 3. **Sections.** Click Inbox → Today → Calendar → Today → Inbox in the sidebar at normal speed. The old page should sink
    or rise away quickly, the new one arrive from below going down and from above going up. Watch the sidebar highlight:
-   it starts moving at the click, about 130 ms before the new page appears (finding below) — decide whether that reads
-   as "in sync".
+   since the fix of finding 1 it starts with the new page's entrance, after the 130 ms exit — check that it reads as
+   "in sync".
 4. **Sidebar collapse.** Click the panel-toggle button left of the title several times, slowly and then quickly. The
    panel edge should glide between 232 and 56 px without the content jumping at the end; on collapse the right edge of
    the content is briefly outside the window — check that this is not noticed. Check that the labels fade, not blink.
@@ -130,8 +130,8 @@ scaling, ideally on a 120 Hz or faster monitor as well as a 60 Hz one.
 8. **Mica.** On Windows 11 with Mica active, repeat 3–5 and watch the title bar and sidebar areas: content transitions
    must not change the Mica tint; the dialog shade and blur cover the title bar too, as designed.
 9. **Animations off.** Turn off Settings › Accessibility › Visual effects › Animation effects while Doba is running and
-   repeat 2, 3, 5 and 7: everything must change at once. Also tick a task (the strike line is the known exception, see
-   finding). Turn the setting back on and check the transitions return.
+   repeat 2, 3, 5 and 7: everything must change at once. Also tick a task: since the fix of finding 3 the strike line
+   is instant too. Turn the setting back on and check the transitions return.
 
 ## Findings
 
@@ -151,6 +151,22 @@ scaling, ideally on a 120 Hz or faster monitor as well as a 60 Hz one.
    everything else is instant (checklist item 6). Read in code, not reproduced by a test. Minor.
 4. **Curves are not covered by the no-literals scanner** (owner: ui). `NoLiteralsTests` flags duration literals only; a
    `new SplineEasing(…)` or `Easing="0.1,0.9,0.2,1"` outside `Motion` would pass. None exists today. Minor.
+
+## Status after the final review fixes
+
+The table rows above describe `2a78749`. All four findings were fixed afterwards (integrated in `1b098ed` and
+`187f206`):
+
+1. Highlight timing: the highlight, current row and settings tab now change in the content swap
+   (`MainViewModel.Present`), with the entrance. `TransitionTests.Sections_exit_first_swap_after_the_exit_and_enter_from_below_going_down`
+   now asserts that the highlight does not move during the exit.
+2. View-switch re-entry: coming back from no level places the indicator without sliding and only fades it in
+   (`Controls/SegmentedSwitchTests`).
+3. `StrikeText` reads its duration from `Motion` at every change and attaches the fade only while animations are on
+   (`Controls/StrikeTextTests.Turning_OS_animations_off_while_running_makes_the_strike_instant`,
+   `Shown_while_animations_are_off_it_fades_once_they_come_back`). Checklist item 6 has no remaining gap.
+4. The no-literals scanner now flags easings outside `Motion` (`Easing="…"`, `new …Easing(`, `KeySpline`) with cases in
+   `DesignSystem/NoLiteralsTests.Scanner_flags_literals`.
 
 ## Throwaway material (not committed)
 
