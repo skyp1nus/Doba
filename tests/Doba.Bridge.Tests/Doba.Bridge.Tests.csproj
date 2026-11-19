@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <!-- Same switch NativeAOT applies: any System.Text.Json reflection fallback in Doba.Bridge throws in these tests. -->
+    <JsonSerializerIsReflectionEnabledByDefault>false</JsonSerializerIsReflectionEnabledByDefault>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Doba.Bridge\Doba.Bridge.csproj" />
+    <ProjectReference Include="..\..\src\Doba.Storage\Doba.Storage.csproj" />
+    <!-- Not referenced as an assembly: the tests run Doba.Mcp.exe as a child process. Listed so it is built first. -->
+    <ProjectReference Include="..\..\src\Doba.Mcp\Doba.Mcp.csproj" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="xunit.v3.mtp-v2" />
+  </ItemGroup>
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Where the build put Doba.Mcp (same configuration and framework); DOBA_MCP_EXE overrides it at run time. -->
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>DobaMcpExe</_Parameter1>
+      <_Parameter2>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\..\src\Doba.Mcp\bin\$(Configuration)\$(TargetFramework)\Doba.Mcp.exe'))</_Parameter2>
+    </AssemblyAttribute>
+  </ItemGroup>
+</Project>

@@ -93,7 +93,10 @@ public sealed class JsonTransferTests
     [Fact]
     public void Export_settings_dto_covers_every_settings_property()
     {
-        var expected = typeof(AppSettings).GetProperties(BindingFlags.Instance | BindingFlags.Public).Select(p => p.Name).Order();
+        // Claude access is never exported (a file must not be able to turn it on), so it has no export field.
+        string[] notExported = [nameof(AppSettings.ClaudeAccess), nameof(AppSettings.ClaudeAccessLevel)];
+        var expected = typeof(AppSettings).GetProperties(BindingFlags.Instance | BindingFlags.Public).Select(p => p.Name)
+            .Except(notExported).Order();
         var actual = typeof(ExportSettings).GetProperties(BindingFlags.Instance | BindingFlags.Public).Select(p => p.Name).Order();
         Assert.Equal(expected, actual);
     }

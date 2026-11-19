@@ -21,6 +21,7 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\Doba.Core\Doba.Core.csproj" />
+    <ProjectReference Include="..\Doba.Bridge\Doba.Bridge.csproj" />
     <ProjectReference Include="..\Doba.Storage\Doba.Storage.csproj" />
   </ItemGroup>
   <ItemGroup>
