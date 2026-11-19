@@ -38,6 +38,18 @@ nav button > span:not([aria-hidden]),nav .rl{transition:opacity 0.18s ease}
 .scr::-webkit-scrollbar{width:8px}
 .scr::-webkit-scrollbar-thumb{background:#2E2E33;border-radius:4px}
 .scr::-webkit-scrollbar-track{background:transparent}
+.sb:hover .sbo,.sbh .sbo{opacity:1 !important}
+.sb:hover .sbg,.sbh .sbg,.sbr .sbg{opacity:1 !important}
+.sbr .sbs{opacity:1 !important}
+.sbm:focus{outline:none}
+.sbm:focus-visible{outline:1.5px solid rgba(237,237,239,0.7);outline-offset:2px}
+.sbc:focus-visible{outline:1.5px solid rgba(237,237,239,0.7);outline-offset:-3px}
+.sbx:hover{background-color:#1C1C20 !important}
+.sbdrag,.sbdrag *{cursor:grabbing !important;user-select:none !important}
+.sbres,.sbres *{cursor:ns-resize !important;user-select:none !important}
+@keyframes sbLift{from{transform:scale(1)}to{transform:scale(1.02)}}
+@keyframes sbFade{from{opacity:0}to{opacity:1}}
+@keyframes sbPop{from{opacity:0;transform:translateY(-4px) scale(0.98)}to{opacity:1;transform:translateY(0px) scale(1)}}
 </style>
 </helmet>
 <div ref="{{setRoot}}" class="{{rootClass}}" style="position: relative; width: 1600px; height: 1000px; overflow: hidden; display: flex; flex-direction: column; background: #0B0B0C; color: #EDEDEF; font-family: Geist, 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif; font-size: 13px; line-height: 1.4; font-variant-numeric: tabular-nums; -webkit-font-smoothing: antialiased">
@@ -394,28 +406,84 @@ New task
 </sc-for>
 </div>
 </div>
-<aside aria-label="Schedule" style="width: 380px; flex-shrink: 0; display: flex; flex-direction: column; padding-left: 24px; border-left: 1px solid #1D1D20">
-<div style="display: flex; align-items: center; justify-content: space-between; margin: 4px 0 14px; font-family: 'Geist Mono', 'Cascadia Mono', Consolas, monospace; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: #8C8C92">
+<aside aria-label="Schedule" style="width: 380px; flex-shrink: 0; display: flex; flex-direction: column; min-height: 0; padding-left: 24px; border-left: 1px solid #1D1D20">
+<div style="display: flex; align-items: center; justify-content: space-between; margin: 4px 0 6px; font-family: 'Geist Mono', 'Cascadia Mono', Consolas, monospace; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: #8C8C92">
 <h2 style="margin: 0; font-size: 11px; font-weight: 500">Schedule</h2>
 <span>07–23</span>
 </div>
-<div style="position: relative; height: {{td.gridH}}">
-<sc-for list="{{td.hours}}" as="h" hint-placeholder-count="17">
+<span aria-live="polite" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap">{{sc.msg}}</span>
+<div ref="{{setSchedScroll}}" class="scr" style="flex: 1 1 auto; min-height: 0; overflow-x: hidden; overflow-y: auto; margin-right: -8px; padding: 8px 8px 8px 0; scrollbar-width: thin; scrollbar-color: #2E2E33 transparent">
+<div ref="{{setGrid}}" style="position: relative; height: {{sc.gridH}}">
+<sc-for list="{{sc.hours}}" as="h" hint-placeholder-count="17">
 <div aria-hidden="true" style="position: absolute; left: 0; right: 0; top: {{h.top}}; height: 0; display: flex; align-items: center; gap: 12px">
 <span style="width: 40px; flex-shrink: 0; font-family: 'Geist Mono', 'Cascadia Mono', Consolas, monospace; font-size: 11px; color: #8C8C92">{{h.label}}</span>
 <span style="flex: 1; height: 1px; background: #1D1D20"></span>
 </div>
 </sc-for>
-<sc-for list="{{td.blocks}}" as="b" hint-placeholder-count="4">
-<button type="button" class="hv2" onClick="{{b.toggle}}" aria-label="{{b.label}}" style="position: absolute; left: 54px; right: 0; top: {{b.top}}; height: {{b.h}}; box-sizing: border-box; display: flex; flex-direction: {{b.dir}}; align-items: {{b.align}}; justify-content: flex-start; gap: {{b.gap}}; padding: {{b.pad}}; border: 0; border-radius: 7px; background: {{b.bbg}}; box-shadow: inset 0 0 0 1px {{b.bbd}}; cursor: pointer; text-align: left; overflow: hidden; opacity: {{b.op}}; transition: opacity 0.3s ease, filter 0.2s ease">
-<span style="min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; font-weight: 500; color: {{b.tc}}; text-decoration: line-through; text-decoration-color: {{b.strikeC}}">{{b.title}}</span>
-<span style="flex-shrink: 0; font-family: 'Geist Mono', 'Cascadia Mono', Consolas, monospace; font-size: 10.5px; color: #A1A1A6; white-space: nowrap">{{b.range}}</span>
-</button>
+<sc-for list="{{sc.blocks}}" as="b" hint-placeholder-count="4">
+<div data-sid="{{b.id}}" class="{{b.cls}}" onPointerDown="{{b.down}}" onPointerMove="{{sbMoveH}}" onPointerUp="{{sbUpH}}" onPointerCancel="{{sbCancelH}}" onKeyDown="{{b.kd}}" style="position: absolute; left: {{b.left}}; top: {{b.top}}; width: {{b.w}}; height: {{b.h}}; z-index: 1; box-sizing: border-box; border: 1px {{b.bst}} {{b.bbd}}; border-radius: 7px; background: {{b.bbg}}; opacity: {{b.op}}; cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; transition: opacity 130ms cubic-bezier(0.22, 1, 0.36, 1)">
+<span class="sbo" aria-hidden="true" style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; border-radius: 6px; background: rgba(255,255,255,0.045); opacity: 0; pointer-events: none; transition: opacity 0.18s ease"></span>
+<span class="sbs" aria-hidden="true" style="position: absolute; left: -1px; top: -1px; right: -1px; bottom: -1px; border-radius: 7px; box-shadow: 0 10px 28px rgba(0,0,0,0.5), 0 2px 6px rgba(0,0,0,0.35); opacity: 0; pointer-events: none; transition: opacity 0.18s ease"></span>
+<button type="button" data-sbm="1" class="sbm" onClick="{{b.open}}" aria-label="{{b.label}}" title="{{b.tip}}" style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; padding: 0; border: 0; border-radius: 6px; background: transparent; cursor: grab"></button>
+<div aria-hidden="true" style="position: relative; height: 100%; box-sizing: border-box; display: flex; flex-direction: {{b.dir}}; align-items: {{b.align}}; justify-content: flex-start; gap: {{b.gap}}; padding: {{b.pad}}; overflow: hidden; pointer-events: none; opacity: {{b.cop2}}; transition: {{b.cop2T}}">
+<span style="display: flex; align-items: center; gap: 8px; min-width: 0; max-width: 100%">
+<span style="width: 12px; height: 12px; flex: 0 0 12px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; border-radius: 3px; border: 1.5px solid {{b.ring}}; background: {{b.fill}}; transition: background-color 0.25s ease, border-color 0.25s ease"><svg width="8" height="8" viewBox="0 0 24 24" style="fill: none; stroke: #0E0E0F; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; opacity: {{b.cop}}; transition: opacity 0.2s ease"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span>
+<span style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; font-weight: 500; color: {{b.tc}}; text-decoration: line-through; text-decoration-color: {{b.strikeC}}; transition: color 0.3s ease, text-decoration-color 0.3s ease">{{b.title}}</span>
+</span>
+<sc-if value="{{b.hasMeta}}" hint-placeholder-val="{{ true }}"><span style="flex-shrink: 0; padding-left: {{b.metaPad}}; font-family: 'Geist Mono', 'Cascadia Mono', Consolas, monospace; font-size: 10.5px; color: #A1A1A6; white-space: nowrap">{{b.meta}}</span></sc-if>
+</div>
+<button type="button" data-chk="1" class="sbc" onClick="{{b.toggle}}" aria-label="{{b.chkLabel}}" aria-pressed="{{b.donePressed}}" style="position: absolute; left: 3px; top: {{b.chkTop}}; width: 24px; height: 24px; z-index: 2; padding: 0; border: 0; border-radius: 5px; background: transparent; cursor: pointer"></button>
+<span data-grip="1" class="sbg" aria-hidden="true" style="position: absolute; left: 0; right: 0; bottom: -3px; height: {{b.gripH}}; z-index: 3; display: flex; align-items: center; justify-content: center; cursor: ns-resize; opacity: 0; transition: opacity 0.18s ease"><span style="width: 18px; height: 3px; border-radius: 2px; background: {{b.gripC}}"></span></span>
+</div>
 </sc-for>
-<div aria-hidden="true" style="position: absolute; left: 0; right: 0; top: {{td.nowTop}}; height: 0; display: flex; align-items: center; z-index: 2">
-<span style="width: 46px; flex-shrink: 0; font-family: 'Geist Mono', 'Cascadia Mono', Consolas, monospace; font-size: 11px; line-height: 16px; color: {{accent}}; background: #0F0F10">{{td.nowLabel}}</span>
+<sc-for list="{{sc.ovfs}}" as="o" hint-placeholder-count="0">
+<button type="button" class="sbx" onClick="{{o.toggle}}" aria-label="{{o.label}}" aria-expanded="{{o.expanded}}" style="position: absolute; left: {{o.left}}; top: {{o.top}}; width: {{o.w}}; height: {{o.h}}; z-index: 1; box-sizing: border-box; display: flex; align-items: {{o.align}}; justify-content: center; padding: {{o.pt}} 0 0; border: 1px dashed #3A3A40; border-radius: 7px; background: {{o.bg}}; color: #C9C9CE; font-family: 'Geist Mono', 'Cascadia Mono', Consolas, monospace; font-size: 11px; font-weight: 500; cursor: pointer; transition: background-color 0.18s ease">{{o.text}}</button>
+</sc-for>
+<sc-if value="{{sc.hasNow}}" hint-placeholder-val="{{ false }}">
+<div aria-hidden="true" style="position: absolute; left: 0; right: 0; top: {{sc.nowTop}}; height: 0; display: flex; align-items: center; z-index: 2; pointer-events: none">
+<span style="width: 46px; flex-shrink: 0; font-family: 'Geist Mono', 'Cascadia Mono', Consolas, monospace; font-size: 11px; line-height: 16px; color: {{accent}}; background: #0F0F10">{{sc.nowLabel}}</span>
 <span style="width: 7px; height: 7px; margin-left: 4px; flex-shrink: 0; border-radius: 50%; background: {{accent}}"></span>
 <span style="flex: 1; height: 1px; background: {{accent}}"></span>
+</div>
+</sc-if>
+<sc-if value="{{sc.hasFloat}}" hint-placeholder-val="{{ false }}">
+<div data-fid="{{sc.fl.id}}" aria-hidden="true" style="position: absolute; left: {{sc.fl.left}}; top: 0; width: {{sc.fl.w}}; height: {{sc.fl.h}}; z-index: 3; pointer-events: none; transform: translateY({{sc.fl.y}}); transition: transform 90ms cubic-bezier(0.22, 1, 0.36, 1)">
+<div style="position: relative; height: 100%; transform: scale(1.02); animation: sbLift 180ms cubic-bezier(0.22, 1, 0.36, 1)">
+<span style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; border-radius: 7px; box-shadow: 0 10px 28px rgba(0,0,0,0.5), 0 2px 6px rgba(0,0,0,0.35); animation: sbFade 180ms cubic-bezier(0.22, 1, 0.36, 1)"></span>
+<div style="position: relative; height: 100%; box-sizing: border-box; display: flex; flex-direction: {{sc.fl.dir}}; align-items: {{sc.fl.align}}; justify-content: flex-start; gap: {{sc.fl.gap}}; padding: {{sc.fl.pad}}; overflow: hidden; border: 1px solid {{sc.fl.bd}}; border-radius: 7px; background: linear-gradient({{sc.fl.bg}}, {{sc.fl.bg}}), #141416">
+<span style="display: flex; align-items: center; gap: 8px; min-width: 0; max-width: 100%">
+<span style="width: 12px; height: 12px; flex: 0 0 12px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; border-radius: 3px; border: 1.5px solid {{sc.fl.ring}}; background: {{sc.fl.fill}}"><svg width="8" height="8" viewBox="0 0 24 24" style="fill: none; stroke: #0E0E0F; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; opacity: {{sc.fl.cop}}"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span>
+<span style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; font-weight: 500; color: {{sc.fl.tc}}; text-decoration: line-through; text-decoration-color: {{sc.fl.strikeC}}">{{sc.fl.title}}</span>
+</span>
+<sc-if value="{{sc.fl.hasMeta}}" hint-placeholder-val="{{ true }}"><span style="flex-shrink: 0; padding-left: {{sc.fl.metaPad}}; font-family: 'Geist Mono', 'Cascadia Mono', Consolas, monospace; font-size: 10.5px; color: #C9C9CE; white-space: nowrap">{{sc.fl.meta}}</span></sc-if>
+</div>
+</div>
+</div>
+</sc-if>
+<sc-if value="{{sc.hasChip}}" hint-placeholder-val="{{ false }}">
+<div aria-hidden="true" style="position: absolute; left: 0; top: 0; z-index: 4; pointer-events: none; transform: translateY({{sc.chip.y}}); transition: transform 90ms cubic-bezier(0.22, 1, 0.36, 1)">
+<div style="display: flex; align-items: center; height: 16px; animation: sbFade 130ms cubic-bezier(0.22, 1, 0.36, 1)">
+<span style="width: 46px; font-family: 'Geist Mono', 'Cascadia Mono', Consolas, monospace; font-size: 11px; font-weight: 500; line-height: 16px; color: {{accent}}; background: #0F0F10">{{sc.chip.label}}</span>
+<span style="width: 8px; height: 1px; background: {{accent}}"></span>
+</div>
+</div>
+</sc-if>
+<sc-if value="{{sc.hasPop}}" hint-placeholder-val="{{ false }}">
+<div role="dialog" aria-label="{{sc.pop.label}}" onKeyDown="{{ovfKey}}" style="position: absolute; left: {{sc.pop.left}}; top: {{sc.pop.top}}; width: 232px; z-index: 5; box-sizing: border-box; padding: 6px; border-radius: 10px; background: #18181B; box-shadow: 0 0 0 1px #2A2A2F, 0 18px 40px rgba(0,0,0,0.55); transform-origin: {{sc.pop.origin}}; animation: sbPop 180ms cubic-bezier(0.22, 1, 0.36, 1)">
+<div style="padding: 4px 8px 6px; font-family: 'Geist Mono', 'Cascadia Mono', Consolas, monospace; font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: #8C8C92">{{sc.pop.head}}</div>
+<sc-for list="{{sc.pop.items}}" as="p" hint-placeholder-count="2">
+<div style="display: flex; align-items: center; gap: 2px; height: 32px">
+<button type="button" class="mi" onClick="{{p.toggle}}" aria-label="{{p.chkLabel}}" aria-pressed="{{p.donePressed}}" style="width: 28px; height: 28px; flex: 0 0 28px; display: flex; align-items: center; justify-content: center; padding: 0; border: 0; border-radius: 6px; background: transparent; cursor: pointer">
+<span aria-hidden="true" style="width: 12px; height: 12px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; border-radius: 3px; border: 1.5px solid {{p.ring}}; background: {{p.fill}}"><svg width="8" height="8" viewBox="0 0 24 24" style="fill: none; stroke: #0E0E0F; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; opacity: {{p.cop}}"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span>
+</button>
+<button type="button" class="mi" onClick="{{p.open}}" style="flex: 1 1 auto; min-width: 0; height: 28px; display: flex; align-items: center; gap: 8px; padding: 0 8px; border: 0; border-radius: 6px; background: transparent; cursor: pointer; text-align: left">
+<span style="flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; color: {{p.tc}}; text-decoration: line-through; text-decoration-color: {{p.strikeC}}">{{p.title}}</span>
+<span style="flex-shrink: 0; font-family: 'Geist Mono', 'Cascadia Mono', Consolas, monospace; font-size: 10.5px; color: #A1A1A6">{{p.range}}</span>
+</button>
+</div>
+</sc-for>
+</div>
+</sc-if>
 </div>
 </div>
 </aside>
@@ -610,31 +678,85 @@ New task
 </div>
 </div>
 
-<aside aria-label="Schedule" style="width: 380px; flex-shrink: 0; display: flex; flex-direction: column; padding-left: 24px; border-left: 1px solid #1D1D20">
-<div style="display: flex; align-items: center; justify-content: space-between; margin: 4px 0 14px; font-family: 'Geist Mono', 'Cascadia Mono', Consolas, monospace; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: #8C8C92">
+<aside aria-label="Schedule" style="width: 380px; flex-shrink: 0; display: flex; flex-direction: column; min-height: 0; padding-left: 24px; border-left: 1px solid #1D1D20">
+<div style="display: flex; align-items: center; justify-content: space-between; margin: 4px 0 6px; font-family: 'Geist Mono', 'Cascadia Mono', Consolas, monospace; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: #8C8C92">
 <h2 style="margin: 0; font-size: 11px; font-weight: 500">Schedule</h2>
 <span>07–23</span>
 </div>
-<div style="position: relative; height: {{dy.gridH}}">
-<sc-for list="{{dy.hours}}" as="h" hint-placeholder-count="17">
+<span aria-live="polite" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap">{{sc.msg}}</span>
+<div ref="{{setSchedScroll}}" class="scr" style="flex: 1 1 auto; min-height: 0; overflow-x: hidden; overflow-y: auto; margin-right: -8px; padding: 8px 8px 8px 0; scrollbar-width: thin; scrollbar-color: #2E2E33 transparent">
+<div ref="{{setGrid}}" style="position: relative; height: {{sc.gridH}}">
+<sc-for list="{{sc.hours}}" as="h" hint-placeholder-count="17">
 <div aria-hidden="true" style="position: absolute; left: 0; right: 0; top: {{h.top}}; height: 0; display: flex; align-items: center; gap: 12px">
 <span style="width: 40px; flex-shrink: 0; font-family: 'Geist Mono', 'Cascadia Mono', Consolas, monospace; font-size: 11px; color: #8C8C92">{{h.label}}</span>
 <span style="flex: 1; height: 1px; background: #1D1D20"></span>
 </div>
 </sc-for>
-<sc-for list="{{dy.blocks}}" as="b" hint-placeholder-count="4">
-<button type="button" class="hv2" onClick="{{b.toggle}}" aria-label="{{b.label}}" style="position: absolute; left: 54px; right: 0; top: {{b.top}}; height: {{b.h}}; box-sizing: border-box; display: flex; flex-direction: {{b.dir}}; align-items: {{b.align}}; justify-content: flex-start; gap: {{b.gap}}; padding: {{b.pad}}; border: 0; border-radius: 7px; background: {{b.bbg}}; box-shadow: inset 0 0 0 1px {{b.bbd}}; cursor: pointer; text-align: left; overflow: hidden; opacity: {{b.op}}; transition: opacity 0.3s ease, filter 0.2s ease">
-<span style="min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; font-weight: 500; color: {{b.tc}}; text-decoration: line-through; text-decoration-color: {{b.strikeC}}">{{b.title}}</span>
-<span style="flex-shrink: 0; font-family: 'Geist Mono', 'Cascadia Mono', Consolas, monospace; font-size: 10.5px; color: #A1A1A6; white-space: nowrap">{{b.range}}</span>
-</button>
+<sc-for list="{{sc.blocks}}" as="b" hint-placeholder-count="4">
+<div data-sid="{{b.id}}" class="{{b.cls}}" onPointerDown="{{b.down}}" onPointerMove="{{sbMoveH}}" onPointerUp="{{sbUpH}}" onPointerCancel="{{sbCancelH}}" onKeyDown="{{b.kd}}" style="position: absolute; left: {{b.left}}; top: {{b.top}}; width: {{b.w}}; height: {{b.h}}; z-index: 1; box-sizing: border-box; border: 1px {{b.bst}} {{b.bbd}}; border-radius: 7px; background: {{b.bbg}}; opacity: {{b.op}}; cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; transition: opacity 130ms cubic-bezier(0.22, 1, 0.36, 1)">
+<span class="sbo" aria-hidden="true" style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; border-radius: 6px; background: rgba(255,255,255,0.045); opacity: 0; pointer-events: none; transition: opacity 0.18s ease"></span>
+<span class="sbs" aria-hidden="true" style="position: absolute; left: -1px; top: -1px; right: -1px; bottom: -1px; border-radius: 7px; box-shadow: 0 10px 28px rgba(0,0,0,0.5), 0 2px 6px rgba(0,0,0,0.35); opacity: 0; pointer-events: none; transition: opacity 0.18s ease"></span>
+<button type="button" data-sbm="1" class="sbm" onClick="{{b.open}}" aria-label="{{b.label}}" title="{{b.tip}}" style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; padding: 0; border: 0; border-radius: 6px; background: transparent; cursor: grab"></button>
+<div aria-hidden="true" style="position: relative; height: 100%; box-sizing: border-box; display: flex; flex-direction: {{b.dir}}; align-items: {{b.align}}; justify-content: flex-start; gap: {{b.gap}}; padding: {{b.pad}}; overflow: hidden; pointer-events: none; opacity: {{b.cop2}}; transition: {{b.cop2T}}">
+<span style="display: flex; align-items: center; gap: 8px; min-width: 0; max-width: 100%">
+<span style="width: 12px; height: 12px; flex: 0 0 12px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; border-radius: 3px; border: 1.5px solid {{b.ring}}; background: {{b.fill}}; transition: background-color 0.25s ease, border-color 0.25s ease"><svg width="8" height="8" viewBox="0 0 24 24" style="fill: none; stroke: #0E0E0F; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; opacity: {{b.cop}}; transition: opacity 0.2s ease"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span>
+<span style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; font-weight: 500; color: {{b.tc}}; text-decoration: line-through; text-decoration-color: {{b.strikeC}}; transition: color 0.3s ease, text-decoration-color 0.3s ease">{{b.title}}</span>
+</span>
+<sc-if value="{{b.hasMeta}}" hint-placeholder-val="{{ true }}"><span style="flex-shrink: 0; padding-left: {{b.metaPad}}; font-family: 'Geist Mono', 'Cascadia Mono', Consolas, monospace; font-size: 10.5px; color: #A1A1A6; white-space: nowrap">{{b.meta}}</span></sc-if>
+</div>
+<button type="button" data-chk="1" class="sbc" onClick="{{b.toggle}}" aria-label="{{b.chkLabel}}" aria-pressed="{{b.donePressed}}" style="position: absolute; left: 3px; top: {{b.chkTop}}; width: 24px; height: 24px; z-index: 2; padding: 0; border: 0; border-radius: 5px; background: transparent; cursor: pointer"></button>
+<span data-grip="1" class="sbg" aria-hidden="true" style="position: absolute; left: 0; right: 0; bottom: -3px; height: {{b.gripH}}; z-index: 3; display: flex; align-items: center; justify-content: center; cursor: ns-resize; opacity: 0; transition: opacity 0.18s ease"><span style="width: 18px; height: 3px; border-radius: 2px; background: {{b.gripC}}"></span></span>
+</div>
 </sc-for>
-<sc-if value="{{dy.hasNow}}" hint-placeholder-val="{{ false }}">
-<div aria-hidden="true" style="position: absolute; left: 0; right: 0; top: {{dy.nowTop}}; height: 0; display: flex; align-items: center; z-index: 2">
-<span style="width: 46px; flex-shrink: 0; font-family: 'Geist Mono', 'Cascadia Mono', Consolas, monospace; font-size: 11px; line-height: 16px; color: {{accent}}; background: #0F0F10">{{dy.nowLabel}}</span>
+<sc-for list="{{sc.ovfs}}" as="o" hint-placeholder-count="0">
+<button type="button" class="sbx" onClick="{{o.toggle}}" aria-label="{{o.label}}" aria-expanded="{{o.expanded}}" style="position: absolute; left: {{o.left}}; top: {{o.top}}; width: {{o.w}}; height: {{o.h}}; z-index: 1; box-sizing: border-box; display: flex; align-items: {{o.align}}; justify-content: center; padding: {{o.pt}} 0 0; border: 1px dashed #3A3A40; border-radius: 7px; background: {{o.bg}}; color: #C9C9CE; font-family: 'Geist Mono', 'Cascadia Mono', Consolas, monospace; font-size: 11px; font-weight: 500; cursor: pointer; transition: background-color 0.18s ease">{{o.text}}</button>
+</sc-for>
+<sc-if value="{{sc.hasNow}}" hint-placeholder-val="{{ false }}">
+<div aria-hidden="true" style="position: absolute; left: 0; right: 0; top: {{sc.nowTop}}; height: 0; display: flex; align-items: center; z-index: 2; pointer-events: none">
+<span style="width: 46px; flex-shrink: 0; font-family: 'Geist Mono', 'Cascadia Mono', Consolas, monospace; font-size: 11px; line-height: 16px; color: {{accent}}; background: #0F0F10">{{sc.nowLabel}}</span>
 <span style="width: 7px; height: 7px; margin-left: 4px; flex-shrink: 0; border-radius: 50%; background: {{accent}}"></span>
 <span style="flex: 1; height: 1px; background: {{accent}}"></span>
 </div>
 </sc-if>
+<sc-if value="{{sc.hasFloat}}" hint-placeholder-val="{{ false }}">
+<div data-fid="{{sc.fl.id}}" aria-hidden="true" style="position: absolute; left: {{sc.fl.left}}; top: 0; width: {{sc.fl.w}}; height: {{sc.fl.h}}; z-index: 3; pointer-events: none; transform: translateY({{sc.fl.y}}); transition: transform 90ms cubic-bezier(0.22, 1, 0.36, 1)">
+<div style="position: relative; height: 100%; transform: scale(1.02); animation: sbLift 180ms cubic-bezier(0.22, 1, 0.36, 1)">
+<span style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; border-radius: 7px; box-shadow: 0 10px 28px rgba(0,0,0,0.5), 0 2px 6px rgba(0,0,0,0.35); animation: sbFade 180ms cubic-bezier(0.22, 1, 0.36, 1)"></span>
+<div style="position: relative; height: 100%; box-sizing: border-box; display: flex; flex-direction: {{sc.fl.dir}}; align-items: {{sc.fl.align}}; justify-content: flex-start; gap: {{sc.fl.gap}}; padding: {{sc.fl.pad}}; overflow: hidden; border: 1px solid {{sc.fl.bd}}; border-radius: 7px; background: linear-gradient({{sc.fl.bg}}, {{sc.fl.bg}}), #141416">
+<span style="display: flex; align-items: center; gap: 8px; min-width: 0; max-width: 100%">
+<span style="width: 12px; height: 12px; flex: 0 0 12px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; border-radius: 3px; border: 1.5px solid {{sc.fl.ring}}; background: {{sc.fl.fill}}"><svg width="8" height="8" viewBox="0 0 24 24" style="fill: none; stroke: #0E0E0F; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; opacity: {{sc.fl.cop}}"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span>
+<span style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; font-weight: 500; color: {{sc.fl.tc}}; text-decoration: line-through; text-decoration-color: {{sc.fl.strikeC}}">{{sc.fl.title}}</span>
+</span>
+<sc-if value="{{sc.fl.hasMeta}}" hint-placeholder-val="{{ true }}"><span style="flex-shrink: 0; padding-left: {{sc.fl.metaPad}}; font-family: 'Geist Mono', 'Cascadia Mono', Consolas, monospace; font-size: 10.5px; color: #C9C9CE; white-space: nowrap">{{sc.fl.meta}}</span></sc-if>
+</div>
+</div>
+</div>
+</sc-if>
+<sc-if value="{{sc.hasChip}}" hint-placeholder-val="{{ false }}">
+<div aria-hidden="true" style="position: absolute; left: 0; top: 0; z-index: 4; pointer-events: none; transform: translateY({{sc.chip.y}}); transition: transform 90ms cubic-bezier(0.22, 1, 0.36, 1)">
+<div style="display: flex; align-items: center; height: 16px; animation: sbFade 130ms cubic-bezier(0.22, 1, 0.36, 1)">
+<span style="width: 46px; font-family: 'Geist Mono', 'Cascadia Mono', Consolas, monospace; font-size: 11px; font-weight: 500; line-height: 16px; color: {{accent}}; background: #0F0F10">{{sc.chip.label}}</span>
+<span style="width: 8px; height: 1px; background: {{accent}}"></span>
+</div>
+</div>
+</sc-if>
+<sc-if value="{{sc.hasPop}}" hint-placeholder-val="{{ false }}">
+<div role="dialog" aria-label="{{sc.pop.label}}" onKeyDown="{{ovfKey}}" style="position: absolute; left: {{sc.pop.left}}; top: {{sc.pop.top}}; width: 232px; z-index: 5; box-sizing: border-box; padding: 6px; border-radius: 10px; background: #18181B; box-shadow: 0 0 0 1px #2A2A2F, 0 18px 40px rgba(0,0,0,0.55); transform-origin: {{sc.pop.origin}}; animation: sbPop 180ms cubic-bezier(0.22, 1, 0.36, 1)">
+<div style="padding: 4px 8px 6px; font-family: 'Geist Mono', 'Cascadia Mono', Consolas, monospace; font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: #8C8C92">{{sc.pop.head}}</div>
+<sc-for list="{{sc.pop.items}}" as="p" hint-placeholder-count="2">
+<div style="display: flex; align-items: center; gap: 2px; height: 32px">
+<button type="button" class="mi" onClick="{{p.toggle}}" aria-label="{{p.chkLabel}}" aria-pressed="{{p.donePressed}}" style="width: 28px; height: 28px; flex: 0 0 28px; display: flex; align-items: center; justify-content: center; padding: 0; border: 0; border-radius: 6px; background: transparent; cursor: pointer">
+<span aria-hidden="true" style="width: 12px; height: 12px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; border-radius: 3px; border: 1.5px solid {{p.ring}}; background: {{p.fill}}"><svg width="8" height="8" viewBox="0 0 24 24" style="fill: none; stroke: #0E0E0F; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; opacity: {{p.cop}}"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span>
+</button>
+<button type="button" class="mi" onClick="{{p.open}}" style="flex: 1 1 auto; min-width: 0; height: 28px; display: flex; align-items: center; gap: 8px; padding: 0 8px; border: 0; border-radius: 6px; background: transparent; cursor: pointer; text-align: left">
+<span style="flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; color: {{p.tc}}; text-decoration: line-through; text-decoration-color: {{p.strikeC}}">{{p.title}}</span>
+<span style="flex-shrink: 0; font-family: 'Geist Mono', 'Cascadia Mono', Consolas, monospace; font-size: 10.5px; color: #A1A1A6">{{p.range}}</span>
+</button>
+</div>
+</sc-for>
+</div>
+</sc-if>
+</div>
 </div>
 </aside>
 </div>
@@ -821,7 +943,7 @@ New task
 </sc-if>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"startView":{"editor":"enum","options":["inbox","today","year","month","week","day","settings"],"default":"week"},"sidebarOpacity":{"editor":"range","min":0,"max":100,"step":1,"unit":"%","default":72},"accent":{"editor":"color","options":["#9FB4C7","#A3B8A0","#C8B596","#C4C4CA"],"default":"#9FB4C7"},"startModal":{"editor":"boolean","default":false},"$preview":{"width":1600,"height":1000}}'>
+<script type="text/x-dc" data-dc-script data-props='{"startView":{"editor":"enum","options":["inbox","today","year","month","week","day","settings"],"default":"week"},"sidebarOpacity":{"editor":"range","min":0,"max":100,"step":1,"unit":"%","default":72},"accent":{"editor":"color","options":["#9FB4C7","#A3B8A0","#C8B596","#C4C4CA"],"default":"#9FB4C7"},"startModal":{"editor":"boolean","default":false},"schedDemo":{"editor":null,"default":"none"},"startDate":{"editor":null,"default":""},"$preview":{"width":1600,"height":1000}}'>
 class Component extends DCLogic {
   constructor(...args) {
     super(...args);
@@ -835,8 +957,13 @@ class Component extends DCLogic {
     this.WDL = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
     const start = (this.LV.indexOf(p.startView) >= 0 || ['inbox', 'today', 'settings'].indexOf(p.startView) >= 0) ? p.startView : 'week';
     const showModal = p.startModal === true || p.startModal === 'true';
+    const tasks0 = this.seed(), sd = p.schedDemo;
+    const wid = (tasks0.filter((t) => t.title === 'Write the weekly update')[0] || {}).id;
+    const drag0 = sd === 'drag' ? { id: wid, mode: 'move', start: 675, dur: 60, s0: 570, d0: 60 } : (sd === 'resize' ? { id: wid, mode: 'resize', start: 570, dur: 105, s0: 570, d0: 60 } : null);
+    const anchor0 = /^\d{4}-\d\d-\d\d$/.test(p.startDate || '') ? p.startDate : this.TODAY;
     this.state = {
-      view: start, anchor: this.TODAY, tasks: this.seed(), dayDraft: '', newPrio: null, filter: null, accentO: null, opacityO: null, cfgTab: 'look', lists: ['work', 'personal', 'learning'], addingList: false, listDraft: '',
+      drag: drag0, ovf: sd === 'overflow' ? 'auto' : null, kb: null, sbMsg: '', sdHover: sd === 'hover' ? wid : null,
+      view: start, anchor: anchor0, tasks: tasks0, dayDraft: '', newPrio: null, filter: null, accentO: null, opacityO: null, cfgTab: 'look', lists: ['work', 'personal', 'learning'], addingList: false, listDraft: '',
       cfg: { density: 'comfortable', theme: 'dark', weekStart: 'mon', launch: 'today', defPrio: null, carry: true, sound: false, startup: true, tray: true, backup: true },
       modal: showModal ? {
         title: 'Prepare slides for the Friday demo',
@@ -925,6 +1052,12 @@ class Component extends DCLogic {
     this.setMinWheel = (el) => { if (el && el !== this.minWheel) this._wheelInit = true; this.minWheel = el; };
     this.onHourScroll = (e) => this.wheelScroll('h', e.currentTarget);
     this.onMinScroll = (e) => this.wheelScroll('m', e.currentTarget);
+    this.setSchedScroll = (el) => { this.schedScrollEl = el; };
+    this.setGrid = (el) => { this.gridEl = el; };
+    this.sbMoveH = (e) => this.sbMove(e);
+    this.sbUpH = (e) => this.sbUp(e);
+    this.sbCancelH = () => { if (this._dp && this._dp.active) this.sbEnd(false); else this._dp = null; };
+    this.ovfKey = (e) => { if (e.key === 'Escape') { if (e.stopPropagation) e.stopPropagation(); this.setState({ ovf: null }); } };
   }
 
   pad(n) { return (n < 10 ? '0' : '') + n; }
@@ -995,12 +1128,19 @@ class Component extends DCLogic {
       ['2026-11-14', 'Farmers market', null, 1],
       ['2026-11-14', 'Take the bike in for a brake repair', null, 0],
       ['2026-11-15', 'Morning run along the river', 'personal', 1, '08:00', 45],
+      ['2026-11-15', 'Write the weekly update', 'work', 0, '09:30', 60],
       ['2026-11-15', 'Meal prep for Monday–Wednesday', null, 1, '12:00', 60],
+      ['2026-11-15', 'Grocery delivery window', null, 0, '12:15', 30],
       ['2026-11-15', 'Coffee and reading — Deep Work, ch. 4', 'learning', 1, '14:00', 90],
+      ['2026-11-15', 'Call with the client', 'work', 1, '14:30', 45],
+      ['2026-11-15', 'Pair session — auth refactor', 'work', 0, '15:00', 60],
       ['2026-11-15', 'Weekly review', null, 1, '21:00', 30],
       ['2026-11-15', 'Plan next week and set top 3 priorities', 'work', 0, '22:00', 45],
       ['2026-11-15', 'Water the plants and repot the ficus', null, 0],
+      ['2026-11-16', 'Deep work — API gateway', 'work', 0, '09:00', 180],
       ['2026-11-16', 'Team sync — sprint review', null, 0, '10:00', 30],
+      ['2026-11-16', 'Quick call with design', null, 0, '10:15', 30],
+      ['2026-11-16', 'Code review — payments', 'work', 0, '10:20', 40],
       ['2026-11-16', 'Review open pull requests', 'work', 0],
       ['2026-11-17', 'Send the November invoice to the client', 'work', 0],
       ['2026-11-17', 'Gym — legs', null, 0, '18:30', 60],
@@ -1270,6 +1410,7 @@ class Component extends DCLogic {
       this.animateOpen(true);
     }
     if (this._wheelInit) { this._wheelInit = false; this.initWheels(); }
+    if (this._flip) this.sbFlip();
     if (this._popAnim && this.dlgEl) {
       this._popAnim = false;
       const pop = this.dlgEl.querySelector('[data-pop]');
@@ -1495,6 +1636,308 @@ class Component extends DCLogic {
       progress: list.length ? doneN + ' / ' + list.length + ' done' : '', addLabel: 'Add task to ' + this.WDL[this.dow(d)],
       gridH: (16 * HOUR + 2) + 'px'
     };
+  }
+
+  // ---- Schedule: overlap layout (pure) ----
+  // items: [{ id, start, end }] in minutes; end = start + max(dur, 30) (visual end).
+  // returns { pos: { id: { col, span, cols } | { hidden: true } }, overflows: [{ col, cols, start, end, ids }] }
+  layoutDay(items, maxCols) {
+    const sorted = items.slice().sort((a, b) => (a.start - b.start) || ((b.end - b.start) - (a.end - a.start)) || (a.id < b.id ? -1 : 1));
+    const clusters = [];
+    let cur = null;
+    sorted.forEach((it) => {
+      if (!cur || it.start >= cur.end) { cur = { items: [], end: it.end, colEnds: [] }; clusters.push(cur); }
+      let c = 0;
+      while (c < cur.colEnds.length && cur.colEnds[c] > it.start) c++;
+      cur.colEnds[c] = it.end;
+      cur.end = Math.max(cur.end, it.end);
+      cur.items.push({ id: it.id, start: it.start, end: it.end, col: c });
+    });
+    const pos = {}, overflows = [];
+    clusters.forEach((cl) => {
+      let n = cl.colEnds.length, hidden = [], ov = null;
+      if (n > maxCols) {
+        n = maxCols;
+        hidden = cl.items.filter((x) => x.col >= maxCols - 1);
+        ov = { col: maxCols - 1, cols: n, start: Math.min.apply(null, hidden.map((x) => x.start)), end: Math.max.apply(null, hidden.map((x) => x.end)), ids: hidden.map((x) => x.id) };
+        overflows.push(ov);
+      }
+      const vis = cl.items.filter((x) => hidden.indexOf(x) < 0);
+      const busy = (c, s, e) => vis.some((o) => o.col === c && o.start < e && s < o.end) || !!(ov && ov.col === c && ov.start < e && s < ov.end);
+      vis.forEach((x) => {
+        let span = 1;
+        while (x.col + span < n && !busy(x.col + span, x.start, x.end)) span++;
+        pos[x.id] = { col: x.col, span: span, cols: n };
+      });
+      hidden.forEach((x) => { pos[x.id] = { hidden: true }; });
+    });
+    return { pos: pos, overflows: overflows };
+  }
+
+  durLabel(m) {
+    const h = Math.floor(m / 60), r = m % 60;
+    return (h ? h + 'h' : '') + (h && r ? ' ' : '') + (r ? r + 'm' : '');
+  }
+
+  // content tier of one block by its width and height
+  sbVis(t, w, h, st, du, accent, active) {
+    const tall = h >= 44, done = !!t.done;
+    const range = this.hhmm(st) + ' – ' + this.hhmm(st + du) + (active ? ' · ' + this.durLabel(du) : '');
+    let meta;
+    if (tall) meta = w >= 140 ? range : this.hhmm(st);
+    else meta = w >= 220 ? range : (w >= 120 ? this.hhmm(st) : '');
+    return {
+      title: t.title, hasMeta: !!meta, meta: meta,
+      dir: tall ? 'column' : 'row', align: tall ? 'flex-start' : 'center', gap: tall ? '2px' : '8px',
+      pad: tall ? '7px 10px 0' : '0 10px', metaPad: tall ? '20px' : '0',
+      ring: done ? accent : '#8C8C92', fill: done ? accent : 'transparent', cop: done ? '1' : '0',
+      tc: done ? '#8C8C92' : '#EDEDEF', strikeC: done ? '#8C8C92' : 'transparent'
+    };
+  }
+
+  schedData(d, dimOf, accent) {
+    const s = this.state, dr = s.drag, T = this.TODAY;
+    const HOUR = 48, H0 = 7, W = 302, GAP = 4, X0 = 54, MAXC = 3;
+    const yOf = (m) => (m - H0 * 60) / 60 * HOUR;
+    const hOf = (du) => Math.max(24, Math.round(du / 60 * HOUR) - 3);
+    const r1 = (v) => Math.round(v * 2) / 2;
+    const colW = (n) => (W - GAP * (n - 1)) / n;
+    const hours = [];
+    for (let h = H0; h <= 23; h++) hours.push({ key: 'h' + h, label: this.pad(h) + ':00', top: ((h - H0) * HOUR) + 'px' });
+    const list = s.tasks.filter((t) => t.date === d && !t.end && t.time && this.mins(t.time) >= H0 * 60);
+    const L = this.layoutDay(list.map((t) => { const st = this.mins(t.time); return { id: t.id, start: st, end: st + Math.max(t.dur || 30, 30) }; }), MAXC);
+    const geo = (p) => { const cw = colW(p.cols); return { left: X0 + p.col * (cw + GAP), w: p.span * cw + (p.span - 1) * GAP }; };
+    const cand = dr ? { s: dr.start, e: dr.start + Math.max(dr.dur, 30) } : null;
+    const blocks = [];
+    let fl = null, chip = null;
+    list.forEach((t) => {
+      const p = L.pos[t.id];
+      if (!p || p.hidden) return;
+      const st = this.mins(t.time), du = t.dur || 30, g = geo(p);
+      const isDr = !!(dr && dr.id === t.id), isOrigin = isDr && dr.mode === 'move', isRes = isDr && dr.mode === 'resize';
+      const shown = isRes ? dr.dur : du, h = hOf(shown);
+      const dim = !!(cand && !isDr && st < cand.e && cand.s < st + Math.max(du, 30));
+      const range = this.hhmm(st) + '–' + this.hhmm(st + du);
+      blocks.push(Object.assign(this.sbVis(t, g.w, h, st, shown, accent, isRes), {
+        key: 'b' + t.id, id: t.id, left: r1(g.left) + 'px', w: r1(g.w) + 'px', top: (Math.round(yOf(st)) + 1) + 'px', h: h + 'px',
+        cls: 'sb' + (s.sdHover === t.id ? ' sbh' : '') + (isRes ? ' sbr' : ''),
+        bst: isOrigin ? 'dashed' : 'solid',
+        bbg: isOrigin ? 'transparent' : (isRes ? accent + '29' : (t.done ? '#19191C' : accent + '1A')),
+        bbd: isOrigin ? accent + '59' : (isRes ? accent + '73' : (t.done ? '#26262A' : accent + '40')),
+        op: dim ? String(Math.round(55 * +dimOf(t)) / 100) : dimOf(t),
+        cop2: isOrigin ? '0' : '1', cop2T: isOrigin ? 'opacity 130ms cubic-bezier(0.22, 1, 0.36, 1)' : 'none',
+        gripH: h < 32 ? '8px' : '11px', gripC: t.done ? '#66666E' : accent + 'B3',
+        chkTop: (h >= 44 ? 4 : Math.round((h - 2 - 24) / 2)) + 'px',
+        label: t.title + ', ' + range + (t.done ? ', done' : '') + '. Enter to edit, arrows to move, Shift and arrows to change length, Space to mark done',
+        tip: t.title + ' · ' + range,
+        chkLabel: (t.done ? 'Mark not done: ' : 'Mark done: ') + t.title, donePressed: t.done ? 'true' : 'false',
+        down: (e) => this.sbDown(e, t.id), kd: (e) => this.sbKey(e, t.id),
+        open: () => this.sbOpen(t.id), toggle: () => this.toggle(t.id)
+      }));
+      if (isOrigin) {
+        const fh = hOf(dr.dur);
+        fl = Object.assign(this.sbVis(t, g.w, fh, dr.start, dr.dur, accent, true), {
+          id: t.id, left: r1(g.left) + 'px', w: r1(g.w) + 'px', h: fh + 'px', y: (Math.round(yOf(dr.start)) + 1) + 'px',
+          bg: accent + '29', bd: accent + '73'
+        });
+      }
+    });
+    if (dr) chip = { m: dr.mode === 'move' ? dr.start : dr.start + dr.dur };
+    else if (s.kb && s.kb.date === d) chip = { m: s.kb.m };
+    let pop = null, firstOpen = s.ovf === 'auto';
+    const ovfs = L.overflows.map((o) => {
+      const cw = colW(o.cols), left = X0 + o.col * (cw + GAP), top = Math.round(yOf(o.start)) + 1;
+      const h = Math.max(24, Math.round((o.end - o.start) / 60 * HOUR) - 3);
+      const k = d + '@' + o.start, open = s.ovf === k || firstOpen;
+      firstOpen = false;
+      const ts = o.ids.map((id) => s.tasks.filter((x) => x.id === id)[0]).filter(Boolean).sort((x, y) => this.byTime(x, y));
+      if (open) {
+        const popH = 36 + ts.length * 32 + 12, gh = 16 * HOUR + 2;
+        const below = top + h + 6 + popH <= gh;
+        pop = {
+          left: (X0 + W - 232) + 'px', top: (below ? top + h + 6 : top - popH - 6) + 'px', origin: below ? '100% 0%' : '100% 100%',
+          head: ts.length + ' more · ' + this.hhmm(o.start) + '–' + this.hhmm(Math.max.apply(null, ts.map((x) => this.mins(x.time) + (x.dur || 30)))),
+          label: ts.length + ' more tasks',
+          items: ts.map((x) => Object.assign(this.sbVis(x, 999, 99, this.mins(x.time), x.dur || 30, accent, false), {
+            key: 'p' + x.id, range: x.time + '–' + this.hhmm(this.mins(x.time) + (x.dur || 30)),
+            chkLabel: (x.done ? 'Mark not done: ' : 'Mark done: ') + x.title, donePressed: x.done ? 'true' : 'false',
+            toggle: () => this.toggle(x.id), open: () => { this.setState({ ovf: null }); this.openEdit(x.id); }
+          }))
+        };
+      }
+      return {
+        key: 'o' + k, left: r1(left) + 'px', top: top + 'px', w: r1(cw) + 'px', h: h + 'px', text: '+' + ts.length,
+        label: ts.length + ' more tasks, ' + this.hhmm(o.start) + ' to ' + this.hhmm(o.end), expanded: open ? 'true' : 'false',
+        bg: open ? '#1E1E22' : '#141416', align: h >= 44 ? 'flex-start' : 'center', pt: h >= 44 ? '6px' : '0',
+        toggle: () => this.setState({ ovf: open ? null : k })
+      };
+    });
+    return {
+      hours: hours, blocks: blocks, ovfs: ovfs,
+      hasFloat: !!fl, fl: fl || {}, hasChip: !!chip,
+      chip: chip ? { y: (Math.round(yOf(chip.m)) - 8) + 'px', label: this.hhmm(chip.m) } : {},
+      hasPop: !!pop, pop: pop || { items: [] },
+      hasNow: d === T, nowTop: Math.round((this.NOW - H0 * 60) / 60 * HOUR) + 'px', nowLabel: this.hhmm(this.NOW),
+      gridH: (16 * HOUR + 2) + 'px', msg: s.sbMsg || ''
+    };
+  }
+
+  // ---- Schedule: pointer ----
+  sbDown(e, id) {
+    if ((e.button !== undefined && e.button !== 0) || this.state.drag) return;
+    const tg = e.target;
+    if (tg && tg.closest && tg.closest('[data-chk]')) return;
+    const t = this.state.tasks.filter((x) => x.id === id)[0];
+    if (!t || !t.time) return;
+    const el = e.currentTarget, r = el.getBoundingClientRect();
+    const grip = !!(tg && tg.closest && tg.closest('[data-grip]'));
+    const sc = this.schedScrollEl;
+    this._dp = {
+      id: id, el: el, pid: e.pointerId, x0: e.clientX, y0: e.clientY, cy: e.clientY, alt: !!e.altKey,
+      s0: this.mins(t.time), d0: t.dur || 30, scale: (el.offsetHeight ? r.height / el.offsetHeight : 1) || 1,
+      mode: grip ? 'resize' : 'move', active: false, scroll0: sc ? sc.scrollTop : 0
+    };
+    this._dp.cur = { start: this._dp.s0, dur: this._dp.d0 };
+    if (grip && e.preventDefault) e.preventDefault();
+  }
+  sbMove(e) {
+    const dp = this._dp;
+    if (!dp || e.pointerId !== dp.pid) return;
+    dp.cy = e.clientY;
+    dp.alt = !!e.altKey;
+    if (!dp.active) {
+      const dist = Math.max(Math.abs(e.clientX - dp.x0), Math.abs(e.clientY - dp.y0));
+      if (dist < (dp.mode === 'resize' ? 2 : 4)) return;
+      dp.active = true;
+      try { dp.el.setPointerCapture(dp.pid); } catch (err) { /* ignore */ }
+      clearTimeout(this._kbT);
+      this.setState({ drag: { id: dp.id, mode: dp.mode, start: dp.s0, dur: dp.d0, s0: dp.s0, d0: dp.d0 }, ovf: null, kb: null, sbMsg: '' });
+    }
+    this.sbCompute();
+    this.sbAuto();
+  }
+  sbCompute() {
+    const dp = this._dp;
+    if (!dp || !dp.active) return;
+    const sc = this.schedScrollEl;
+    const px = (dp.cy - dp.y0) / dp.scale + (sc ? sc.scrollTop - dp.scroll0 : 0);
+    const dm = px / 48 * 60, step = dp.alt ? 5 : 15;
+    let ns = dp.s0, nd = dp.d0;
+    if (dp.mode === 'move') ns = Math.max(420, Math.min(1380 - dp.d0, Math.round((dp.s0 + dm) / step) * step));
+    else nd = Math.max(dp.s0 + 15, Math.min(1380, Math.round((dp.s0 + dp.d0 + dm) / step) * step)) - dp.s0;
+    if (ns === dp.cur.start && nd === dp.cur.dur) return;
+    dp.cur = { start: ns, dur: nd };
+    const dr = this.state.drag || { id: dp.id, mode: dp.mode, s0: dp.s0, d0: dp.d0 };
+    this.setState({ drag: Object.assign({}, dr, { start: ns, dur: nd }) });
+  }
+  sbAuto() {
+    const sc = this.schedScrollEl;
+    if (!sc || this._raf || sc.scrollHeight <= sc.clientHeight + 1) return;
+    const tick = () => {
+      this._raf = null;
+      const d = this._dp;
+      if (!d || !d.active) return;
+      const r = sc.getBoundingClientRect(), z = 40 * d.scale;
+      let v = 0;
+      if (d.cy < r.top + z) v = -Math.max(2, Math.round(14 * Math.min(1, (r.top + z - d.cy) / z)));
+      else if (d.cy > r.bottom - z) v = Math.max(2, Math.round(14 * Math.min(1, (d.cy - r.bottom + z) / z)));
+      if (!v) return;
+      const before = sc.scrollTop;
+      sc.scrollTop = before + v;
+      if (sc.scrollTop !== before) this.sbCompute();
+      this._raf = requestAnimationFrame(tick);
+    };
+    this._raf = requestAnimationFrame(tick);
+  }
+  sbUp(e) {
+    const dp = this._dp;
+    if (!dp || (e && e.pointerId !== dp.pid)) return;
+    if (!dp.active) { this._dp = null; return; }
+    this.sbEnd(true);
+  }
+  sbEnd(commit) {
+    const dp = this._dp, dr = this.state.drag;
+    this._dp = null;
+    if (this._raf) { cancelAnimationFrame(this._raf); this._raf = null; }
+    if (dp) { try { dp.el.releasePointerCapture(dp.pid); } catch (err) { /* ignore */ } }
+    if (!dr) return;
+    this._supT = Date.now();
+    this._flip = { rects: this.sbRects(), primary: dr.id, dur: 220, lift: dr.mode === 'move' };
+    const cur = dp && dp.cur ? dp.cur : { start: dr.start, dur: dr.dur };
+    const changed = commit && (cur.start !== dr.s0 || cur.dur !== dr.d0);
+    const t = this.state.tasks.filter((x) => x.id === dr.id)[0];
+    const rng = this.hhmm(cur.start) + ' to ' + this.hhmm(cur.start + cur.dur);
+    this.setState({
+      drag: null,
+      tasks: changed ? this.state.tasks.map((x) => (x.id === dr.id ? Object.assign({}, x, { time: this.hhmm(cur.start), dur: cur.dur }) : x)) : this.state.tasks,
+      sbMsg: changed ? (dr.mode === 'move' ? 'Moved ' : 'Resized ') + (t ? t.title : '') + ', ' + rng : (commit ? '' : 'Move cancelled')
+    });
+  }
+  sbOpen(id) {
+    if (Date.now() - (this._supT || 0) < 350) return;
+    this.openEdit(id);
+  }
+  sbRects() {
+    const out = {}, g = this.gridEl;
+    if (!g) return out;
+    const gr = g.getBoundingClientRect(), k = (g.offsetHeight ? gr.height / g.offsetHeight : 1) || 1;
+    const put = (el, id) => { const r = el.getBoundingClientRect(); out[id] = { x: (r.left - gr.left) / k, y: (r.top - gr.top) / k }; };
+    Array.prototype.forEach.call(g.querySelectorAll('[data-sid]'), (el) => put(el, el.getAttribute('data-sid')));
+    const f = g.querySelector('[data-fid]');
+    if (f) put(f, f.getAttribute('data-fid'));
+    return out;
+  }
+  sbFlip() {
+    const fl = this._flip;
+    this._flip = null;
+    if (!fl || !this.gridEl) return;
+    const now = this.sbRects(), ease = 'cubic-bezier(0.22, 1, 0.36, 1)';
+    Array.prototype.forEach.call(this.gridEl.querySelectorAll('[data-sid]'), (el) => {
+      const id = el.getAttribute('data-sid'), a = fl.rects[id], b = now[id];
+      if (!a || !b || !el.animate) return;
+      const dx = a.x - b.x, dy = a.y - b.y, prim = id === fl.primary;
+      if (!(prim && fl.lift) && Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) return;
+      const from = 'translate(' + dx + 'px, ' + dy + 'px)' + (prim && fl.lift ? ' scale(1.02)' : ' scale(1)');
+      el.animate([{ transform: from, zIndex: prim ? 3 : 1 }, { transform: 'translate(0px, 0px) scale(1)', zIndex: prim ? 3 : 1 }], { duration: prim ? fl.dur : 220, easing: ease });
+      if (prim && fl.lift) {
+        const sh = el.querySelector('.sbs');
+        if (sh && sh.animate) sh.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 220, easing: 'ease-in' });
+      }
+    });
+  }
+
+  // ---- Schedule: keyboard (block in focus) ----
+  sbKey(e, id) {
+    if (this.state.drag) {
+      if (e.key === 'Escape') { if (e.preventDefault) e.preventDefault(); this.sbEnd(false); }
+      return;
+    }
+    const tg = e.target;
+    if (!tg || !tg.getAttribute || tg.getAttribute('data-sbm') !== '1') return;
+    const t = this.state.tasks.filter((x) => x.id === id)[0];
+    if (!t || !t.time) return;
+    if (e.key === ' ' || e.key === 'Spacebar') { if (e.preventDefault) e.preventDefault(); this.toggle(id); return; }
+    if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+    if (e.preventDefault) e.preventDefault();
+    const dir = e.key === 'ArrowUp' ? -1 : 1, step = e.altKey ? 5 : 15;
+    const to = (v) => (dir > 0 ? Math.floor(v / step) * step + step : Math.ceil(v / step) * step - step);
+    const st = this.mins(t.time), du = t.dur || 30;
+    let ns = st, nd = du;
+    if (e.shiftKey) nd = Math.max(15, Math.min(1380 - st, to(st + du) - st));
+    else ns = Math.max(420, Math.min(1380 - du, to(st)));
+    if (ns === st && nd === du) return;
+    this._flip = { rects: this.sbRects(), primary: id, dur: 90, lift: false };
+    clearTimeout(this._kbT);
+    this._kbT = setTimeout(() => this.setState({ kb: null }), 900);
+    this.setState({
+      tasks: this.state.tasks.map((x) => (x.id === id ? Object.assign({}, x, { time: this.hhmm(ns), dur: nd }) : x)),
+      kb: { m: e.shiftKey ? ns + nd : ns, date: t.date },
+      sbMsg: t.title + ', ' + this.hhmm(ns) + ' to ' + this.hhmm(ns + nd)
+    });
+  }
+  componentWillUnmount() {
+    clearTimeout(this._kbT);
+    if (this._raf) cancelAnimationFrame(this._raf);
   }
 
   inboxData(dimOf, accent) {
@@ -1813,7 +2256,9 @@ class Component extends DCLogic {
       toggleSidebar: this.toggleSidebar, sbLabel: s.sbHidden ? 'Expand sidebar' : 'Collapse sidebar', sbExpanded: s.sbHidden ? 'false' : 'true', sbRot: s.sbHidden ? '180deg' : '0deg',
       navY: (4 + Math.min(2, this.secIdx(view)) * 33) + 'px', navOp: view === 'settings' ? '0' : '1',
       deleteTaskH: this.deleteTaskH, toggleDensity: this.toggleDensity,
-      rootClass: s.cfg.density === 'compact' ? 'compact' : '', densPressed: s.cfg.density === 'compact' ? 'true' : 'false',
+      rootClass: (s.cfg.density === 'compact' ? 'compact' : '') + (s.drag && !s.drag.demo && this._dp ? (s.drag.mode === 'move' ? ' sbdrag' : ' sbres') : ''),
+      sc: (view === 'today' || view === 'day') ? this.schedData(view === 'today' ? T : a, dimOf, accent) : { hours: [], blocks: [], ovfs: [], hasFloat: false, fl: {}, hasChip: false, chip: {}, hasPop: false, pop: { items: [] }, hasNow: false, gridH: '0px', msg: '' },
+      setSchedScroll: this.setSchedScroll, setGrid: this.setGrid, sbMoveH: this.sbMoveH, sbUpH: this.sbUpH, sbCancelH: this.sbCancelH, ovfKey: this.ovfKey, densPressed: s.cfg.density === 'compact' ? 'true' : 'false',
       densBg: s.cfg.density === 'compact' ? '#1E1E22' : 'transparent', densBd: s.cfg.density === 'compact' ? '#3A3A40' : '#26262A', densFg: s.cfg.density === 'compact' ? '#EDEDEF' : '#A1A1A6',
       hasModal: !!md, nt: nt, cfg: cfg, isSettings: view === 'settings', isApp: view !== 'settings',
       addingList: s.addingList, listDraft: s.listDraft, startList: this.startList, setListInput: this.setListInput,
