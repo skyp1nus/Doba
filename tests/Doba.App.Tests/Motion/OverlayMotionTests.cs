@@ -528,6 +528,38 @@ public class OverlayMotionTests
     }
 
     [AvaloniaFact]
+    public void Schedule_plus_N_list_pops_in_from_its_corner_and_closes_at_once()
+    {
+        using var shell = new AnimatedShell(AppView.Day, new DateOnly(2026, 11, 16));
+        var schedule = shell.OnScreen<ScheduleTimeline>().Single();
+        var more = schedule.OverflowList.GetVisualDescendants().OfType<Button>().Single(b => b.Name == "PART_More");
+        shell.Click(more);
+        var list = schedule.ListPopover;
+        Assert.True(list.IsVisible);
+        // sbPop: opacity 0 → 1, translateY −4 → 0, scale 0.98 → 1, 180 ms ease-out, from the top right (under its "+N").
+        Transit.Is(Animator.Running(list), new MotionState(0, 0, AppMotion.PopY, AppMotion.PopScale, AppMotion.PopScale),
+            MotionState.Rest, AppMotion.Pop, AppMotion.EaseOut);
+        var visual = ElementComposition.GetElementVisual(list)!;
+        Assert.Equal(232, visual.CenterPoint.X);
+        Assert.Equal(0, visual.CenterPoint.Y);
+
+        shell.Key(Key.Escape);                                                    // instant, like the prototype's unmount
+        Assert.False(list.IsVisible);
+        Assert.Null(Animator.Running(list));
+    }
+
+    [AvaloniaFact]
+    public void With_animations_off_the_schedule_list_opens_at_once()
+    {
+        using var shell = new AnimatedShell(AppView.Day, new DateOnly(2026, 11, 16), animations: false);
+        var schedule = shell.OnScreen<ScheduleTimeline>().Single();
+        shell.Click(schedule.OverflowList.GetVisualDescendants().OfType<Button>().Single(b => b.Name == "PART_More"));
+        Assert.True(schedule.ListPopover.IsVisible);
+        Assert.Null(Animator.Running(schedule.ListPopover));
+        Assert.Equal(1, ElementComposition.GetElementVisual(schedule.ListPopover)!.Opacity);
+    }
+
+    [AvaloniaFact]
     public void With_animations_off_the_overlay_opens_focuses_and_closes_at_once()
     {
         using var shell = new AnimatedShell(AppView.Week, animations: false, blur: true);

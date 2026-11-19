@@ -32,7 +32,8 @@ xmlns:t="using:Doba.App.Theme"        <!-- ThemeConverters -->
 * Colours: `{DynamicResource Brush.*}` (palette lives in a `ThemeVariant` dictionary — Dark only today, Light can be
   added with the same keys). `Color.*` exists for every brush when a `Color` is needed. The chrome base colour and the
   box-shadow lists are palette tokens too (§2.1).
-* Accent: `Brush.Accent`, `Brush.Accent10` (0x1A), `Brush.Accent15` (0x26), `Brush.Accent25` (0x40), `Color.Accent`.
+* Accent: `Brush.Accent`, `Brush.Accent10` (0x1A), `Brush.Accent15` (0x26), `Brush.Accent25` (0x40), `Color.Accent`;
+  the schedule's `Brush.Accent16` (0x29), `Brush.Accent35` (0x59), `Brush.Accent45` (0x73), `Brush.Accent70` (0xB3).
   Changed live by `ThemeService.ApplyAccent` (brushes are mutated in place; `Color.Accent` is rewritten → use DynamicResource).
 * Density: `{DynamicResource Density.*}` only (rewritten by `ThemeService.ApplyDensity`).
 * Fonts: the Window/PopupRoot themes set `Font.Sans` 13 px, `Text.Primary`, tabular numbers (`tnum`) app-wide. Use
@@ -108,6 +109,11 @@ xmlns:t="using:Doba.App.Theme"        <!-- ThemeConverters -->
 | Slider.Border / Rail | `#858585` / `#3B3B3B` | transparency slider (Chromium's native range look) |
 | Accent.Mist / Sage / Sand / Gray | `#9FB4C7` / `#A3B8A0` / `#C8B596` / `#C4C4CA` | Settings swatches |
 | Accent (+10/15/25) | runtime | today, progress, check fill, now-line, selections; 10 % bar fill, 15 % range strip, 25 % bar ring/selection |
+| Accent16 / 35 / 45 / 70 | runtime | schedule: dragged copy / resized block fill (16 %), dashed origin (35 %), copy / resized ring (45 %), grip bar (70 %) |
+| Schedule.Hover (Lists region) | white 4.5 % (`#0BFFFFFF`) | schedule block hover layer (`.sbo`) |
+| Schedule.Focus (Lists region) | `rgba(237,237,239,0.7)` | schedule block focus outline (1.5 px, offset 2; the checkbox's offset −3) |
+| Schedule.List (Lists region) | `#18181B` | the schedule's "+N" list |
+| Schedule.CopyBase / More / MoreHover / MoreOpen (brushes) | Bg.Dialog / Bg.Dialog / Bg.CardHover / Bg.Selected | opaque base under the dragged copy; "+N" background at rest / hover / open |
 | Chrome.Base (colour, Dark palette) | `#161618` | base of the chrome tint; `ThemeService.ApplyChromeOpacity` reads it at startup and on a theme-variant change |
 | Chrome (brush only, theme-independent) | `rgba(22,22,24, transparency %)` (default 72 %) | tint over the backdrop (sidebar + title bar) |
 | Shell.GlowA / B / C (`Brush.Shell.*`, Dark) | radial gradients of Glow.A / B / C | the painted backdrop glows (`Shell.Backdrop` theme); hidden while Mica / acrylic is active |
@@ -120,6 +126,8 @@ Box shadows (`BoxShadows`, Dark palette; Avalonia paints the list last-on-top, s
 | Shadow.PopoverSmall | `0 16 40 rgba(0,0,0,.5)`, ring `#2A2A2F` | Priority / Tag popovers (`Border.popover-sm`) |
 | Shadow.Dialog | `0 30 80 rgba(0,0,0,.6)`, ring `#26262A` | task dialog, search palette (`Border.dialog`) |
 | Shadow.Ring.Emphasis | inset 1 px `#3A3A40` | gallery sample |
+| Shadow.Schedule.Lift (Lists region) | `0 10 28 rgba(0,0,0,.5)`, `0 2 6 rgba(0,0,0,.35)` | lifted schedule copy, resized / landing block |
+| Shadow.Schedule.List (Lists region) | `0 18 40 rgba(0,0,0,.55)`, ring `#2A2A2F` | the schedule's "+N" list |
 
 ### 2.2 Type
 
@@ -201,8 +209,26 @@ source in the prototype markup and, where a value was adjusted to land on the re
 | Dialog | `Size.Dialog.*`, `Space.Dialog.*`, `Radius.Dialog.*`, `Thickness.Dialog.*` | task dialog and popovers; `Space.Dialog.Lift` / `Lift2` / `Raise` put single-line labels on the reference rows |
 | TimeWheel | `Size.TimeWheel.*`, `Space.TimeWheel.Band`, `Brush.TimeWheel.Mask` | 34 px rows, 70×170 column, fade mask |
 | Search | `Size.Search.*`, `Space.Search.*`, `Thickness.Search.Rule`, `Radius.Search.Footer` | palette query row, list, "More than 50" line |
-| Lists | `Space.Inbox.*`, `Space.List.*`, `Space.Today.*`, `Space.Group.*`, `Space.Row.*`, `Space.AddTask.*`, `Space.Schedule.*`, `Size.Schedule.*`, `Space.Settings.*`, `Size.Settings.*`, `Radius.Settings.Swatch` | Inbox / Today / Settings layout, list rows, schedule timeline |
+| Lists | `Space.Inbox.*`, `Space.List.*`, `Space.Today.*`, `Space.Group.*`, `Space.Row.*`, `Space.AddTask.*`, `Space.Schedule.*`, `Size.Schedule.*`, `Thickness.Schedule.Focus`, `*.Schedule.*` colours / shadows, `Brush.Accent16/35/45/70`, `Space.Settings.*`, `Size.Settings.*`, `Radius.Settings.Swatch` | Inbox / Today / Settings layout, list rows, schedule timeline (see below) |
 | Calendar | `Space.Week.*`, `Size.Week.*`, `Opacity.Week.*`, `Space.Year.*`, `Year.*`, `Size.Year.*` | Week header, cards, bars; Year cells (card-fitting sizes are in `Screens/Week/WeekLayout.cs`) |
+
+Schedule (Today / Day aside; `Controls/ScheduleTimeline.axaml`):
+
+| Token | Value | Use |
+|---|---|---|
+| Space.Schedule.Header | 0,4,0,6 | header margin (stays put; the grid scrolls under it) |
+| Space.Schedule.Scroll / ScrollOut | 0,8,8,8 / 0,0,−8,0 | the grid scroller's padding 8 8 8 0 and margin-right −8 (its 8 px bar sits beside the 380 px column) |
+| Size.Schedule.Check / CheckStroke / CheckHit | 12 / 4 / 24 | block checkbox (r3, ring Text.Muted), its check stroke (of 24), its hit area (left 3, top `chkTop`, r5 = Radius.KeyCap) |
+| Space.Schedule.Grip, Size.Schedule.GripWidth / GripHeight | 1,0,1,−2 / 18 / 3 | grip zone (bottom −3 inside the border, height 11 or 8 from Core) and its bar (r2 = Radius.Bar) |
+| Thickness.Schedule.Focus, Space.Schedule.FocusOffset / CheckFocusOffset | 1.5 / 2 / −3 | block focus outline (`FocusRing` with Schedule.Focus, unclipped) |
+| Size.Schedule.ChipLabel / ChipRule | 46 / 8 | time chip in the hour column (Geist Mono 11/500 accent on Bg.Main) and its 8×1 rule |
+| Space.Schedule.MoreTall | 0,7,0,0 | "+N" text 6 px under its 1 px dashed border when ≥ 44 px tall |
+| Size.Schedule.List, Space.Schedule.List / ListHead | 232 / 6 / 8,4,8,6 | "+N" list width, padding (r10 = Radius.Panel), head padding |
+| Size.Schedule.ListRow, Space.Schedule.ListGap / ListOpen / ListOpenGap | 32 / 2 / 8,0 / 8 | list rows: 28 px checkbox button (Size.ControlSmall), gap 2, open button padding and title ↔ time gap |
+
+Block geometry (x, width, top, height, content tier, `chkTop`, grip height; 302 px column area at x 54, gap 4, up to three
+columns) is computed in Core (`Doba.Core.Projections.ScheduleLayout` / `ScheduleColumns`); block content padding and
+the time line's offset are `ScheduleBlockViewModel.ContentPaddingFor` / `MetaOffsetFor`.
 
 ### 2.4 Density (`ThemeService.DensityTable`)
 
@@ -259,7 +285,7 @@ Pick named themes with `Theme="{StaticResource Button.Outline}"`. Templates live
 | `Button.Header` | transparent; hover fades content to 0.75 (200 ms) | week day header, year month header (`.hd`) |
 | `Button.Title` | no chrome, left, `Density.TitleSize`, Primary → White on hover (300 ms) | task titles (`.tt`); content is a `c:StrikeText` (§4.16); done: `Foreground=Text.Muted` + `Struck` |
 | `Button.Cell` | Border.Subtle top/left 1 px, hover Overlay.Cell (200 ms) | month day cells (Background Overlay.Faint outside the month) |
-| `Button.Bar` | Accent10 fill + Accent25 1 px ring, r6, 10 0; hover brightens (overlay, 200 ms) | week multi-day bars (28 px, `TaskCheckBox BoxSize=14`), day spans (38 px, r8), schedule blocks (r7); done: Bg.SpanDone / Bg.Track |
+| `Button.Bar` | Accent10 fill + Accent25 1 px ring, r6, 10 0; hover brightens (overlay, 200 ms) | week multi-day bars (28 px, `TaskCheckBox BoxSize=14`), day spans (38 px, r8); done: Bg.SpanDone / Bg.Track. Schedule blocks are a layered panel of their own (`Controls/ScheduleTimeline.axaml`: frame, 4.5 % hover layer 180 ms, open button, checkbox button, grip) |
 | `ToggleButton` (default) | ghost; checked Overlay.Selected | generic |
 | `ToggleButton.Chip` | 28 px, r7, 0 10, Border.Popover, 12 Medium Tertiary; checked Bg.Control + Border.Emphasis + Primary (150 ms) | date quick options (+ `TextBlock.meta-sm` hint, gap 6) |
 
@@ -317,6 +343,9 @@ animate the fill's ScaleX (origin left) on the compositor, 500 ms ease-out — n
 `AdornerLayer.DefaultFocusAdorner` = a 1 px Border.Focus ring inset 2 px (the design's `outline-offset:-2px`) that
 follows the control's CornerRadius. Avalonia shows focus adorners only for Tab/arrow focus, never for clicks. Every
 focusable control gets it; nothing to do in views. Caption buttons and Kbd are not focusable.
+The one exception is the schedule block (`.sbm:focus-visible`): its open button sets its own `FocusAdorner` — a
+`FocusRing` of 1.5 px `Brush.Schedule.Focus` 2 px *outside* the button, with `AdornerLayer.IsClipEnabled="False"` so the
+layer does not clip it to the button (the checkbox button's ring is offset −3).
 
 ### 4.13 `c:Card` (`Surfaces.axaml`)
 Bg.Card, r8, hover Bg.CardHover (180 ms), `Padding` = `Density.CardPadding` by default (day cards:
@@ -389,7 +418,10 @@ ellipsis before the count. Hover / current colour changes take 200 ms.
 ## 5. Motion (`Motion/`)
 
 * `Motion` — tokens (ms) and `EaseOut` (entrances, slides, indicators, toggles), `EaseIn` (exits), `EaseStd` (hover,
-  colour). `Motion.Ms(x)` is zero when `Motion.SystemAnimationsEnabled` is false. Added: `ColorChange = 200`.
+  colour). `Motion.Ms(x)` is zero when `Motion.SystemAnimationsEnabled` is false. Added: `ColorChange = 200`; for the
+  schedule `Snap = 90` (a block / the time chip stepping between slots), `Lift = 180` (the dragged copy lifting),
+  `Land = 220` (landing, the Esc flight back, neighbours re-laid out) and `ChipHold = 900` — how long the time chip
+  stays after an arrow-key step; it is information, not animation, so `MotionTimes.ChipHold` is never zeroed.
 * `MotionTimes` — the same tokens as `TimeSpan` for `x:Static` in XAML.
 * `Animator` — render-thread (composition) helpers. They animate the element's composition visual (Opacity,
   Translation, Scale + CenterPoint) and never touch layout or the UI-side `Opacity`/`RenderTransform`:

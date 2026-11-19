@@ -73,7 +73,7 @@ public sealed partial class DayViewModel : ScreenViewModel
         HasSpans = Spans.Count > 0;
         HasItems = Items.Count > 0;
         IsEmpty = model.Empty;
-        Schedule.Update(model.Schedule);
+        Schedule.Update(model.Schedule, model.Date);
     }
 
     /// <summary>Minute tick: move the now-line only (and only when the shown day is today); a new day re-projects.</summary>

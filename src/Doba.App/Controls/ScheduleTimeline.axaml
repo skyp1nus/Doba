@@ -1,141 +1,534 @@
 <!--
-  The Schedule column of Today and Day (the prototype's <aside aria-label="Schedule"> content): header "SCHEDULE · 07–23",
-  then a 770 px grid with hour lines every 48 px, task blocks (Button.Bar, r7; compact = one line when < 44 px) and the
-  accent now-line (label on Bg.Main, 7 px dot, 1 px line). DataContext = ScheduleViewModel. The screen draws the aside
-  frame (380 px, padding-left 24, Border.Subtle left border).
+  The Schedule column of Today and Day (the prototype's <aside aria-label="Schedule"> content): the fixed header
+  "SCHEDULE · 07–23" (margin 4 0 6), a polite live region, then the grid's own scroller (padding 8 8 8 0, margin-right −8)
+  holding the 770 px grid: hour lines every 48 px, task blocks in overlap columns, "+N" stand-ins, the accent now-line,
+  the dragged copy, the time chip and the "+N" list. Layers: blocks and "+N" → now-line (2) → copy (3) → chip (4) →
+  list (5). DataContext = ScheduleViewModel. The screen draws the aside frame (380 px, padding-left 24, Border.Subtle
+  left border).
 -->
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:c="using:Doba.App.Controls"
              xmlns:m="using:Doba.App.Motion"
+             xmlns:t="using:Doba.App.Theme"
              x:Class="Doba.App.Controls.ScheduleTimeline"
              x:DataType="c:ScheduleViewModel">
-  <UserControl.Styles>
-    <!-- Padding comes from ScheduleBlockViewModel.ContentPadding (design 7 10 0 / compact 0 10 centred, less the 1 px
-         ring that Button.Bar draws as a border where the design uses an inset box-shadow); the range's offset under
-         or beside the title from ScheduleBlockViewModel.RangeOffset. -->
-    <Style Selector="Button.block">
+  <UserControl.Resources>
+    <!-- A block's transparent hit layers: the open button over the whole block (r6, inside the border) and the 24 px
+         checkbox button. No background or hover of their own (the block's hover layer does that). -->
+    <ControlTheme x:Key="Button.ScheduleHit" TargetType="Button">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="CornerRadius" Value="{DynamicResource Radius.Item}" />
+      <Setter Property="Cursor" Value="Hand" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Border Background="{TemplateBinding Background}" CornerRadius="{TemplateBinding CornerRadius}" />
+        </ControlTemplate>
+      </Setter>
+    </ControlTheme>
+    <ControlTheme x:Key="ToggleButton.ScheduleHit" TargetType="ToggleButton">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="CornerRadius" Value="{DynamicResource Radius.KeyCap}" />
+      <Setter Property="Cursor" Value="Hand" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Border Background="{TemplateBinding Background}" CornerRadius="{TemplateBinding CornerRadius}" />
+        </ControlTemplate>
+      </Setter>
+    </ControlTheme>
+
+    <!-- "+N" (.sbx): 1 px dashed Border.Emphasis, r7, background Schedule.More / hover MoreHover / open MoreOpen (180 ms
+         ease), Geist Mono 11/500 Text.Secondary, centred (top 6 px under the border when tall). -->
+    <ControlTheme x:Key="Button.ScheduleMore" TargetType="Button">
+      <Setter Property="Background" Value="{DynamicResource Brush.Schedule.More}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Emphasis}" />
       <Setter Property="CornerRadius" Value="{DynamicResource Radius.Control}" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Secondary}" />
+      <Setter Property="FontFamily" Value="{DynamicResource Font.Mono}" />
+      <Setter Property="FontSize" Value="{DynamicResource FontSize.11}" />
+      <Setter Property="FontWeight" Value="Medium" />
+      <Setter Property="HorizontalAlignment" Value="Left" />
       <Setter Property="VerticalAlignment" Value="Top" />
-      <Setter Property="VerticalContentAlignment" Value="Top" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+      <Setter Property="Cursor" Value="Hand" />
+      <Setter Property="Template" Value="{StaticResource Template.Button.Dashed}" />
+      <Style Selector="^.tall">
+        <Setter Property="VerticalContentAlignment" Value="Top" />
+        <Setter Property="Padding" Value="{StaticResource Space.Schedule.MoreTall}" />
+      </Style>
+      <Style Selector="^.open /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource Brush.Schedule.MoreOpen}" />
+      </Style>
+      <Style Selector="^:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource Brush.Schedule.MoreHover}" />
+      </Style>
+    </ControlTheme>
+
+    <!-- "+N" list buttons (.mi): r6, hover Overlay.Press (rgba(255,255,255,0.06)). -->
+    <ControlTheme x:Key="Button.ScheduleItem" TargetType="Button" BasedOn="{StaticResource Button.Ghost}">
+      <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
+      <Style Selector="^:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource Brush.Overlay.Press}" />
+      </Style>
+    </ControlTheme>
+    <ControlTheme x:Key="ToggleButton.ScheduleItem" TargetType="ToggleButton">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="CornerRadius" Value="{DynamicResource Radius.Item}" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+      <Setter Property="Cursor" Value="Hand" />
+      <Setter Property="Template" Value="{StaticResource Template.Button.Hover}" />
+      <Style Selector="^:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource Brush.Overlay.Press}" />
+      </Style>
+    </ControlTheme>
+  </UserControl.Resources>
+
+  <UserControl.Styles>
+    <!-- Block frame: accent 10 % fill, 1 px accent 25 % border, r7; done: Bg.BlockDone / Border.Default. -->
+    <Style Selector="Panel.block Border#PART_Frame">
+      <Setter Property="Background" Value="{DynamicResource Brush.Accent10}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent25}" />
     </Style>
-    <Style Selector="Button.block.done">
+    <Style Selector="Panel.block.done Border#PART_Frame">
       <Setter Property="Background" Value="{DynamicResource Brush.Bg.BlockDone}" />
       <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Default}" />
     </Style>
-    <Style Selector="Button.block.dimmed">
+    <Style Selector="Panel.block.dimmed">
       <Setter Property="Opacity" Value="{DynamicResource Opacity.Dimmed}" />
     </Style>
-    <!-- StrikeText is styled as TextBlock. -->
-    <Style Selector="Button.block.done TextBlock#PART_BlockTitle">
+    <!-- Hover: the 4.5 % white layer and the grip fade in (180 ms ease). Their resting opacity is a style too, so the
+         hover style can override it. -->
+    <Style Selector="Panel.block Border#PART_Hover">
+      <Setter Property="Opacity" Value="0" />
+    </Style>
+    <Style Selector="Panel.block Border#PART_Grip">
+      <Setter Property="Opacity" Value="0" />
+    </Style>
+    <Style Selector="Panel.block:pointerover Border#PART_Hover">
+      <Setter Property="Opacity" Value="1" />
+    </Style>
+    <Style Selector="Panel.block:pointerover Border#PART_Grip">
+      <Setter Property="Opacity" Value="1" />
+    </Style>
+    <Style Selector="Panel.block Border#PART_GripBar">
+      <Setter Property="Background" Value="{DynamicResource Brush.Accent70}" />
+    </Style>
+    <Style Selector="Panel.block.done Border#PART_GripBar">
+      <Setter Property="Background" Value="{DynamicResource Brush.Border.Check}" />
+    </Style>
+    <!-- Titles: 12.5 Medium Text.Primary; done Text.Muted with StrikeText's crisp line. StrikeText is styled as TextBlock. -->
+    <Style Selector="TextBlock.block-title">
+      <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
+    </Style>
+    <Style Selector="TextBlock.block-title.done">
       <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Muted}" />
+    </Style>
+    <!-- The 12 px checkbox: ring Text.Muted, check 8 px with stroke 4 (of 24). -->
+    <Style Selector="c|TaskCheckBox.schedule">
+      <Setter Property="BorderBrush" Value="{DynamicResource Brush.Text.Muted}" />
+    </Style>
+    <Style Selector="c|TaskCheckBox.schedule /template/ c|Icon#PART_Check">
+      <Setter Property="StrokeWidth" Value="{StaticResource Size.Schedule.CheckStroke}" />
     </Style>
   </UserControl.Styles>
 
-  <StackPanel Margin="{StaticResource Space.Schedule.Column}">
+  <Grid RowDefinitions="Auto,*">
     <Grid Name="PART_Header" ColumnDefinitions="*,Auto" Margin="{StaticResource Space.Schedule.Header}">
       <TextBlock Classes="section" Text="SCHEDULE" VerticalAlignment="Center" />
       <TextBlock Grid.Column="1" Classes="label" Text="{x:Static c:ScheduleViewModel.RangeLabel}" VerticalAlignment="Center" />
     </Grid>
 
-    <Panel Name="PART_Grid" Height="{x:Static c:ScheduleViewModel.GridHeight}" VerticalAlignment="Top">
-      <!-- Hour rows are 16 px tall and centred on their line, so the first/last overhang the grid by 8 px: the layer is
-           extended by that much (and rows are placed at their line's top) so nothing clips them. -->
-      <ItemsControl Name="PART_Hours" ItemsSource="{x:Static c:ScheduleViewModel.Hours}" IsHitTestVisible="False" Margin="{StaticResource Space.Schedule.HourLayer}">
-        <ItemsControl.ItemsPanel>
-          <ItemsPanelTemplate>
-            <Panel />
-          </ItemsPanelTemplate>
-        </ItemsControl.ItemsPanel>
-        <ItemsControl.ItemTemplate>
-          <DataTemplate x:DataType="c:ScheduleHour">
-            <!-- The 1 px line is centred on the hour's top (top − 0.5 … top + 0.5), which Chromium paints on the
-                 pixel row above the top: row offset 7, not the 7.5 → 8 that centring would round to. -->
-            <Grid Margin="{Binding Margin}" Height="{StaticResource Size.Schedule.Row}" VerticalAlignment="Top" ColumnSpacing="{StaticResource Space.Schedule.HourGap}">
-              <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="{StaticResource Size.Schedule.HourLabel}" />
-                <ColumnDefinition Width="*" />
-              </Grid.ColumnDefinitions>
-              <TextBlock Classes="meta" Text="{Binding Label}" VerticalAlignment="Center" />
-              <Border Grid.Column="1" Classes="divider" VerticalAlignment="Top" Margin="{StaticResource Space.Schedule.Line}" />
-            </Grid>
-          </DataTemplate>
-        </ItemsControl.ItemTemplate>
-      </ItemsControl>
+    <!-- aria-live="polite": what a drag or an arrow key changed. Kept in the tree (1×1, transparent) so it is read. -->
+    <TextBlock Name="PART_Live"
+               Text="{Binding Message}"
+               Width="1"
+               Height="1"
+               Opacity="0"
+               IsHitTestVisible="False"
+               HorizontalAlignment="Left"
+               VerticalAlignment="Top"
+               AutomationProperties.LiveSetting="Polite" />
 
-      <ItemsControl Name="PART_Blocks" ItemsSource="{Binding Blocks}">
-        <ItemsControl.ItemsPanel>
-          <ItemsPanelTemplate>
-            <Panel />
-          </ItemsPanelTemplate>
-        </ItemsControl.ItemsPanel>
-        <ItemsControl.ItemTemplate>
-          <DataTemplate x:DataType="c:ScheduleBlockViewModel">
-            <Button Theme="{StaticResource Button.Bar}"
-                    Classes="block"
-                    Classes.compact="{Binding IsCompact}"
-                    Classes.done="{Binding Row.Done}"
-                    Classes.dimmed="{Binding Row.Dimmed}"
-                    Margin="{Binding Margin}"
-                    Width="{Binding Width}"
-                    HorizontalAlignment="Left"
-                    Padding="{Binding ContentPadding}"
-                    Height="{Binding Height}"
-                    Command="{Binding Row.ToggleCommand}"
-                    AutomationProperties.Name="{Binding Row.ToggleLabel}">
-              <Button.Transitions>
-                <Transitions>
-                  <DoubleTransition Property="Opacity" Duration="{x:Static m:MotionTimes.Dim}" Easing="{x:Static m:Motion.EaseStd}" />
-                </Transitions>
-              </Button.Transitions>
-              <!-- Title (crisp always-present strike, Text.Muted when done) then range: see ScheduleBlockContent. -->
-              <c:ScheduleBlockContent Name="PART_Content"
-                                      HorizontalAlignment="Left"
-                                      IsCompact="{Binding IsCompact}"
-                                      Gap="{x:Static c:ScheduleBlockViewModel.CompactGap}"
-                                      RangeOffset="{Binding RangeOffset}">
-                <c:StrikeText Name="PART_BlockTitle"
-                              Text="{Binding Row.Title}"
-                              Struck="{Binding Row.Done}"
-                              StrikeColor="{DynamicResource Color.Text.Muted}"
-                              FontSize="{DynamicResource FontSize.12.5}"
-                              FontWeight="Medium"
-                              TextTrimming="CharacterEllipsis"
-                              LineHeight="{Binding $self.FontSize, Converter={x:Static c:TaskListRow.CssLineHeight}}">
-                  <c:StrikeText.Transitions>
+    <ScrollViewer Name="PART_Scroll"
+                  Grid.Row="1"
+                  Margin="{StaticResource Space.Schedule.ScrollOut}"
+                  Padding="{StaticResource Space.Schedule.Scroll}"
+                  HorizontalScrollBarVisibility="Disabled"
+                  VerticalScrollBarVisibility="Auto">
+      <!-- TabNavigation Local: Tab goes through the blocks and "+N"s by their TabIndex (time order) inside the grid. -->
+      <Panel Name="PART_Grid" Height="{x:Static c:ScheduleViewModel.GridHeight}" VerticalAlignment="Top"
+             KeyboardNavigation.TabNavigation="Local">
+        <!-- Hour rows are 16 px tall and centred on their line, so the first/last overhang the grid by 8 px: the layer is
+             extended by that much (and rows are placed at their line's top) so nothing clips them. -->
+        <ItemsControl Name="PART_Hours" ItemsSource="{x:Static c:ScheduleViewModel.Hours}" IsHitTestVisible="False" Margin="{StaticResource Space.Schedule.HourLayer}">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <Panel />
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="c:ScheduleHour">
+              <!-- The 1 px line is centred on the hour's top (top − 0.5 … top + 0.5), which Chromium paints on the
+                   pixel row above the top: row offset 7, not the 7.5 → 8 that centring would round to. -->
+              <Grid Margin="{Binding Margin}" Height="{StaticResource Size.Schedule.Row}" VerticalAlignment="Top" ColumnSpacing="{StaticResource Space.Schedule.HourGap}">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="{StaticResource Size.Schedule.HourLabel}" />
+                  <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Classes="meta" Text="{Binding Label}" VerticalAlignment="Center" />
+                <Border Grid.Column="1" Classes="divider" VerticalAlignment="Top" Margin="{StaticResource Space.Schedule.Line}" />
+              </Grid>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <!-- Blocks (.sb): root at x / top / w / h; layers: shadow (resize / landing only), body (frame, hover layer,
+             content — the neighbour dim during a drag), the open button, the checkbox button and the grip. -->
+        <ItemsControl Name="PART_Blocks" ItemsSource="{Binding Blocks}">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <Panel />
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="c:ScheduleBlockViewModel">
+              <Panel Name="PART_Block"
+                     Classes="block"
+                     Classes.done="{Binding Row.Done}"
+                     Classes.dimmed="{Binding Row.Dimmed}"
+                     Margin="{Binding Margin}"
+                     Width="{Binding Width}"
+                     Height="{Binding Height}"
+                     HorizontalAlignment="Left"
+                     VerticalAlignment="Top"
+                     Cursor="Hand">
+                <Panel.Transitions>
+                  <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="{x:Static m:MotionTimes.Dim}" Easing="{x:Static m:Motion.EaseStd}" />
+                  </Transitions>
+                </Panel.Transitions>
+                <Border Name="PART_Shadow"
+                        IsVisible="False"
+                        IsHitTestVisible="False"
+                        CornerRadius="{DynamicResource Radius.Control}"
+                        BoxShadow="{DynamicResource Shadow.Schedule.Lift}" />
+                <Panel Name="PART_Body">
+                  <!-- The fill and ring change at once on done (the prototype's .sb has no colour transition). -->
+                  <Border Name="PART_Frame" BorderThickness="1" CornerRadius="{DynamicResource Radius.Control}" />
+                  <Border Name="PART_Hover"
+                          Margin="1"
+                          CornerRadius="{DynamicResource Radius.Item}"
+                          Background="{DynamicResource Brush.Schedule.Hover}"
+                          IsHitTestVisible="False">
+                    <Border.Transitions>
+                      <Transitions>
+                        <DoubleTransition Property="Opacity" Duration="{x:Static m:MotionTimes.Hover}" Easing="{x:Static m:Motion.EaseStd}" />
+                      </Transitions>
+                    </Border.Transitions>
+                  </Border>
+                  <!-- Content (pointer-events: none): checkbox, title (crisp always-present strike, Text.Muted when
+                       done) and the time its size leaves room for; see ScheduleBlockContent. -->
+                  <Border Name="PART_ContentBox" Margin="1" Padding="{Binding ContentPadding}" ClipToBounds="True" IsHitTestVisible="False">
+                    <c:ScheduleBlockContent Name="PART_Content"
+                                            VerticalAlignment="Top"
+                                            HorizontalAlignment="Left"
+                                            IsTall="{Binding IsTall}"
+                                            Gap="{x:Static c:ScheduleBlockViewModel.Gap}"
+                                            MetaIndent="{x:Static c:ScheduleBlockViewModel.MetaIndent}"
+                                            MetaOffset="{Binding MetaOffset}">
+                      <c:TaskCheckBox Name="PART_Box"
+                                      Classes="schedule"
+                                      BoxSize="{StaticResource Size.Schedule.Check}"
+                                      IsChecked="{Binding Row.Done, Mode=OneWay}"
+                                      Focusable="False"
+                                      IsHitTestVisible="False" />
+                      <c:StrikeText Name="PART_BlockTitle"
+                                    Classes="block-title"
+                                    Classes.done="{Binding Row.Done}"
+                                    Text="{Binding Row.Title}"
+                                    Struck="{Binding Row.Done}"
+                                    StrikeColor="{DynamicResource Color.Text.Muted}"
+                                    FontSize="{DynamicResource FontSize.12.5}"
+                                    FontWeight="Medium"
+                                    TextTrimming="CharacterEllipsis"
+                                    LineHeight="{Binding $self.FontSize, Converter={x:Static c:TaskListRow.CssLineHeight}}">
+                        <c:StrikeText.Transitions>
+                          <Transitions>
+                            <BrushTransition Property="Foreground" Duration="{x:Static m:MotionTimes.Strike}" Easing="{x:Static m:Motion.EaseStd}" />
+                          </Transitions>
+                        </c:StrikeText.Transitions>
+                      </c:StrikeText>
+                      <TextBlock Name="PART_Meta"
+                                 Classes="meta-sm tertiary"
+                                 Text="{Binding Meta}"
+                                 IsVisible="{Binding HasMeta}"
+                                 LineHeight="{Binding $self.FontSize, Converter={x:Static c:TaskListRow.CssLineHeight}}" />
+                    </c:ScheduleBlockContent>
+                  </Border>
+                </Panel>
+                <!-- Click opens the task (Enter too); Space marks it done (ScheduleTimeline.axaml.cs). Focus outline:
+                     1.5 px Schedule.Focus 2 px outside, not clipped to the button. -->
+                <Button Name="PART_Open"
+                        Theme="{StaticResource Button.ScheduleHit}"
+                        Margin="1"
+                        Command="{Binding Row.OpenCommand}"
+                        KeyboardNavigation.TabIndex="{Binding TabOrder}"
+                        AutomationProperties.Name="{Binding AccessibleLabel}"
+                        ToolTip.Tip="{Binding ToolTip}">
+                  <Button.FocusAdorner>
+                    <FocusAdornerTemplate>
+                      <c:FocusRing Stroke="{DynamicResource Brush.Schedule.Focus}"
+                                   StrokeThickness="{StaticResource Thickness.Schedule.Focus}"
+                                   Offset="{StaticResource Space.Schedule.FocusOffset}"
+                                   AdornerLayer.IsClipEnabled="False" />
+                    </FocusAdornerTemplate>
+                  </Button.FocusAdorner>
+                </Button>
+                <!-- The checkbox's 24 px hit area (aria-pressed: a toggle button); Tab skips it — Space on the block
+                     marks the task done. -->
+                <ToggleButton Name="PART_Check"
+                              Theme="{StaticResource ToggleButton.ScheduleHit}"
+                              Width="{StaticResource Size.Schedule.CheckHit}"
+                              Height="{StaticResource Size.Schedule.CheckHit}"
+                              HorizontalAlignment="Left"
+                              VerticalAlignment="Top"
+                              Margin="{Binding CheckMargin}"
+                              IsTabStop="False"
+                              IsChecked="{Binding Row.Done, Mode=OneWay}"
+                              Command="{Binding Row.ToggleCommand}"
+                              AutomationProperties.Name="{Binding CheckLabel}">
+                  <ToggleButton.FocusAdorner>
+                    <FocusAdornerTemplate>
+                      <c:FocusRing Stroke="{DynamicResource Brush.Schedule.Focus}"
+                                   StrokeThickness="{StaticResource Thickness.Schedule.Focus}"
+                                   Offset="{StaticResource Space.Schedule.CheckFocusOffset}" />
+                    </FocusAdornerTemplate>
+                  </ToggleButton.FocusAdorner>
+                </ToggleButton>
+                <!-- Resize grip: the bottom 11 px (8 under 32 px), 3 px of them below the edge; 18×3 bar, accent 70 %
+                     (done Border.Check); shown on hover. -->
+                <Border Name="PART_Grip"
+                        Margin="{StaticResource Space.Schedule.Grip}"
+                        Height="{Binding GripHeight}"
+                        VerticalAlignment="Bottom"
+                        Background="Transparent"
+                        Cursor="SizeNorthSouth">
+                  <Border.Transitions>
                     <Transitions>
-                      <BrushTransition Property="Foreground" Duration="{x:Static m:MotionTimes.Strike}" Easing="{x:Static m:Motion.EaseStd}" />
+                      <DoubleTransition Property="Opacity" Duration="{x:Static m:MotionTimes.Hover}" Easing="{x:Static m:Motion.EaseStd}" />
                     </Transitions>
-                  </c:StrikeText.Transitions>
-                </c:StrikeText>
-                <TextBlock Name="PART_Range"
-                           Classes="meta-sm tertiary"
-                           Text="{Binding Range}"
-                           LineHeight="{Binding $self.FontSize, Converter={x:Static c:TaskListRow.CssLineHeight}}" />
-              </c:ScheduleBlockContent>
-            </Button>
-          </DataTemplate>
-        </ItemsControl.ItemTemplate>
-      </ItemsControl>
+                  </Border.Transitions>
+                  <Border Name="PART_GripBar"
+                          Width="{StaticResource Size.Schedule.GripWidth}"
+                          Height="{StaticResource Size.Schedule.GripHeight}"
+                          CornerRadius="{DynamicResource Radius.Bar}"
+                          HorizontalAlignment="Center"
+                          VerticalAlignment="Center" />
+                </Border>
+              </Panel>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
 
-      <Grid Name="PART_Now"
-            IsVisible="{Binding HasNow}"
-            Margin="{Binding NowMargin}"
-            Height="{StaticResource Size.Schedule.Row}"
-            VerticalAlignment="Top"
-            ZIndex="2"
-            IsHitTestVisible="False">
-        <Grid.ColumnDefinitions>
-          <ColumnDefinition Width="{StaticResource Size.Schedule.NowLabel}" />
-          <ColumnDefinition Width="Auto" />
-          <ColumnDefinition Width="*" />
-        </Grid.ColumnDefinitions>
-        <Border Background="{DynamicResource Brush.Bg.Main}">
-          <TextBlock Classes="meta accent" Text="{Binding NowLabel}" LineHeight="{StaticResource Size.Schedule.Row}" VerticalAlignment="Center" />
+        <!-- "+N" stand-ins (.sbx): one column wide, from the earliest folded start to the latest visual end. -->
+        <ItemsControl Name="PART_Overflows" ItemsSource="{Binding Overflows}">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <Panel />
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="c:ScheduleOverflowViewModel">
+              <Button Name="PART_More"
+                      Theme="{StaticResource Button.ScheduleMore}"
+                      Classes.open="{Binding IsOpen}"
+                      Classes.tall="{Binding IsTall}"
+                      Margin="{Binding Margin}"
+                      Width="{Binding Width}"
+                      Height="{Binding Height}"
+                      Command="{Binding ToggleCommand}"
+                      KeyboardNavigation.TabIndex="{Binding TabOrder}"
+                      AutomationProperties.Name="{Binding AccessibleLabel}">
+                <TextBlock Text="{Binding Text}" LineHeight="{Binding $self.FontSize, Converter={x:Static c:TaskListRow.CssLineHeight}}" />
+              </Button>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <Grid Name="PART_Now"
+              IsVisible="{Binding HasNow}"
+              Margin="{Binding NowMargin}"
+              Height="{StaticResource Size.Schedule.Row}"
+              VerticalAlignment="Top"
+              ZIndex="2"
+              IsHitTestVisible="False">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="{StaticResource Size.Schedule.NowLabel}" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+          </Grid.ColumnDefinitions>
+          <Border Background="{DynamicResource Brush.Bg.Main}">
+            <TextBlock Classes="meta accent" Text="{Binding NowLabel}" LineHeight="{StaticResource Size.Schedule.Row}" VerticalAlignment="Center" />
+          </Border>
+          <Ellipse Grid.Column="1" Width="{StaticResource Size.Schedule.NowDot}" Height="{StaticResource Size.Schedule.NowDot}" Margin="{StaticResource Space.Schedule.NowDot}" Fill="{DynamicResource Brush.Accent}" VerticalAlignment="Center" />
+          <Border Grid.Column="2" Height="1" Background="{DynamicResource Brush.Accent}" VerticalAlignment="Top" Margin="{StaticResource Space.Schedule.Line}" />
+        </Grid>
+
+        <!-- The dragged copy (layer 3): outer = position (it steps between slots), lift = scale 1.02 + shadow; accent 16 %
+             over Schedule.CopyBase, accent 45 % ring, the range with its length in Text.Secondary. Hidden at rest. -->
+        <Panel Name="PART_Copy"
+               IsVisible="{Binding Copy.IsVisible}"
+               IsHitTestVisible="False"
+               ZIndex="3"
+               HorizontalAlignment="Left"
+               VerticalAlignment="Top"
+               Margin="{Binding Copy.Margin}"
+               Width="{Binding Copy.Width}"
+               Height="{Binding Copy.Height}">
+          <Panel Name="PART_CopyLift">
+            <Border Name="PART_CopyShadow" CornerRadius="{DynamicResource Radius.Control}" BoxShadow="{DynamicResource Shadow.Schedule.Lift}" />
+            <Border CornerRadius="{DynamicResource Radius.Control}" Background="{DynamicResource Brush.Schedule.CopyBase}">
+              <Border Name="PART_CopyFrame"
+                      BorderThickness="1"
+                      CornerRadius="{DynamicResource Radius.Control}"
+                      Background="{DynamicResource Brush.Accent16}"
+                      BorderBrush="{DynamicResource Brush.Accent45}"
+                      Padding="{Binding Copy.ContentPadding}"
+                      ClipToBounds="True">
+                <c:ScheduleBlockContent VerticalAlignment="Top"
+                                        HorizontalAlignment="Left"
+                                        IsTall="{Binding Copy.IsTall}"
+                                        Gap="{x:Static c:ScheduleBlockViewModel.Gap}"
+                                        MetaIndent="{x:Static c:ScheduleBlockViewModel.MetaIndent}"
+                                        MetaOffset="{Binding Copy.MetaOffset}">
+                  <c:TaskCheckBox Classes="schedule"
+                                  BoxSize="{StaticResource Size.Schedule.Check}"
+                                  IsChecked="{Binding Copy.Done, Mode=OneWay}"
+                                  Focusable="False"
+                                  IsHitTestVisible="False" />
+                  <c:StrikeText Classes="block-title"
+                                Classes.done="{Binding Copy.Done}"
+                                Text="{Binding Copy.Title}"
+                                Struck="{Binding Copy.Done}"
+                                StrikeColor="{DynamicResource Color.Text.Muted}"
+                                FontSize="{DynamicResource FontSize.12.5}"
+                                FontWeight="Medium"
+                                TextTrimming="CharacterEllipsis"
+                                LineHeight="{Binding $self.FontSize, Converter={x:Static c:TaskListRow.CssLineHeight}}" />
+                  <TextBlock Name="PART_CopyMeta"
+                             Classes="meta-sm secondary"
+                             Text="{Binding Copy.Meta}"
+                             IsVisible="{Binding Copy.HasMeta}"
+                             LineHeight="{Binding $self.FontSize, Converter={x:Static c:TaskListRow.CssLineHeight}}" />
+                </c:ScheduleBlockContent>
+              </Border>
+            </Border>
+          </Panel>
+        </Panel>
+
+        <!-- The time chip in the hour column (layer 4): 46 px Geist Mono 11/500 accent on Bg.Main, then an 8×1 accent rule
+             to the block's edge; centred on the time's line. Hidden at rest. -->
+        <StackPanel Name="PART_Chip"
+                    IsVisible="{Binding Chip.IsVisible}"
+                    IsHitTestVisible="False"
+                    ZIndex="4"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Left"
+                    VerticalAlignment="Top"
+                    Margin="{Binding Chip.Margin}"
+                    Height="{StaticResource Size.Schedule.Row}">
+          <Border Width="{StaticResource Size.Schedule.ChipLabel}" Background="{DynamicResource Brush.Bg.Main}">
+            <TextBlock Classes="meta accent" FontWeight="Medium" Text="{Binding Chip.Label}" LineHeight="{StaticResource Size.Schedule.Row}" VerticalAlignment="Center" />
+          </Border>
+          <Border Width="{StaticResource Size.Schedule.ChipRule}" Height="1" Background="{DynamicResource Brush.Accent}" VerticalAlignment="Top" Margin="{StaticResource Space.Schedule.Line}" />
+        </StackPanel>
+
+        <!-- The "+N" list (layer 5, role dialog): 232 px at x 124, under the "+N" or above it; head, then one 32 px row
+             per folded task (checkbox button, open button with the title and the range). Shown, filled and placed by
+             ScheduleTimeline.axaml.cs. -->
+        <Border Name="PART_List"
+                x:DataType="c:ScheduleOverflowViewModel"
+                IsVisible="False"
+                ZIndex="5"
+                HorizontalAlignment="Left"
+                VerticalAlignment="Top"
+                Margin="{Binding PopoverMargin}"
+                Width="{StaticResource Size.Schedule.List}"
+                Padding="{StaticResource Space.Schedule.List}"
+                CornerRadius="{DynamicResource Radius.Panel}"
+                Background="{DynamicResource Brush.Schedule.List}"
+                BoxShadow="{DynamicResource Shadow.Schedule.List}"
+                KeyboardNavigation.TabNavigation="Local"
+                AutomationProperties.Name="{Binding PopoverLabel}">
+          <StackPanel>
+            <TextBlock Name="PART_ListHead"
+                       Classes="label-sm"
+                       Text="{Binding PopoverHead, Converter={x:Static t:ThemeConverters.Upper}}"
+                       Margin="{StaticResource Space.Schedule.ListHead}"
+                       LineHeight="{Binding $self.FontSize, Converter={x:Static c:TaskListRow.CssLineHeight}}" />
+            <ItemsControl Name="PART_ListRows" ItemsSource="{Binding Rows}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="c:ScheduleListRowViewModel">
+                  <Grid Height="{StaticResource Size.Schedule.ListRow}" ColumnSpacing="{StaticResource Space.Schedule.ListGap}">
+                    <Grid.ColumnDefinitions>
+                      <ColumnDefinition Width="Auto" />
+                      <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <ToggleButton Name="PART_ListCheck"
+                                  Theme="{StaticResource ToggleButton.ScheduleItem}"
+                                  Width="{DynamicResource Size.ControlSmall}"
+                                  Height="{DynamicResource Size.ControlSmall}"
+                                  IsChecked="{Binding Row.Done, Mode=OneWay}"
+                                  Command="{Binding Row.ToggleCommand}"
+                                  AutomationProperties.Name="{Binding CheckLabel}">
+                      <c:TaskCheckBox Classes="schedule"
+                                      BoxSize="{StaticResource Size.Schedule.Check}"
+                                      IsChecked="{Binding Row.Done, Mode=OneWay}"
+                                      Focusable="False"
+                                      IsHitTestVisible="False" />
+                    </ToggleButton>
+                    <Button Name="PART_ListOpen"
+                            Grid.Column="1"
+                            Theme="{StaticResource Button.ScheduleItem}"
+                            Height="{DynamicResource Size.ControlSmall}"
+                            Padding="{StaticResource Space.Schedule.ListOpen}"
+                            HorizontalContentAlignment="Stretch"
+                            Command="{Binding OpenCommand}"
+                            AutomationProperties.Name="{Binding Row.Title}">
+                      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Space.Schedule.ListOpenGap}">
+                        <c:StrikeText Name="PART_ListTitle"
+                                      Classes="block-title"
+                                      Classes.done="{Binding Row.Done}"
+                                      Text="{Binding Row.Title}"
+                                      Struck="{Binding Row.Done}"
+                                      StrikeColor="{DynamicResource Color.Text.Muted}"
+                                      FontSize="{DynamicResource FontSize.12.5}"
+                                      TextTrimming="CharacterEllipsis"
+                                      VerticalAlignment="Center"
+                                      LineHeight="{Binding $self.FontSize, Converter={x:Static c:TaskListRow.CssLineHeight}}" />
+                        <TextBlock Grid.Column="1"
+                                   Classes="meta-sm tertiary"
+                                   Text="{Binding Range}"
+                                   VerticalAlignment="Center"
+                                   LineHeight="{Binding $self.FontSize, Converter={x:Static c:TaskListRow.CssLineHeight}}" />
+                      </Grid>
+                    </Button>
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
         </Border>
-        <Ellipse Grid.Column="1" Width="{StaticResource Size.Schedule.NowDot}" Height="{StaticResource Size.Schedule.NowDot}" Margin="{StaticResource Space.Schedule.NowDot}" Fill="{DynamicResource Brush.Accent}" VerticalAlignment="Center" />
-        <Border Grid.Column="2" Height="1" Background="{DynamicResource Brush.Accent}" VerticalAlignment="Top" Margin="{StaticResource Space.Schedule.Line}" />
-      </Grid>
-    </Panel>
-  </StackPanel>
+      </Panel>
+    </ScrollViewer>
+  </Grid>
 </UserControl>

@@ -251,9 +251,17 @@ internal static class KeyboardKit
         AdornerLayer.GetAdornerLayer(c) is { } layer
         && layer.Children.Any(a => a is FocusRing { IsEffectivelyVisible: true } && ReferenceEquals(AdornerLayer.GetAdornedElement(a), c));
 
+    /// <summary>The visible <see cref="FocusRing"/> adorning <paramref name="c"/>, if any.</summary>
+    public static FocusRing? RingOf(Control c) =>
+        AdornerLayer.GetAdornerLayer(c)?.Children.OfType<FocusRing>()
+            .FirstOrDefault(a => a.IsEffectivelyVisible && ReferenceEquals(AdornerLayer.GetAdornedElement(a), c));
+
     /// <summary>
-    /// Pixel check: with <paramref name="c"/> focused from the keyboard the ring (1 px Brush.Border.Focus with CSS
-    /// <c>outline-offset: -2px</c>, i.e. the line lies 1 px inside the edge) is drawn on at least three of its four edges, compared with a frame where <paramref name="neutral"/> has focus.
+    /// Pixel check: with <paramref name="c"/> focused from the keyboard its ring is drawn on at least three of its four
+    /// edges, compared with a frame where <paramref name="neutral"/> has focus. The ring's colour, width and offset are
+    /// read from the control's <see cref="FocusRing"/> adorner: the app's default is 1 px Brush.Border.Focus with CSS
+    /// <c>outline-offset: -2px</c> (the line lies 1 px inside the edge); a schedule block's is 1.5 px Schedule.Focus
+    /// 2 px outside it.
     /// </summary>
     public static void AssertRingDrawn(ShellFixture shell, Control c, Control neutral)
     {
@@ -266,16 +274,19 @@ internal static class KeyboardKit
         shell.Settle();
         using var after = Frame(shell);
 
-        var ring = Pixels.Resource("Brush.Border.Focus");
+        var adorner = RingOf(c) ?? throw new InvalidOperationException(Describe(c) + " has no focus ring.");
+        var stroke = adorner.Stroke is ISolidColorBrush brush ? brush.Color : throw new InvalidOperationException("Ring stroke is not a solid colour.");
+        var ring = Color.FromRgb(stroke.R, stroke.G, stroke.B);
+        var line = adorner.Offset + (adorner.StrokeThickness / 2); // the stroke's centre line, outward from the edge
         var r = Bounds(c, shell.Window);
         var midX = (int)Math.Round(r.Center.X);
         var midY = (int)Math.Round(r.Center.Y);
         (int X, int Y, bool Vertical)[] edges =
         [
-            ((int)Math.Floor(r.Left + 1), midY, true),
-            ((int)Math.Floor(r.Right - 2), midY, true),
-            (midX, (int)Math.Floor(r.Top + 1), false),
-            (midX, (int)Math.Floor(r.Bottom - 2), false),
+            ((int)Math.Floor(r.Left - line), midY, true),
+            ((int)Math.Floor(r.Right + line), midY, true),
+            (midX, (int)Math.Floor(r.Top - line), false),
+            (midX, (int)Math.Floor(r.Bottom + line), false),
         ];
 
         var drawn = 0;

@@ -42,16 +42,14 @@
       </Grid>
     </ScrollViewer>
 
-    <!-- The design's aside does not scroll (the 812 px timeline fits at 1600×1000); below that height it scrolls on its
-         own (gap-fill, DECISIONS), and the first show brings the now-line into view. -->
+    <!-- The aside: the schedule's header stays and its grid scrolls inside the timeline (the design's grid fits at
+         1600×1000); the first show brings the now-line into view (ScheduleTimeline / ScheduleScroll). -->
     <Border Name="PART_Aside"
             Grid.Column="1"
             BorderBrush="{DynamicResource Brush.Border.Subtle}"
             BorderThickness="1,0,0,0"
             Padding="{StaticResource Space.Today.Aside}">
-      <ScrollViewer Name="PART_ScheduleScroll" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-        <c:ScheduleTimeline Name="PART_Schedule" Width="{DynamicResource Size.Schedule.Width}" DataContext="{Binding Schedule}" />
-      </ScrollViewer>
+      <c:ScheduleTimeline Name="PART_Schedule" Width="{DynamicResource Size.Schedule.Width}" DataContext="{Binding Schedule}" />
     </Border>
   </Grid>
 </UserControl>

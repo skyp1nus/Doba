@@ -202,6 +202,24 @@
 
 
       <!-- == Lists (Inbox / Today / Settings) == -->
+      <!-- Schedule (Today / Day aside; markup .sb* and the motion spec's "States and numbers"). Accent-derived colours are
+           the runtime Brush.Accent16 / 35 / 45 / 70 (theme-independent part, below). -->
+      <Color x:Key="Color.Schedule.Hover">#0BFFFFFF</Color>        <!-- .sbo block hover layer: rgba(255,255,255,0.045) -->
+      <Color x:Key="Color.Schedule.Focus">#B3EDEDEF</Color>        <!-- .sbm:focus-visible outline: rgba(237,237,239,0.7) -->
+      <Color x:Key="Color.Schedule.List">#18181B</Color>           <!-- "+N" list background -->
+      <SolidColorBrush x:Key="Brush.Schedule.Hover" Color="{StaticResource Color.Schedule.Hover}" />
+      <SolidColorBrush x:Key="Brush.Schedule.Focus" Color="{StaticResource Color.Schedule.Focus}" />
+      <SolidColorBrush x:Key="Brush.Schedule.List" Color="{StaticResource Color.Schedule.List}" />
+      <!-- Dragged copy: accent 16 % over #141416 (this brush is the opaque base under Brush.Accent16). -->
+      <SolidColorBrush x:Key="Brush.Schedule.CopyBase" Color="{StaticResource Color.Bg.Dialog}" />
+      <!-- "+N": 1 px dashed Border.Emphasis (#3A3A40), background #141416, hover #1C1C20, open #1E1E22, text #C9C9CE. -->
+      <SolidColorBrush x:Key="Brush.Schedule.More" Color="{StaticResource Color.Bg.Dialog}" />
+      <SolidColorBrush x:Key="Brush.Schedule.MoreHover" Color="{StaticResource Color.Bg.CardHover}" />
+      <SolidColorBrush x:Key="Brush.Schedule.MoreOpen" Color="{StaticResource Color.Bg.Selected}" />
+      <!-- Shadows: the lifted copy / resized block (0 10 28 rgba(0,0,0,.5), 0 2 6 rgba(0,0,0,.35)) and the "+N" list
+           (0 18 40 rgba(0,0,0,.55) + the 1 px #2A2A2F ring, painted last = on top). -->
+      <BoxShadows x:Key="Shadow.Schedule.Lift">0 10 28 0 #80000000, 0 2 6 0 #59000000</BoxShadows>
+      <BoxShadows x:Key="Shadow.Schedule.List">0 18 40 0 #8C000000, 0 0 0 1 #2A2A2F</BoxShadows>
 
 
       <!-- == Calendar (Week / Year) == -->
@@ -587,11 +605,14 @@
   <x:Double x:Key="Space.AddTask.Gap">10</x:Double>
   <x:Double x:Key="Size.AddTask.Icon">14</x:Double>
   <x:Double x:Key="Size.AddTask.IconStroke">1.8</x:Double>
-  <!-- Schedule (Today / Day aside): header margin 4 0 14, column bottom padding 8; hour rows 16 px centred on their line
-       (the layer overhangs the grid by 8 px top and bottom); hour label column 40, gap 12; the line sits 7 px down the
-       row; now-line: label column 46, 7 px dot 4 px after it. -->
-  <Thickness x:Key="Space.Schedule.Column">0,0,0,8</Thickness>
-  <Thickness x:Key="Space.Schedule.Header">0,4,0,14</Thickness>
+  <!-- Schedule (Today / Day aside): header margin 4 0 6, then the grid's own scroller (padding 8 8 8 0, margin-right −8:
+       its 8 px scrollbar sits in the 8 px beside the 380 px column); hour rows 16 px centred on their line (the layer
+       overhangs the grid by 8 px top and bottom); hour label column 40, gap 12; the line sits 7 px down the row;
+       now-line: label column 46, 7 px dot 4 px after it. Column gap 4 and the 302 px block area are Core geometry
+       (Doba.Core.Projections.ScheduleLayout). -->
+  <Thickness x:Key="Space.Schedule.Header">0,4,0,6</Thickness>
+  <Thickness x:Key="Space.Schedule.Scroll">0,8,8,8</Thickness>
+  <Thickness x:Key="Space.Schedule.ScrollOut">0,0,-8,0</Thickness>
   <Thickness x:Key="Space.Schedule.HourLayer">0,-8,0,-8</Thickness>
   <x:Double x:Key="Size.Schedule.Row">16</x:Double>
   <GridLength x:Key="Size.Schedule.HourLabel">40</GridLength>
@@ -600,6 +621,41 @@
   <GridLength x:Key="Size.Schedule.NowLabel">46</GridLength>
   <x:Double x:Key="Size.Schedule.NowDot">7</x:Double>
   <Thickness x:Key="Space.Schedule.NowDot">4,0,0,0</Thickness>
+  <!-- Blocks: border 1 px (r7 = Radius.Control; the hover layer and the open button inside it r6 = Radius.Item); checkbox
+       12 px (r3, ring 1.5 Text.Muted, check 8 px with stroke 4 of 24), its hit area 24 px at left 3 / chkTop inside the
+       border; grip zone at the bottom (left 0 right 0 bottom −3 inside the border: 1 px in, 2 px past the outer edge) with
+       an 18×3 bar (r2 = Radius.Bar); keyboard focus: outline 1.5 px Brush.Schedule.Focus, offset 2 (offset −3 on the
+       checkbox). -->
+  <x:Double x:Key="Size.Schedule.Check">12</x:Double>
+  <x:Double x:Key="Size.Schedule.CheckStroke">4</x:Double>
+  <x:Double x:Key="Size.Schedule.CheckHit">24</x:Double>
+  <Thickness x:Key="Space.Schedule.Grip">1,0,1,-2</Thickness>
+  <x:Double x:Key="Size.Schedule.GripWidth">18</x:Double>
+  <x:Double x:Key="Size.Schedule.GripHeight">3</x:Double>
+  <x:Double x:Key="Thickness.Schedule.Focus">1.5</x:Double>
+  <x:Double x:Key="Space.Schedule.FocusOffset">2</x:Double>
+  <x:Double x:Key="Space.Schedule.CheckFocusOffset">-3</x:Double>
+  <!-- Time chip (drag / arrow keys): 46 px label (Geist Mono 11/500, accent on Bg.Main, 16 px line) + an 8×1 accent rule
+       to the block's edge. -->
+  <x:Double x:Key="Size.Schedule.ChipLabel">46</x:Double>
+  <x:Double x:Key="Size.Schedule.ChipRule">8</x:Double>
+  <!-- "+N": r7, text at the top 6 px under the 1 px dashed border when the "+N" is at least 44 px tall (else centred). -->
+  <Thickness x:Key="Space.Schedule.MoreTall">0,7,0,0</Thickness>
+  <!-- "+N" list: 232 wide, padding 6, r10 (Radius.Panel); head padding 4 8 6; rows 32 px: a 28 px checkbox button, gap 2,
+       the open button (28 px, padding 0 8, title ↔ time gap 8). -->
+  <x:Double x:Key="Size.Schedule.List">232</x:Double>
+  <Thickness x:Key="Space.Schedule.List">6</Thickness>
+  <Thickness x:Key="Space.Schedule.ListHead">8,4,8,6</Thickness>
+  <x:Double x:Key="Size.Schedule.ListRow">32</x:Double>
+  <x:Double x:Key="Space.Schedule.ListGap">2</x:Double>
+  <Thickness x:Key="Space.Schedule.ListOpen">8,0</Thickness>
+  <x:Double x:Key="Space.Schedule.ListOpenGap">8</x:Double>
+  <!-- Accent alphas of the schedule (runtime brushes: ThemeService.ApplyAccent rewrites them with the live accent):
+       16 % (0x29) copy / resized fill, 35 % (0x59) dashed origin, 45 % (0x73) copy / resized ring, 70 % (0xB3) grip. -->
+  <SolidColorBrush x:Key="Brush.Accent16" Color="#299FB4C7" />
+  <SolidColorBrush x:Key="Brush.Accent35" Color="#599FB4C7" />
+  <SolidColorBrush x:Key="Brush.Accent45" Color="#739FB4C7" />
+  <SolidColorBrush x:Key="Brush.Accent70" Color="#B39FB4C7" />
   <!-- Settings (markup 271–351). Page: scroll padding-right 12, column margin 2 0 32. Row: min height 66, control gap 24,
        description margin-top 4, export / import message margin-top 6. Shortcuts: 52 px lines, padding 0 4, gap 12,
        key caps gap 4. Data footnote margin 18 4 0. -->

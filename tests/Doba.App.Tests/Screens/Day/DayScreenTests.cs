@@ -247,13 +247,17 @@ public class DayScreenTests
         card.TitleButton.Command!.Execute(null);
         Assert.Equal([open.Id], harness.Commands.Edits);
 
-        // A schedule block toggles its task, as in the prototype.
+        // A click on a schedule block opens its task; its checkbox toggles it (the new design: click = open).
         var plan = vm.Schedule.Blocks.Single(b => b.Row.Title.StartsWith("Plan next week", StringComparison.Ordinal));
         var planDone = store.Get(plan.Id)!.Done;
-        view.Schedule.BlockList.GetVisualDescendants().OfType<Button>()
-            .Single(b => ReferenceEquals(b.DataContext, plan)).Command!.Execute(null);
-        Settle(window);
+        var planBlock = view.Schedule.BlockOf(plan)!;
+        Click(window, Part<Button>(planBlock, "PART_Open"));
+        Assert.Equal([open.Id, plan.Id], harness.Commands.Edits);
+        Assert.Equal(planDone, store.Get(plan.Id)!.Done);
+        Click(window, Part<Avalonia.Controls.Primitives.ToggleButton>(planBlock, "PART_Check"));
         Assert.Equal(!planDone, store.Get(plan.Id)!.Done);
+        Assert.Equal([open.Id, plan.Id], harness.Commands.Edits); // the checkbox opened nothing
+        Assert.Same(planBlock, view.Schedule.BlockOf(plan));       // same container, updated in place
         window.Close();
     }
 
@@ -428,12 +432,11 @@ public class DayScreenTests
         hour22.BringIntoView();
         Settle(window);
         Assert.True(InView(scroller, hour22));
-        var plan = view.Schedule.BlockList.GetVisualDescendants().OfType<Button>()
-            .Single(b => b.DataContext is ScheduleBlockViewModel { Range: "22:00 – 22:45" });
+        var plan = view.Schedule.Blocks().Single(b => b.DataContext is ScheduleBlockViewModel { Range: "22:00 – 22:45" });
         plan.BringIntoView();
         Settle(window);
         Assert.True(InView(scroller, plan));
-        Assert.Equal(vm.Schedule.Blocks.Count, view.Schedule.BlockList.GetVisualDescendants().OfType<Button>().Count());
+        Assert.Equal(vm.Schedule.Blocks.Count, view.Schedule.Blocks().Count());
 
         // Another day (the cached view is reused): no now-line, so it opens on that day's earliest block (20:00, below
         // the first screenful).

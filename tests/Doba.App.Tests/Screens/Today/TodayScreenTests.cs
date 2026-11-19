@@ -42,10 +42,12 @@ public class TodayScreenTests
         Assert.DoesNotContain(model.Schedule.Blocks, b => b.IsHidden); // 15 November: at most three at once
         Assert.Equal(model.Schedule.Blocks.Select(b => b.Row.Id), vm.Schedule.Blocks.Select(b => b.Id));
 
-        // The whole list fits: one row control per row, one section per group, one button per block.
+        // The whole list fits: one row control per row, one section per group, one drawn block per block view-model,
+        // each with one open button.
         Assert.Equal(vm.Groups.Sum(g => g.Items.Count), Rows(view).Count);
         Assert.Equal(vm.Groups.Count, view.GetVisualDescendants().OfType<TaskGroupList>().Count());
-        Assert.Equal(vm.Schedule.Blocks.Count, view.Schedule.BlockList.GetVisualDescendants().OfType<Avalonia.Controls.Button>().Count());
+        Assert.Equal(vm.Schedule.Blocks.Count, view.Schedule.Blocks().Count());
+        Assert.Equal(vm.Schedule.Blocks.Count, view.Schedule.BlockList.GetVisualDescendants().OfType<Avalonia.Controls.Button>().Count(b => b.Name == "PART_Open"));
 
         // Geometry at 48 px/hour: 22:00 → top 721; 45 min → 33 px (compact); now 22:26 → 741.
         var plan = vm.Schedule.Blocks.Single(b => b.Range == "22:00 – 22:45");
@@ -257,9 +259,16 @@ public class TodayScreenTests
             Assert.Equal(task.TagLabel != "#work", r.Classes.Contains("dimmed"));
         }
 
-        var blockButtons = view.Schedule.BlockList.GetVisualDescendants().OfType<Avalonia.Controls.Button>().ToList();
-        Assert.Contains(blockButtons, b => b.Classes.Contains("dimmed"));
-        Assert.Contains(blockButtons, b => !b.Classes.Contains("dimmed"));
+        var blocks = view.Schedule.Blocks().ToList();
+        Assert.NotEmpty(blocks);
+        foreach (var b in blocks)
+        {
+            var block = (ScheduleBlockViewModel)b.DataContext!;
+            Assert.Equal(block.Row.TagLabel != "#work", b.Classes.Contains("dimmed"));
+        }
+
+        Assert.Contains(blocks, b => b.Classes.Contains("dimmed"));
+        Assert.Contains(blocks, b => !b.Classes.Contains("dimmed"));
         window.Close();
     }
 
@@ -397,15 +406,20 @@ public class TodayScreenTests
         // Every block can be reached: scroll to the top, then bring the 22:00 block back.
         scroller.Offset = default;
         Settle(window);
-        var plan = view.Schedule.BlockList.GetVisualDescendants().OfType<Avalonia.Controls.Button>()
-            .Single(b => b.DataContext is ScheduleBlockViewModel { Range: "22:00 – 22:45" });
+        var plan = view.Schedule.Blocks().Single(b => b.DataContext is ScheduleBlockViewModel { Range: "22:00 – 22:45" });
+        var planId = ((ScheduleBlockViewModel)plan.DataContext!).Id;
         Assert.False(InView(scroller, plan));
         plan.BringIntoView();
         Settle(window);
         Assert.True(InView(scroller, plan));
-        Click(window, plan);
-        Assert.True(harness.App.Store.Get(((ScheduleBlockViewModel)plan.DataContext!).Id)!.Done);
-        Assert.Equal(vm.Schedule.Blocks.Count, view.Schedule.BlockList.GetVisualDescendants().OfType<Avalonia.Controls.Button>().Count());
+        Click(window, Part<Avalonia.Controls.Button>(plan, "PART_Open")); // a click on a block opens its task
+        Assert.Equal([planId], harness.Commands.Edits);
+        Assert.False(harness.App.Store.Get(planId)!.Done);
+        Assert.Equal(vm.Schedule.Blocks.Count, view.Schedule.Blocks().Count());
+
+        // The header stays put above the scrolled grid.
+        var header = view.Schedule.GetVisualDescendants().OfType<Avalonia.Controls.Grid>().Single(g => g.Name == "PART_Header");
+        Assert.Equal(4, header.TranslatePoint(default, view.Schedule)!.Value.Y);
         window.Close();
 
         static bool InView(Avalonia.Controls.ScrollViewer scroller, Avalonia.Controls.Control element)
