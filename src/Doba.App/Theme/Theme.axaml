@@ -1,0 +1,28 @@
+<!--
+  The app theme: tokens + our own ControlThemes (no Fluent/Simple theme). Included once from App.axaml.
+  See docs/design-system.md for the token table and how to use each control theme.
+-->
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Styles.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <MergeResourceInclude Source="avares://Doba/Theme/Tokens.axaml" />
+        <MergeResourceInclude Source="avares://Doba/Theme/Icons.axaml" />
+        <MergeResourceInclude Source="avares://Doba/Theme/Controls/Base.axaml" />
+        <MergeResourceInclude Source="avares://Doba/Theme/Controls/Buttons.axaml" />
+        <MergeResourceInclude Source="avares://Doba/Theme/Controls/TaskCheckBox.axaml" />
+        <MergeResourceInclude Source="avares://Doba/Theme/Controls/Switches.axaml" />
+        <MergeResourceInclude Source="avares://Doba/Theme/Controls/Inputs.axaml" />
+        <MergeResourceInclude Source="avares://Doba/Theme/Controls/Surfaces.axaml" />
+        <MergeResourceInclude Source="avares://Doba/Theme/Controls/Shell.axaml" />
+        <MergeResourceInclude Source="avares://Doba/Theme/Controls/Sidebar.axaml" />
+        <MergeResourceInclude Source="avares://Doba/Theme/Controls/Dialog.axaml" />
+        <MergeResourceInclude Source="avares://Doba/Theme/Controls/Search.axaml" />
+        <MergeResourceInclude Source="avares://Doba/Theme/Controls/TimeWheel.axaml" />
+        <MergeResourceInclude Source="avares://Doba/Theme/Controls/Menu.axaml" />
+      </ResourceDictionary.MergedDictionaries>
+    </ResourceDictionary>
+  </Styles.Resources>
+  <StyleInclude Source="avares://Doba/Theme/Styles.axaml" />
+</Styles>

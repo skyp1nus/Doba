@@ -1,0 +1,79 @@
+<!--
+  Week task card (.card): checkbox · title (2-line clamp, 13/500, line height 18) · meta (priority button, tag, time).
+  DataContext: TaskRowViewModel. See TaskCard.axaml.cs. The state styles (done title, tag-filter dim, next-week
+  preview fade) live once per row in Screens/Week/WeekRowView.axaml instead of once per card.
+-->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:Doba.App.Controls"
+             xmlns:vm="using:Doba.App.ViewModels"
+             xmlns:m="using:Doba.App.Motion"
+             xmlns:w="using:Doba.App.Screens.Week"
+             x:Class="Doba.App.Controls.TaskCard"
+             x:DataType="vm:TaskRowViewModel">
+  <c:Card Name="PART_Card"
+          MinHeight="{DynamicResource Density.CardMinHeight}"
+          Classes.dimmed="{Binding Dimmed}">
+    <c:Card.Transitions>
+      <Transitions>
+        <DoubleTransition Property="Opacity" Duration="{x:Static m:MotionTimes.Dim}" Easing="{x:Static m:Motion.EaseStd}" />
+      </Transitions>
+    </c:Card.Transitions>
+    <Grid Name="PART_Row" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{DynamicResource Density.CardGap}">
+      <c:TaskCheckBox VerticalAlignment="Top"
+                      Margin="0,1,0,0"
+                      IsChecked="{Binding Done, Mode=OneWay}"
+                      Command="{Binding ToggleCommand}"
+                      AutomationProperties.Name="{Binding ToggleLabel}" />
+      <Button Grid.Column="1"
+              Name="PART_TitleButton"
+              Classes="title"
+              Classes.done="{Binding Done}"
+              Theme="{StaticResource Button.Title}"
+              HorizontalAlignment="Stretch"
+              VerticalAlignment="Top"
+              FontSize="{DynamicResource FontSize.13}"
+              FontWeight="Medium"
+              Command="{Binding OpenCommand}"
+              ToolTip.Tip="{Binding Title}">
+        <!-- WrapWithOverflow: break between words only (CSS overflow-wrap: normal), so a narrow column trims a long
+             word with an ellipsis instead of splitting it ("Denti" / "s…"). -->
+        <c:StrikeText Name="PART_Title"
+                      Margin="{DynamicResource Space.Week.CardTitle}"
+                      Text="{Binding Title}"
+                      Struck="{Binding Done}"
+                      StrikeColor="{DynamicResource Color.Text.Muted}"
+                      TextWrapping="WrapWithOverflow"
+                      MaxLines="2"
+                      TextTrimming="CharacterEllipsis"
+                      LineHeight="{DynamicResource LineHeight.Card}" />
+      </Button>
+      <StackPanel Grid.Column="2"
+                  Name="PART_Meta"
+                  Orientation="Horizontal"
+                  Spacing="{x:Static w:WeekLayout.MetaGap}"
+                  Height="{DynamicResource LineHeight.Card}"
+                  VerticalAlignment="Top">
+        <Button Width="{x:Static w:WeekLayout.PriorityButton}"
+                Height="{x:Static w:WeekLayout.PriorityButton}"
+                CornerRadius="{DynamicResource Radius.Check}"
+                IsVisible="{Binding HasPriority}"
+                Command="{Binding CyclePriorityCommand}"
+                ToolTip.Tip="{Binding PriorityTitle}"
+                AutomationProperties.Name="{Binding PriorityLabel}">
+          <c:PriorityIcon Priority="{Binding Priority}" />
+        </Button>
+        <!-- Dropped (TaskCard.ShowTag) when the title would otherwise get less than WeekLayout.MinTitleWidth. -->
+        <TextBlock Name="PART_Tag" Classes="meta-sm" Text="{Binding TagLabel}" VerticalAlignment="Center">
+          <TextBlock.IsVisible>
+            <MultiBinding Converter="{x:Static BoolConverters.And}">
+              <Binding Path="HasTag" />
+              <Binding Path="ShowTag" RelativeSource="{RelativeSource AncestorType=c:TaskCard}" />
+            </MultiBinding>
+          </TextBlock.IsVisible>
+        </TextBlock>
+        <TextBlock Classes="meta-sm secondary" Text="{Binding Time}" IsVisible="{Binding HasTime}" VerticalAlignment="Center" />
+      </StackPanel>
+    </Grid>
+  </c:Card>
+</UserControl>

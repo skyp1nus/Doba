@@ -1,0 +1,704 @@
+<!--
+  Design tokens. The single source of every colour, radius, font, font size, letter spacing, size and density value.
+  Values are taken from docs/design/design-reference.dc.html (markup lines 1-822 + the script's computed styles).
+  Naming: Color.<Group>.<Role> (Avalonia Color) and Brush.<Group>.<Role> (SolidColorBrush) share the same suffix;
+  numeric tokens are <Kind>.<Role> (Radius.Card, Size.Control) or <Kind>.<px> when the design only names a value
+  (FontSize.13.5). The full table with "where used" is docs/design-system.md.
+
+  Palette colours live in ThemeDictionaries (Dark only today; add a "Light" dictionary with the same keys later) and must
+  be consumed with DynamicResource. Accent and chrome brushes are runtime-mutable (ThemeService) and theme-independent.
+-->
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <ResourceDictionary.ThemeDictionaries>
+    <ResourceDictionary x:Key="Dark">
+      <!-- Backgrounds -->
+      <Color x:Key="Color.Bg.Window">#0B0B0C</Color>
+      <Color x:Key="Color.Bg.Main">#0F0F10</Color>
+      <Color x:Key="Color.Bg.Card">#17171A</Color>
+      <Color x:Key="Color.Bg.CardHover">#1C1C20</Color>
+      <Color x:Key="Color.Bg.SpanDone">#161618</Color>
+      <Color x:Key="Color.Bg.BlockDone">#19191C</Color>
+      <Color x:Key="Color.Bg.Dialog">#141416</Color>
+      <Color x:Key="Color.Bg.DialogFooter">#111113</Color>
+      <Color x:Key="Color.Bg.Popover">#1A1A1D</Color>
+      <Color x:Key="Color.Bg.Selected">#1E1E22</Color>
+      <Color x:Key="Color.Bg.Control">#2A2A2F</Color>
+      <Color x:Key="Color.Bg.Track">#232326</Color>
+      <Color x:Key="Color.Bg.Primary">#E4E4E7</Color>
+      <Color x:Key="Color.Bg.Logo">#EDEDEF</Color>
+      <Color x:Key="Color.Bg.Shade">#99050506</Color>
+      <Color x:Key="Color.Glow.A">#3A3A3E</Color>
+      <Color x:Key="Color.Glow.B">#2A2A2E</Color>
+      <Color x:Key="Color.Glow.C">#303034</Color>
+
+      <!-- White overlays (rgba(255,255,255,a)) -->
+      <Color x:Key="Color.Overlay.Faint">#04FFFFFF</Color>      <!-- 0.015 month cell outside the month -->
+      <Color x:Key="Color.Overlay.Stripe">#06FFFFFF</Color>     <!-- 0.022 next-week preview hatch -->
+      <Color x:Key="Color.Overlay.Cell">#06FFFFFF</Color>       <!-- 0.025 month cell hover -->
+      <Color x:Key="Color.Overlay.Field">#09FFFFFF</Color>      <!-- 0.035 search box, set pill -->
+      <Color x:Key="Color.Overlay.Hover">#0AFFFFFF</Color>      <!-- 0.04 .ob hover, segmented group -->
+      <Color x:Key="Color.Overlay.Selected">#0DFFFFFF</Color>   <!-- 0.05 popover item selected, new-tag input -->
+      <Color x:Key="Color.Overlay.Press">#0FFFFFFF</Color>      <!-- 0.06 caption/menu item hover -->
+      <Color x:Key="Color.Overlay.Edge">#12FFFFFF</Color>       <!-- 0.07 main panel edge, wheel band -->
+      <Color x:Key="Color.Overlay.Active">#14FFFFFF</Color>     <!-- 0.08 nav selection, search border -->
+      <Color x:Key="Color.Overlay.KbdBorder">#1FFFFFFF</Color>  <!-- 0.12 search Ctrl K border -->
+      <Color x:Key="Color.Overlay.OnPrimary">#1F000000</Color>  <!-- rgba(0,0,0,0.12) kbd inside primary button -->
+
+      <!-- Text -->
+      <Color x:Key="Color.Text.Strong">#F4F4F5</Color>
+      <Color x:Key="Color.Text.Primary">#EDEDEF</Color>
+      <Color x:Key="Color.Text.Bright">#D9D9DE</Color>
+      <Color x:Key="Color.Text.Secondary">#C9C9CE</Color>
+      <Color x:Key="Color.Text.Nav">#B4B4BB</Color>
+      <Color x:Key="Color.Text.Tertiary">#A1A1A6</Color>
+      <Color x:Key="Color.Text.Muted">#8C8C92</Color>
+      <Color x:Key="Color.Text.Dim">#77777E</Color>
+      <Color x:Key="Color.Text.Faded">#6E6E75</Color>
+      <Color x:Key="Color.Text.Faint">#55555B</Color>
+      <Color x:Key="Color.Text.OnPrimary">#0E0E0F</Color>
+      <Color x:Key="Color.Text.White">#FFFFFF</Color>
+
+      <!-- Borders -->
+      <Color x:Key="Color.Border.Subtle">#1D1D20</Color>
+      <Color x:Key="Color.Border.Default">#26262A</Color>
+      <Color x:Key="Color.Border.Popover">#2A2A2F</Color>
+      <Color x:Key="Color.Border.Strong">#2E2E33</Color>
+      <Color x:Key="Color.Border.Emphasis">#3A3A40</Color>
+      <Color x:Key="Color.Border.Focus">#4A4A52</Color>
+      <Color x:Key="Color.Border.Danger">#3A2A28</Color>
+      <Color x:Key="Color.Border.Check">#66666E</Color>
+
+      <!-- Status and fixed-meaning colours -->
+      <Color x:Key="Color.Warning">#D9A066</Color>
+      <Color x:Key="Color.Danger">#E8907F</Color>
+      <Color x:Key="Color.CloseHover">#C42B1C</Color>
+      <Color x:Key="Color.Priority.On">#D9D9DE</Color>
+      <Color x:Key="Color.Priority.Off">#3A3A40</Color>
+      <Color x:Key="Color.Knob.Off">#BDBDC3</Color>
+      <Color x:Key="Color.Knob.On">#0E0E0F</Color>
+      <Color x:Key="Color.Slider.Border">#858585</Color>
+      <Color x:Key="Color.Slider.Rail">#3B3B3B</Color>
+
+      <SolidColorBrush x:Key="Brush.Bg.Window" Color="{StaticResource Color.Bg.Window}" />
+      <SolidColorBrush x:Key="Brush.Bg.Main" Color="{StaticResource Color.Bg.Main}" />
+      <SolidColorBrush x:Key="Brush.Bg.Card" Color="{StaticResource Color.Bg.Card}" />
+      <SolidColorBrush x:Key="Brush.Bg.CardHover" Color="{StaticResource Color.Bg.CardHover}" />
+      <SolidColorBrush x:Key="Brush.Bg.SpanDone" Color="{StaticResource Color.Bg.SpanDone}" />
+      <SolidColorBrush x:Key="Brush.Bg.BlockDone" Color="{StaticResource Color.Bg.BlockDone}" />
+      <SolidColorBrush x:Key="Brush.Bg.Dialog" Color="{StaticResource Color.Bg.Dialog}" />
+      <SolidColorBrush x:Key="Brush.Bg.DialogFooter" Color="{StaticResource Color.Bg.DialogFooter}" />
+      <SolidColorBrush x:Key="Brush.Bg.Popover" Color="{StaticResource Color.Bg.Popover}" />
+      <SolidColorBrush x:Key="Brush.Bg.Selected" Color="{StaticResource Color.Bg.Selected}" />
+      <SolidColorBrush x:Key="Brush.Bg.Control" Color="{StaticResource Color.Bg.Control}" />
+      <SolidColorBrush x:Key="Brush.Bg.Track" Color="{StaticResource Color.Bg.Track}" />
+      <SolidColorBrush x:Key="Brush.Bg.Primary" Color="{StaticResource Color.Bg.Primary}" />
+      <SolidColorBrush x:Key="Brush.Bg.Logo" Color="{StaticResource Color.Bg.Logo}" />
+      <SolidColorBrush x:Key="Brush.Bg.Shade" Color="{StaticResource Color.Bg.Shade}" />
+      <SolidColorBrush x:Key="Brush.Glow.A" Color="{StaticResource Color.Glow.A}" />
+      <SolidColorBrush x:Key="Brush.Glow.B" Color="{StaticResource Color.Glow.B}" />
+      <SolidColorBrush x:Key="Brush.Glow.C" Color="{StaticResource Color.Glow.C}" />
+
+      <SolidColorBrush x:Key="Brush.Overlay.Faint" Color="{StaticResource Color.Overlay.Faint}" />
+      <SolidColorBrush x:Key="Brush.Overlay.Stripe" Color="{StaticResource Color.Overlay.Stripe}" />
+      <SolidColorBrush x:Key="Brush.Overlay.Cell" Color="{StaticResource Color.Overlay.Cell}" />
+      <SolidColorBrush x:Key="Brush.Overlay.Field" Color="{StaticResource Color.Overlay.Field}" />
+      <SolidColorBrush x:Key="Brush.Overlay.Hover" Color="{StaticResource Color.Overlay.Hover}" />
+      <SolidColorBrush x:Key="Brush.Overlay.Selected" Color="{StaticResource Color.Overlay.Selected}" />
+      <SolidColorBrush x:Key="Brush.Overlay.Press" Color="{StaticResource Color.Overlay.Press}" />
+      <SolidColorBrush x:Key="Brush.Overlay.Edge" Color="{StaticResource Color.Overlay.Edge}" />
+      <SolidColorBrush x:Key="Brush.Overlay.Active" Color="{StaticResource Color.Overlay.Active}" />
+      <SolidColorBrush x:Key="Brush.Overlay.KbdBorder" Color="{StaticResource Color.Overlay.KbdBorder}" />
+      <SolidColorBrush x:Key="Brush.Overlay.OnPrimary" Color="{StaticResource Color.Overlay.OnPrimary}" />
+
+      <SolidColorBrush x:Key="Brush.Text.Strong" Color="{StaticResource Color.Text.Strong}" />
+      <SolidColorBrush x:Key="Brush.Text.Primary" Color="{StaticResource Color.Text.Primary}" />
+      <SolidColorBrush x:Key="Brush.Text.Bright" Color="{StaticResource Color.Text.Bright}" />
+      <SolidColorBrush x:Key="Brush.Text.Secondary" Color="{StaticResource Color.Text.Secondary}" />
+      <SolidColorBrush x:Key="Brush.Text.Nav" Color="{StaticResource Color.Text.Nav}" />
+      <SolidColorBrush x:Key="Brush.Text.Tertiary" Color="{StaticResource Color.Text.Tertiary}" />
+      <SolidColorBrush x:Key="Brush.Text.Muted" Color="{StaticResource Color.Text.Muted}" />
+      <SolidColorBrush x:Key="Brush.Text.Dim" Color="{StaticResource Color.Text.Dim}" />
+      <SolidColorBrush x:Key="Brush.Text.Faded" Color="{StaticResource Color.Text.Faded}" />
+      <SolidColorBrush x:Key="Brush.Text.Faint" Color="{StaticResource Color.Text.Faint}" />
+      <SolidColorBrush x:Key="Brush.Text.OnPrimary" Color="{StaticResource Color.Text.OnPrimary}" />
+      <SolidColorBrush x:Key="Brush.Text.White" Color="{StaticResource Color.Text.White}" />
+
+      <SolidColorBrush x:Key="Brush.Border.Subtle" Color="{StaticResource Color.Border.Subtle}" />
+      <SolidColorBrush x:Key="Brush.Border.Default" Color="{StaticResource Color.Border.Default}" />
+      <SolidColorBrush x:Key="Brush.Border.Popover" Color="{StaticResource Color.Border.Popover}" />
+      <SolidColorBrush x:Key="Brush.Border.Strong" Color="{StaticResource Color.Border.Strong}" />
+      <SolidColorBrush x:Key="Brush.Border.Emphasis" Color="{StaticResource Color.Border.Emphasis}" />
+      <SolidColorBrush x:Key="Brush.Border.Focus" Color="{StaticResource Color.Border.Focus}" />
+      <SolidColorBrush x:Key="Brush.Border.Danger" Color="{StaticResource Color.Border.Danger}" />
+      <SolidColorBrush x:Key="Brush.Border.Check" Color="{StaticResource Color.Border.Check}" />
+
+      <SolidColorBrush x:Key="Brush.Warning" Color="{StaticResource Color.Warning}" />
+      <SolidColorBrush x:Key="Brush.Danger" Color="{StaticResource Color.Danger}" />
+      <SolidColorBrush x:Key="Brush.CloseHover" Color="{StaticResource Color.CloseHover}" />
+      <SolidColorBrush x:Key="Brush.Priority.On" Color="{StaticResource Color.Priority.On}" />
+      <SolidColorBrush x:Key="Brush.Priority.Off" Color="{StaticResource Color.Priority.Off}" />
+      <SolidColorBrush x:Key="Brush.Knob.Off" Color="{StaticResource Color.Knob.Off}" />
+      <SolidColorBrush x:Key="Brush.Knob.On" Color="{StaticResource Color.Knob.On}" />
+      <SolidColorBrush x:Key="Brush.Slider.Border" Color="{StaticResource Color.Slider.Border}" />
+      <SolidColorBrush x:Key="Brush.Slider.Rail" Color="{StaticResource Color.Slider.Rail}" />
+
+      <!-- Chrome tint base: rgba(22,22,24, transparency/100) over the backdrop (ThemeService.ApplyChromeOpacity reads it,
+           again when the theme variant changes). -->
+      <Color x:Key="Color.Chrome.Base">#161618</Color>
+      <!-- Shadows (box-shadow lists; Avalonia paints the last on top, so the 1 px ring comes last, DECISIONS). The ring
+           colours are this palette's Color.Border.Popover / Color.Border.Default / Color.Border.Emphasis. -->
+      <BoxShadows x:Key="Shadow.Popover">0 18 44 0 #8C000000, 0 0 0 1 #2A2A2F</BoxShadows>    <!-- Date / Time popover: 0 18 44 rgba(0,0,0,.55) -->
+      <BoxShadows x:Key="Shadow.PopoverSmall">0 16 40 0 #80000000, 0 0 0 1 #2A2A2F</BoxShadows> <!-- Priority / Tag popover: 0 16 40 rgba(0,0,0,.5) -->
+      <BoxShadows x:Key="Shadow.Dialog">0 30 80 0 #99000000, 0 0 0 1 #26262A</BoxShadows>     <!-- task dialog: 0 30 80 rgba(0,0,0,.6) -->
+      <BoxShadows x:Key="Shadow.Ring.Emphasis">inset 0 0 0 1 #3A3A40</BoxShadows>             <!-- 1 px inset ring (gallery sample) -->
+
+      <!-- Package regions for palette colours and brushes (Dark). A work package adds tokens only inside its own
+           region below; the shared tokens above are never moved or renamed. -->
+      <!-- == Shell == -->
+      <!-- Backdrop glows (CSS blur(110-120px) on a solid disc): Glow.A / B / C as a radial gradient whose alpha follows
+           the blur's falloff, so drawing them needs no offscreen layer (an OpacityMask would). The RGB of every stop is
+           the glow colour (keep in step with Color.Glow.*); the alpha profile was calibrated against the sidebar and
+           title-bar pixels of docs/design/screens/*.png, with the design's 0.7-0.8 element opacity folded in. -->
+      <RadialGradientBrush x:Key="Brush.Shell.GlowA">
+        <GradientStop Offset="0" Color="#E63A3A3E" />
+        <GradientStop Offset="0.2" Color="#BF3A3A3E" />
+        <GradientStop Offset="0.4" Color="#8C3A3A3E" />
+        <GradientStop Offset="0.55" Color="#4D3A3A3E" />
+        <GradientStop Offset="0.7" Color="#243A3A3E" />
+        <GradientStop Offset="0.85" Color="#0D3A3A3E" />
+        <GradientStop Offset="1" Color="#003A3A3E" />
+      </RadialGradientBrush>
+      <RadialGradientBrush x:Key="Brush.Shell.GlowB">
+        <GradientStop Offset="0" Color="#E62A2A2E" />
+        <GradientStop Offset="0.2" Color="#BF2A2A2E" />
+        <GradientStop Offset="0.4" Color="#8C2A2A2E" />
+        <GradientStop Offset="0.55" Color="#4D2A2A2E" />
+        <GradientStop Offset="0.7" Color="#242A2A2E" />
+        <GradientStop Offset="0.85" Color="#0D2A2A2E" />
+        <GradientStop Offset="1" Color="#002A2A2E" />
+      </RadialGradientBrush>
+      <RadialGradientBrush x:Key="Brush.Shell.GlowC">
+        <GradientStop Offset="0" Color="#E6303034" />
+        <GradientStop Offset="0.2" Color="#BF303034" />
+        <GradientStop Offset="0.4" Color="#8C303034" />
+        <GradientStop Offset="0.55" Color="#4D303034" />
+        <GradientStop Offset="0.7" Color="#24303034" />
+        <GradientStop Offset="0.85" Color="#0D303034" />
+        <GradientStop Offset="1" Color="#00303034" />
+      </RadialGradientBrush>
+
+      <!-- == Sidebar == -->
+
+      <!-- == Month == -->
+
+      <!-- == Day == -->
+
+      <!-- == Dialog == -->
+
+      <!-- == TimeWheel == -->
+
+      <!-- == Search == -->
+
+
+      <!-- == Lists (Inbox / Today / Settings) == -->
+
+
+      <!-- == Calendar (Week / Year) == -->
+    </ResourceDictionary>
+  </ResourceDictionary.ThemeDictionaries>
+
+  <!-- Accent swatches (Settings > Appearance) and the runtime accent (ThemeService.ApplyAccent mutates these brushes). -->
+  <Color x:Key="Color.Accent.Mist">#9FB4C7</Color>
+  <Color x:Key="Color.Accent.Sage">#A3B8A0</Color>
+  <Color x:Key="Color.Accent.Sand">#C8B596</Color>
+  <Color x:Key="Color.Accent.Gray">#C4C4CA</Color>
+  <Color x:Key="Color.Accent">#9FB4C7</Color>
+  <SolidColorBrush x:Key="Brush.Accent" Color="#9FB4C7" />
+  <SolidColorBrush x:Key="Brush.Accent10" Color="#1A9FB4C7" />
+  <SolidColorBrush x:Key="Brush.Accent15" Color="#269FB4C7" />
+  <SolidColorBrush x:Key="Brush.Accent25" Color="#409FB4C7" />
+  <!-- Chrome tint over the backdrop: the palette's Color.Chrome.Base at transparency/100; default 72 %. A runtime brush
+       (ThemeService.ApplyChromeOpacity sets its colour at startup and when the theme variant changes). -->
+  <SolidColorBrush x:Key="Brush.Chrome" Color="#B8161618" />
+
+  <!-- Fonts. Geist / Geist Mono are embedded; fallbacks match the prototype's font stacks. -->
+  <FontFamily x:Key="Font.Sans">avares://Doba/Assets/Fonts#Geist, Segoe UI Variable Text, Segoe UI</FontFamily>
+  <FontFamily x:Key="Font.Mono">avares://Doba/Assets/Fonts#Geist Mono, Cascadia Mono, Consolas</FontFamily>
+  <!-- font-variant-numeric: tabular-nums, applied app-wide by the Window theme. -->
+  <FontFeatureCollection x:Key="Font.Features">tnum</FontFeatureCollection>
+
+  <x:Double x:Key="FontSize.10">10</x:Double>
+  <x:Double x:Key="FontSize.10.5">10.5</x:Double>
+  <x:Double x:Key="FontSize.11">11</x:Double>
+  <x:Double x:Key="FontSize.11.5">11.5</x:Double>
+  <x:Double x:Key="FontSize.12">12</x:Double>
+  <x:Double x:Key="FontSize.12.5">12.5</x:Double>
+  <x:Double x:Key="FontSize.13">13</x:Double>
+  <x:Double x:Key="FontSize.13.5">13.5</x:Double>
+  <x:Double x:Key="FontSize.14">14</x:Double>
+  <x:Double x:Key="FontSize.15">15</x:Double>
+  <x:Double x:Key="FontSize.18">18</x:Double>
+  <x:Double x:Key="FontSize.19">19</x:Double>
+  <x:Double x:Key="FontSize.20">20</x:Double>
+  <x:Double x:Key="FontSize.24">24</x:Double>
+  <x:Double x:Key="FontSize.40">40</x:Double>
+
+  <!-- Letter spacing in px (CSS em × font size). -->
+  <x:Double x:Key="LetterSpacing.Label">0.88</x:Double>        <!-- 0.08em @ 11px: mono uppercase labels, crumbs -->
+  <x:Double x:Key="LetterSpacing.LabelSmall">0.84</x:Double>   <!-- 0.08em @ 10.5px: sidebar TAGS / SETTINGS -->
+  <x:Double x:Key="LetterSpacing.Stat">0.66</x:Double>         <!-- 0.06em @ 11px: year month stats -->
+  <x:Double x:Key="LetterSpacing.Title">-0.48</x:Double>       <!-- -0.02em @ 24px: page title -->
+  <x:Double x:Key="LetterSpacing.MonthName">-0.72</x:Double>   <!-- -0.03em @ 24px: year view month names -->
+  <x:Double x:Key="LetterSpacing.DayNumber">-1.6</x:Double>    <!-- -0.04em @ 40px: week day numbers -->
+  <x:Double x:Key="LetterSpacing.DialogTitle">-0.2</x:Double>  <!-- -0.01em @ 20px: task name input -->
+  <x:Double x:Key="LetterSpacing.PopoverTitle">-0.14</x:Double><!-- -0.01em @ 14px: mini calendar month -->
+
+  <!-- Line heights in px (CSS factor × font size). -->
+  <x:Double x:Key="LineHeight.Body">18.2</x:Double>       <!-- 13px × 1.4, the root line height -->
+  <x:Double x:Key="LineHeight.Card">18</x:Double>         <!-- week card title (2-line clamp) -->
+  <x:Double x:Key="LineHeight.DayTitle">18.225</x:Double> <!-- 13.5px × 1.35 day card title -->
+  <x:Double x:Key="LineHeight.Notes">20.925</x:Double>    <!-- 13.5px × 1.55 dialog notes -->
+  <x:Double x:Key="LineHeight.Desc">18.125</x:Double>     <!-- 12.5px × 1.45 settings row description -->
+  <x:Double x:Key="LineHeight.Para">19.375</x:Double>     <!-- 12.5px × 1.55 settings data paragraph -->
+  <x:Double x:Key="LineHeight.Title">27.6</x:Double>      <!-- 24px × 1.15 page title -->
+
+  <!-- Corner radii -->
+  <CornerRadius x:Key="Radius.Bar">2</CornerRadius>
+  <CornerRadius x:Key="Radius.Badge">3</CornerRadius>
+  <CornerRadius x:Key="Radius.Check">4</CornerRadius>
+  <CornerRadius x:Key="Radius.KeyCap">5</CornerRadius>
+  <CornerRadius x:Key="Radius.Item">6</CornerRadius>
+  <CornerRadius x:Key="Radius.Control">7</CornerRadius>
+  <CornerRadius x:Key="Radius.Card">8</CornerRadius>
+  <CornerRadius x:Key="Radius.Panel">10</CornerRadius>
+  <CornerRadius x:Key="Radius.Dialog">12</CornerRadius>
+  <CornerRadius x:Key="Radius.MainPanel">10,0,0,0</CornerRadius>
+
+  <!-- Opacity -->
+  <x:Double x:Key="Opacity.Disabled">0.45</x:Double>   <!-- Create task without a title -->
+  <x:Double x:Key="Opacity.Dimmed">0.3</x:Double>      <!-- tasks of other tags while a tag filter is on -->
+  <x:Double x:Key="Opacity.HeaderHover">0.75</x:Double><!-- .hd:hover day / month headers -->
+
+  <!-- Sizes (px) -->
+  <x:Double x:Key="Size.TitleBar">40</x:Double>
+  <x:Double x:Key="Size.Sidebar">232</x:Double>
+  <x:Double x:Key="Size.Rail">56</x:Double>
+  <x:Double x:Key="Size.Control">30</x:Double>          <!-- header buttons, pills, outline buttons -->
+  <x:Double x:Key="Size.ControlSmall">28</x:Double>     <!-- dialog close, popover buttons, search box -->
+  <x:Double x:Key="Size.Caption.Width">46</x:Double>
+  <x:Double x:Key="Size.NavItem">32</x:Double>
+  <x:Double x:Key="Size.TagItem">30</x:Double>
+  <x:Double x:Key="Size.Segment.Width">62</x:Double>
+  <x:Double x:Key="Size.AddTask">38</x:Double>
+  <x:Double x:Key="Size.Icon">16</x:Double>
+  <x:Double x:Key="Size.Check">16</x:Double>
+  <x:Double x:Key="Size.Dialog.Width">640</x:Double>
+  <x:Double x:Key="Size.Dialog.Top">150</x:Double>
+  <x:Double x:Key="Size.Popover.Date">316</x:Double>
+  <x:Double x:Key="Size.Popover.Time">248</x:Double>
+  <x:Double x:Key="Size.Popover.List">200</x:Double>
+  <x:Double x:Key="Size.Schedule.Width">380</x:Double>
+  <x:Double x:Key="Size.Settings.MaxWidth">780</x:Double>
+  <x:Double x:Key="Size.Today.MaxWidth">760</x:Double>
+  <x:Double x:Key="Size.Day.MaxWidth">680</x:Double>
+  <x:Double x:Key="Size.Scrollbar">8</x:Double>
+
+  <!-- Spacing (Thickness = left,top,right,bottom or horizontal,vertical) -->
+  <Thickness x:Key="Space.PageHeader">28,20,24,18</Thickness>
+  <Thickness x:Key="Space.PageBody">28,16,24,20</Thickness>
+  <Thickness x:Key="Space.Sidebar">10,4,10,10</Thickness>
+  <Thickness x:Key="Space.NavItem">10,0</Thickness>
+  <Thickness x:Key="Space.Button">12,0</Thickness>
+  <Thickness x:Key="Space.ButtonWithKbd">12,0,6,0</Thickness>
+  <Thickness x:Key="Space.Pill">11,0</Thickness>
+  <Thickness x:Key="Space.AddTask">13,0,9,0</Thickness>      <!-- padding 0 8 0 12 + the 1 px dashed border (an overlay in Button.Dashed) -->
+  <Thickness x:Key="Space.SettingsRow">4,14</Thickness>
+  <Thickness x:Key="Space.Dialog.Header">20,0,10,0</Thickness>
+  <Thickness x:Key="Space.Dialog.Body">20,0,20,4</Thickness>
+  <Thickness x:Key="Space.Dialog.Pills">20,10,20,18</Thickness>
+  <Thickness x:Key="Space.Dialog.Footer">20,12,14,12</Thickness>
+
+  <!-- Density (Comfortable defaults; ThemeService.ApplyDensity writes the active set into Application.Resources).
+       Consume with DynamicResource. Compact values: see ThemeService.Compact / docs/design-system.md. -->
+  <Thickness x:Key="Density.RowPadding">4,11</Thickness>      <!-- list rows (Inbox, Today): padding 11px 4px -->
+  <x:Double x:Key="Density.TitleSize">13.5</x:Double>          <!-- .tt list-row / day-card title -->
+  <Thickness x:Key="Density.CardPadding">11,9</Thickness>     <!-- week cards: padding 9px 11px -->
+  <x:Double x:Key="Density.CardMinHeight">36</x:Double>        <!-- week cards -->
+  <x:Double x:Key="Density.CardGap">9</x:Double>               <!-- week card: checkbox ↔ title -->
+  <Thickness x:Key="Density.DayCardPadding">12,11</Thickness> <!-- day cards: padding 11px 12px -->
+  <x:Double x:Key="Density.DayCardGap">6</x:Double>            <!-- day card: title row ↔ meta row -->
+
+  <!-- Package regions for theme-independent tokens (sizes, spacing, radii, font sizes). A work package adds tokens
+       only inside its own region below; the shared tokens above are never moved or renamed. -->
+  <!-- == Shell == -->
+  <!-- Tray context menu (Theme/Controls/Menu.axaml): the Priority / Tag popover's geometry. -->
+  <Thickness x:Key="Space.Menu.Padding">5</Thickness>          <!-- popover padding 6 minus the 1 px ring -->
+  <Thickness x:Key="Space.Menu.Item">8,0</Thickness>           <!-- item padding 0 8px -->
+  <Thickness x:Key="Space.Menu.Separator">-5,4</Thickness>     <!-- full-width 1 px rule with 4 px above and below -->
+  <x:Double x:Key="Size.Menu.MinWidth">180</x:Double>
+  <x:Double x:Key="Size.Overlay.BackdropBlur">3</x:Double> <!-- modal shade: backdrop-filter blur(3px) of what is behind an overlay -->
+  <x:Double x:Key="Size.Shell.Search">380</x:Double>      <!-- title-bar search: flex 0 1 380px -->
+  <x:Double x:Key="Size.Shell.SearchMin">160</x:Double>   <!-- … min-width 160px -->
+  <x:Double x:Key="Size.Shell.Logo">18</x:Double>         <!-- title-bar app mark tile -->
+  <x:Double x:Key="Size.Shell.LogoGlyph">11</x:Double>    <!-- its check glyph -->
+  <Thickness x:Key="Space.Shell.TitleBar">8,0,0,0</Thickness>          <!-- header padding-left 8px -->
+  <Thickness x:Key="Space.Shell.SidebarToggle">-6,0,12,0</Thickness>   <!-- margin-left -6px + the header's 12px gap -->
+  <!-- h1 margin-top 4px. Avalonia puts a LineHeight's extra leading above the glyphs (CSS splits it), which drew the
+       title 2 px low: 2 px move from the top margin to the bottom (same block height, glyphs where the design has them). -->
+  <Thickness x:Key="Space.Shell.Title">0,2,0,2</Thickness>
+  <Thickness x:Key="Space.Shell.Subtitle">-1,0,0,-1</Thickness>  <!-- subtitle on the title's baseline (measured against week.png) -->
+  <x:Double x:Key="Size.Shell.SearchIcon">14</x:Double>   <!-- search magnifier 14×14 -->
+  <x:Double x:Key="Size.Shell.CaptionGlyph">10</x:Double> <!-- minimise / maximise / close glyphs 10×10 -->
+  <x:Double x:Key="Space.Shell.TitleBarGap">12</x:Double> <!-- header gap 12px between brand, search, captions -->
+  <x:Double x:Key="Space.Shell.BrandGap">8</x:Double>     <!-- app mark ↔ "Doba" gap 8px -->
+  <x:Double x:Key="Space.Shell.SearchGap">8</x:Double>    <!-- search icon ↔ label ↔ Ctrl K gap 8px -->
+  <!-- Window: the reference frame is 1600×1000; below 1100×700 the calendar screens stop fitting. -->
+  <x:Double x:Key="Size.Shell.WindowWidth">1600</x:Double>
+  <x:Double x:Key="Size.Shell.WindowHeight">1000</x:Double>
+  <x:Double x:Key="Size.Shell.WindowMinWidth">1100</x:Double>
+  <x:Double x:Key="Size.Shell.WindowMinHeight">700</x:Double>
+  <Thickness x:Key="Thickness.Shell.MainEdge">1,1,0,0</Thickness>  <!-- main panel border-top / border-left 1px -->
+  <!-- Page header (markup 148-195). -->
+  <Thickness x:Key="Thickness.Shell.HeaderRule">0,0,0,1</Thickness> <!-- border-bottom 1px solid #1D1D20 -->
+  <x:Double x:Key="Size.Shell.Crumbs">16</x:Double>         <!-- breadcrumb nav height 16px -->
+  <x:Double x:Key="Space.Shell.CrumbGap">4</x:Double>       <!-- breadcrumb gap 4px -->
+  <Thickness x:Key="Space.Shell.Crumb">2,0</Thickness>      <!-- plain crumb padding 0 2px -->
+  <x:Double x:Key="Space.Shell.ActionGap">6</x:Double>      <!-- right-hand group and calendar group gap 6px -->
+  <Thickness x:Key="Space.Shell.Actions">12,0,0,0</Thickness> <!-- the header's 12px gap before the right-hand group -->
+  <x:Double x:Key="Size.Shell.ChevronIcon">15</x:Double>    <!-- ‹ › icons 15×15 -->
+  <!-- The 15 px chevron in the 28 px button content sits at a 6.5 px offset; the reference draws the SVG there unsnapped,
+       its ink a pixel left of where the icon's round-half-up centring (PixelCentring) puts it. A 1 px end margin makes
+       the slack even (offset 6), which lands the ink on the reference columns (prev 1398-1402, next 1434-1438). -->
+  <Thickness x:Key="Space.Shell.Chevron">0,0,1,0</Thickness>
+  <x:Double x:Key="Space.Shell.NewTaskGap">8</x:Double>     <!-- "New task" ↔ N key cap gap 8px -->
+  <!-- Avalonia's layout rounding rounds a text block's width up to whole pixels (Chromium keeps 34.x px for "Today",
+       6.3 px for the mono "N"), which made Today and the N key cap 1 px wider than the design and pushed the right-aligned
+       group 2 px left. The extra pixel is taken from the leading padding, where Chromium's fractional left edge puts the
+       glyphs (measured: Today 60 px with its ink at x 1332, key cap 16 px with N at x 1559 in week.png). Today's 1 px
+       bottom padding centres its odd-height label line in 27 px instead of 28: the half-pixel offset inside the 1 px border
+       was rounded the other way than in the borderless New task and drew "Today" 1 px below the other header labels. -->
+  <Thickness x:Key="Space.Shell.Today">11,0,12,1</Thickness>
+  <Thickness x:Key="Space.Shell.NewTaskKbd">4,0,5,0</Thickness>
+
+  <!-- == Sidebar == -->
+  <!-- App / settings sidebar (design-reference.dc.html lines 80-143). The nav's flex gap, the TAGS header row, the new-tag
+       hint, the bottom group, the SETTINGS label and the footer. Items use Size.NavItem / Size.TagItem / Space.NavItem. -->
+  <x:Double x:Key="Sidebar.Gap">1</x:Double>                          <!-- nav flex gap (highlight step 33 = 32 + 1) -->
+  <Thickness x:Key="Sidebar.GapTop">0,1,0,0</Thickness>              <!-- the same gap above the tag list -->
+  <x:Double x:Key="Sidebar.ItemGap">10</x:Double>                     <!-- icon/badge ↔ label ↔ count -->
+  <Thickness x:Key="Sidebar.TagsHeader">10,14,4,4</Thickness>        <!-- .rl padding: 14px 4px 4px 10px -->
+  <x:Double x:Key="Sidebar.AddTagButton">24</x:Double>                <!-- "+" New tag: 24×24, icon 13 / 2 -->
+  <x:Double x:Key="Sidebar.AddTagIcon">13</x:Double>
+  <Thickness x:Key="Sidebar.AddTagRow">9,0</Thickness>               <!-- padding 0 10 inside the 1 px Border.Emphasis ring -->
+  <Thickness x:Key="Sidebar.AddTagBorder">1</Thickness>              <!-- that ring: border 1px solid #3A3A40 -->
+  <Thickness x:Key="Sidebar.Hint">10,4,10,0</Thickness>              <!-- "↵ create · Esc cancel" -->
+  <Thickness x:Key="Sidebar.Bottom">0,16,0,0</Thickness>             <!-- Collapse + Settings group: padding-top 16 -->
+  <Thickness x:Key="Sidebar.SettingsLabel">10,18,10,6</Thickness>    <!-- SETTINGS small caps -->
+  <Thickness x:Key="Sidebar.Footer">10,16,10,6</Thickness>           <!-- "Doba 0.1 · local only" -->
+  <x:Double x:Key="Sidebar.LabelLineHeight">14.7</x:Double>           <!-- 10.5 px × the root line height 1.4 -->
+  <!-- Tag-row count and rail initial: Avalonia centres these short lines a pixel below where Chromium puts them in the
+       30 px row / 16 px badge (measured against week.png and sidebar-collapsed.png); a 1 px bottom inset lifts them.
+       Both are also drawn at their fractional x (TextAlignment inside the rounded-up box), as Chromium does. -->
+  <Thickness x:Key="Sidebar.TagCount">0,0,0,1</Thickness>
+  <Thickness x:Key="Sidebar.RailInitial">0,0,0,1</Thickness>
+
+  <!-- == Month == -->
+  <!-- Month grid (design-reference lines 456–501). Row/lane/chip heights live in Screens/Month/MonthLayout.cs because
+       the projection fits items with them. -->
+  <Thickness x:Key="Space.Month.Weekday">10,0</Thickness>          <!-- weekday header label: padding 0 10px -->
+  <Thickness x:Key="Space.Month.WeekLabel">0,9,0,0</Thickness>     <!-- "W46": padding 9px 0 0 -->
+  <Thickness x:Key="Space.Month.DayNumber">10,8,10,0</Thickness>   <!-- day number: padding 8px 10px 0 -->
+  <Thickness x:Key="Space.Month.List">6,4,6,0</Thickness>          <!-- item list: padding 4px 6px 0 -->
+  <Thickness x:Key="Space.Month.Chip">6,0</Thickness>              <!-- item chip: padding 0 6px -->
+  <Thickness x:Key="Space.Month.More">6,0,0,0</Thickness>          <!-- "+N more": padding-left 6px -->
+  <!-- Bar: padding 0 8px; the design's 1 px ring is an inset box-shadow (no layout), here a border, so 7 + 1. -->
+  <Thickness x:Key="Space.Month.Bar">7,0</Thickness>
+  <!-- Bar inset from its slot (margin 0 6px), dropped on an end that continues past the week. -->
+  <Thickness x:Key="Space.Month.BarInset">6,0</Thickness>
+  <Thickness x:Key="Space.Month.BarInset.ClipStart">0,0,6,0</Thickness>
+  <Thickness x:Key="Space.Month.BarInset.ClipEnd">6,0,0,0</Thickness>
+  <Thickness x:Key="Space.Month.BarInset.ClipBoth">0</Thickness>
+  <!-- Bar radius 5px, square on an end that continues past the week (radius(cl, cr, 5)). -->
+  <CornerRadius x:Key="Radius.Month.Bar">5</CornerRadius>
+  <CornerRadius x:Key="Radius.Month.Bar.ClipStart">0,5,5,0</CornerRadius>
+  <CornerRadius x:Key="Radius.Month.Bar.ClipEnd">5,0,0,5</CornerRadius>
+  <CornerRadius x:Key="Radius.Month.Bar.ClipBoth">0</CornerRadius>
+  <CornerRadius x:Key="Radius.Month.Chip">5</CornerRadius>         <!-- item chip: border-radius 5px -->
+  <x:Double x:Key="Month.InlineGap">6</x:Double>                   <!-- number ↔ today dot; checkbox ↔ title -->
+  <!-- Chip title, top-aligned: CSS centres a 16.1 px line box (11.5 × 1.4) in the 22 px chip, which puts the font's
+       ascent + descent box (14.95 px) 3.5 px below the chip top (strike row at + 10). Centring Avalonia's 15 px line
+       gives + 3.5, which layout rounding sent to + 4 (glyphs and strike 1 px low); + 3 matches the reference. -->
+  <Thickness x:Key="Space.Month.ChipTitle">0,3,0,0</Thickness>
+  <x:Double x:Key="Size.Month.Dot">6</x:Double>                    <!-- today dot -->
+
+      <!-- == Day == -->
+  <!-- Day screen (design-reference lines 564–611). -->
+  <x:Double x:Key="Size.Day.Span">38</x:Double>              <!-- multi-day span row height -->
+  <Thickness x:Key="Space.Day.Span">11,0</Thickness>         <!-- span padding 0 12, minus the 1 px ring Button.Bar draws inside -->
+  <x:Double x:Key="Space.Day.ListGap">8</x:Double>           <!-- gap between header, spans, cards, empty state, Add task -->
+  <Thickness x:Key="Space.Day.List">0,4,0,0</Thickness>      <!-- list padding-top 4 -->
+  <!-- "TASKS · N / M done" margin-bottom 4. The row is 16.8 px in CSS (12 px × 1.4) and starts at a fractional y in the
+       reference (its content area is 0.4 px above ours), so Chromium puts the first card at y 176; whole-pixel layout
+       rounds the row up to 17 and drew every card 1 px low. −1 above and 4 below (a 20 px block, as with 0 / 3) land the
+       cards where the reference has them, and the −1 also puts the header text on the reference's rows (ink from 151;
+       with unhinted text 0 drew it 1 px low). -->
+  <Thickness x:Key="Space.Day.Header">0,-1,0,4</Thickness>
+  <Thickness x:Key="Space.Day.Scroll">0,0,32,0</Thickness>   <!-- list column padding-right 32 -->
+  <Thickness x:Key="Space.Day.Aside">24,0,0,0</Thickness>    <!-- Schedule aside padding-left 24 -->
+  <Thickness x:Key="Space.Day.Check">0,1,0,0</Thickness>     <!-- card checkbox margin-top 1 -->
+  <x:Double x:Key="Space.Day.RowGap">10</x:Double>           <!-- checkbox ↔ title (cards and spans) -->
+  <Thickness x:Key="Space.Day.Meta">26,0,0,0</Thickness>     <!-- card meta row indent: checkbox 16 + gap 10 -->
+  <x:Double x:Key="Space.Day.MetaGap">12</x:Double>          <!-- priority · #tag · time -->
+  <Thickness x:Key="Space.Day.Priority">4,0</Thickness>      <!-- priority button padding 0 4 -->
+  <Thickness x:Key="Space.Day.PriorityShift">-4,0,0,0</Thickness> <!-- priority button margin-left -4 -->
+  <x:Double x:Key="Space.Day.PriorityGap">6</x:Double>       <!-- priority icon ↔ name -->
+  <x:Double x:Key="Size.Day.Priority">18</x:Double>          <!-- priority button height -->
+  <Thickness x:Key="Space.Day.Empty">4,10</Thickness>        <!-- "Nothing here" padding 10 4 -->
+  <!-- Card title line: CSS 13.5 × 1.35 = 18.225, but Avalonia's layout rounding ceils it to 19 (cards 1 px taller than
+       the design's 62 / 64 px); 18 gives the design's card heights. -->
+  <x:Double x:Key="LineHeight.Day.Title">18</x:Double>
+
+  <!-- == Dialog == -->
+  <!-- Task dialog and its popovers (design-reference lines 648-821). Panel width/top, pill and footer paddings and the
+       popover widths are the shared Size.Dialog.* / Space.Dialog.* / Size.Popover.* tokens above. -->
+  <x:Double x:Key="Size.Dialog.Header">46</x:Double>               <!-- header row height -->
+  <x:Double x:Key="Space.Dialog.Gap">8</x:Double>                  <!-- header and footer flex gap -->
+  <x:Double x:Key="Space.Dialog.BodyGap">6</x:Double>              <!-- title ↔ notes -->
+  <x:Double x:Key="Space.Dialog.PillGap">6</x:Double>              <!-- pill row gap -->
+  <x:Double x:Key="Space.Dialog.PillContentGap">7</x:Double>       <!-- pill icon ↔ label -->
+  <x:Double x:Key="Size.Dialog.PillIcon">14</x:Double>             <!-- Icon.Date / Icon.Clock in the pills -->
+  <x:Double x:Key="Size.Dialog.Close">28</x:Double>                <!-- close button 28×28 -->
+  <x:Double x:Key="Size.Dialog.CloseIcon">14</x:Double>
+  <!-- Notes: <textarea rows="3">, 3 × 13.5 px × 1.55. -->
+  <x:Double x:Key="Size.Dialog.Notes">62.775</x:Double>
+  <Thickness x:Key="Thickness.Dialog.FooterRule">0,1,0,0</Thickness>     <!-- footer border-top 1px #1D1D20 -->
+  <CornerRadius x:Key="Radius.Dialog.Footer">0,0,12,12</CornerRadius>
+  <x:Double x:Key="Space.Dialog.KbdGap">8</x:Double>               <!-- "Create task" ↔ ↵ -->
+  <!-- Popovers: position: absolute; top: 36px; left: 0 under the pill; kept 8 px inside the window when it is small. -->
+  <x:Double x:Key="Space.Dialog.PopoverTop">36</x:Double>
+  <x:Double x:Key="Space.Dialog.PopoverEdge">8</x:Double>
+  <Thickness x:Key="Space.Dialog.Popover">10</Thickness>            <!-- Date / Time popover padding -->
+  <Thickness x:Key="Space.Dialog.PopoverList">6</Thickness>         <!-- Priority / Tag popover padding -->
+  <Thickness x:Key="Space.Dialog.PopoverRule">-10,8</Thickness>     <!-- separator: height 1, margin 8px -10px -->
+  <Thickness x:Key="Space.Dialog.TimeRule">-10,6,-10,8</Thickness>  <!-- Time popover separator: margin 6px -10px 8px -->
+  <x:Double x:Key="Size.Dialog.PopoverRow">32</x:Double>            <!-- calendar header, "Lasts" row -->
+  <Thickness x:Key="Space.Dialog.PopoverRowPad">6,0,0,0</Thickness> <!-- padding: 0 0 0 6px -->
+  <x:Double x:Key="Space.Dialog.CalHeaderGap">4</x:Double>          <!-- month ↔ Today ↔ ‹ ›: gap 4px -->
+  <x:Double x:Key="Size.Dialog.CalToday">26</x:Double>              <!-- "Today" 26 px, padding 0 8px -->
+  <Thickness x:Key="Space.Dialog.CalToday">8,0,8,2</Thickness>  <!-- padding 0 8px + the lift (Space.Dialog.Lift) -->
+  <x:Double x:Key="Size.Dialog.ChevronIcon">14</x:Double>           <!-- ‹ › 14 px, stroke 2 -->
+  <Thickness x:Key="Space.Dialog.CalGrid">0,6,0,0</Thickness>       <!-- grid margin-top 6px -->
+  <x:Double x:Key="Size.Dialog.Weekday">24</x:Double>               <!-- weekday initials row -->
+  <x:Double x:Key="Size.Dialog.Day">36</x:Double>                   <!-- day cell height (margin 1px 0) -->
+  <Thickness x:Key="Space.Dialog.Day">0,1</Thickness>
+  <x:Double x:Key="Size.Dialog.DayDot">32</x:Double>                <!-- the 32×32 r8 number square -->
+  <x:Double x:Key="Size.Dialog.TodayDot">4</x:Double>               <!-- today marker 4×4, bottom 3px -->
+  <Thickness x:Key="Space.Dialog.TodayDot">0,0,0,3</Thickness>
+  <Thickness x:Key="Thickness.Dialog.DayHover">1</Thickness>        <!-- hover: inset 0 0 0 1px #4A4A52 -->
+  <CornerRadius x:Key="Radius.Dialog.BandStart">8,0,0,8</CornerRadius>
+  <CornerRadius x:Key="Radius.Dialog.BandEnd">0,8,8,0</CornerRadius>
+  <CornerRadius x:Key="Radius.Dialog.BandNone">0</CornerRadius>
+  <x:Double x:Key="Space.Dialog.ChipGap">4</x:Double>               <!-- quick options: gap 4px -->
+  <x:Double x:Key="Space.Dialog.ChipHintGap">6</x:Double>           <!-- "Next week" ↔ "23 Nov" -->
+  <x:Double x:Key="Space.Dialog.LastsGap">8</x:Double>              <!-- "Lasts" row gap -->
+  <x:Double x:Key="Size.Dialog.StepperLabel">58</x:Double>          <!-- "1 day": min-width 58px -->
+  <x:Double x:Key="Size.Dialog.StepperIcon">12</x:Double>           <!-- − / + 12 px, stroke 2 -->
+  <!-- Wheel area margin 10px 0 4px; its 4 px bottom margin collapses into the separator's 6 px top margin in CSS. -->
+  <Thickness x:Key="Space.Dialog.Wheels">0,10,0,0</Thickness>
+  <x:Double x:Key="Space.Dialog.WheelGap">2</x:Double>              <!-- hour ↔ ":" ↔ minute -->
+  <Thickness x:Key="Space.Dialog.WheelColon">0,0,0,2</Thickness>    <!-- ":" padding-bottom 2px -->
+  <Thickness x:Key="Space.Dialog.Duration">4,0,0,0</Thickness>      <!-- "Duration" row padding-left 4px -->
+  <Thickness x:Key="Space.Dialog.Range">4,8,4,0</Thickness>         <!-- "14:00 – 15:00": margin-top 8, padding 0 4px -->
+  <Thickness x:Key="Space.Dialog.Untimed">8,18,8,10</Thickness>     <!-- "No set time …": padding 18px 8px 10px -->
+  <x:Double x:Key="LineHeight.Dialog.Untimed">18.75</x:Double>      <!-- 12.5 px × 1.5 -->
+  <Thickness x:Key="Space.Dialog.Done">0,8,0,0</Thickness>          <!-- Done row margin-top 8px -->
+  <x:Double x:Key="Space.Dialog.MenuGap">10</x:Double>              <!-- popover row: icon ↔ label ↔ tick -->
+  <x:Double x:Key="Size.Dialog.MenuIcon">14</x:Double>              <!-- icon and tick columns: width 14px -->
+  <x:Double x:Key="Size.Dialog.MenuTick">13</x:Double>              <!-- tick 13 px, stroke 2.4 -->
+  <!-- Avalonia centres these single-line labels (header, weekday initials, day numbers, "Lasts", chips, calendar "Today")
+       a pixel below where Chromium puts them in their flex rows (measured against dialog-date.png). A bottom inset on
+       the centred element lifts it; how much depends on how the half-pixel centring offset rounds (to even), so the
+       inset per element is the measured one: Lift (1 px inset) for the header, day numbers and "Lasts", Lift2 (2 px)
+       for the weekday initials, chips and the calendar "Today". -->
+  <Thickness x:Key="Space.Dialog.Lift">0,0,0,1</Thickness>
+  <Thickness x:Key="Space.Dialog.Lift2">0,0,0,2</Thickness>
+  <Thickness x:Key="Space.Dialog.Chip">10,0,10,2</Thickness>        <!-- chip padding 0 10px + the lift -->
+  <!-- The same lift for the single-line labels of the pills, Cancel and the popover / search rows, measured against
+       dialog-priority.png and dialog-tag.png: there the whole label (and a row's glyph and tick) sat 1 px low inside a
+       box that is exact. Raise moves the element up by exactly 1 px without changing its size, so it does not depend
+       on how a centring offset rounds. The footer hint, whose centring offset ends in a half pixel, takes Lift. -->
+  <Thickness x:Key="Space.Dialog.Raise">0,-1,0,1</Thickness>
+
+  <!-- == TimeWheel == -->
+  <!-- Time popover wheel (design lines 731-743). Band colour = Brush.Overlay.Edge, radius = Radius.Card,
+       numbers FontSize.15 / FontSize.19, ":" FontSize.18 (the dialog's). -->
+  <x:Double x:Key="Size.TimeWheel.Row">34</x:Double>       <!-- row height; 5 rows visible -->
+  <x:Double x:Key="Size.TimeWheel.Width">70</x:Double>     <!-- one column -->
+  <x:Double x:Key="Size.TimeWheel.Height">170</x:Double>   <!-- 5 × 34; padding 68 top/bottom centres first/last -->
+  <Thickness x:Key="Space.TimeWheel.Band">4,0</Thickness>   <!-- shared band inset in the popover (left/right 4) -->
+  <!-- mask-image: linear-gradient(to bottom, transparent 0%, #000 32%, #000 68%, transparent 100%); only alpha counts. -->
+  <LinearGradientBrush x:Key="Brush.TimeWheel.Mask" StartPoint="0%,0%" EndPoint="0%,100%">
+    <GradientStop Offset="0" Color="#00000000" />
+    <GradientStop Offset="0.32" Color="#FF000000" />
+    <GradientStop Offset="0.68" Color="#FF000000" />
+    <GradientStop Offset="1" Color="#00000000" />
+  </LinearGradientBrush>
+
+  <!-- == Search == -->
+  <!-- Search palette (a gap-fill: the design only has the title-bar button). Built from the task dialog's pieces: the
+       Border.dialog panel, the dialog header's 20 px left inset, popover menu rows (Button.Menu: 32 px, r6, 0 8, gap 10,
+       14 px glyph column) inside a popover-like 6 px list padding, and the dialog footer (Space.Dialog.Footer). The
+       12 px list inset puts the row glyphs under the magnifier (x 20) and the titles under the query text (x 44). -->
+  <x:Double x:Key="Size.Search.Query">52</x:Double>                  <!-- query row height -->
+  <Thickness x:Key="Space.Search.Query">20,0</Thickness>            <!-- query row padding (dialog header inset 20) -->
+  <x:Double x:Key="Space.Search.QueryGap">8</x:Double>               <!-- magnifier 16 ↔ query text (title-bar search gap) -->
+  <Thickness x:Key="Space.Search.List">12,6</Thickness>             <!-- result list padding -->
+  <Thickness x:Key="Space.Search.ScrollBar">0,6,2,6</Thickness>     <!-- 8 px bar over the 12 px right padding: 2 px clear of rows and edge, 6 px of rule / footer -->
+  <x:Double x:Key="Size.Search.List">268</x:Double>                  <!-- 8 rows × 32 + 2 × 6: more rows scroll -->
+  <x:Double x:Key="Size.Search.Glyph">14</x:Double>                  <!-- popover row glyph column (priority icon) -->
+  <x:Double x:Key="Space.Search.RowGap">10</x:Double>                <!-- popover row gap: glyph ↔ title ↔ meta -->
+  <x:Double x:Key="Space.Search.MetaGap">12</x:Double>               <!-- #tag ↔ context (list row meta gap) -->
+  <Thickness x:Key="Space.Search.Empty">32,0,8,0</Thickness>        <!-- "No tasks found" on the row titles' x -->
+  <Thickness x:Key="Space.Search.More">12,0,12,6</Thickness>        <!-- "More than 50 matches" line under the list -->
+  <Thickness x:Key="Thickness.Search.Rule">0,1,0,0</Thickness>      <!-- 1 px Border.Subtle above the list and the footer -->
+  <CornerRadius x:Key="Radius.Search.Footer">0,0,12,12</CornerRadius> <!-- footer: border-radius 0 0 12px 12px -->
+
+
+  <!-- == Lists (Inbox / Today / Settings) == -->
+  <!-- Inbox (markup 200–269): page scroll padding-right 12 (the 8 px scrollbar sits in it); two columns, gap 48. -->
+  <Thickness x:Key="Space.Inbox.Scroll">0,0,12,0</Thickness>
+  <x:Double x:Key="Space.Inbox.ColumnGap">48</x:Double>
+  <!-- Inbox / Today section columns: gap 28, padding 6 0 24. -->
+  <x:Double x:Key="Space.List.SectionGap">28</x:Double>
+  <Thickness x:Key="Space.List.Sections">0,6,0,24</Thickness>
+  <!-- Today (markup 353–423): list padding-right 32; summary → progress line margin-top 12; aside padding-left 24. -->
+  <Thickness x:Key="Space.Today.Scroll">0,0,32,0</Thickness>
+  <Thickness x:Key="Space.Today.Progress">0,12,0,0</Thickness>
+  <Thickness x:Key="Space.Today.Aside">24,0,0,0</Thickness>
+  <!-- Task section (TaskGroupList): header row margin-bottom 6. -->
+  <Thickness x:Key="Space.Group.Header">0,0,0,6</Thickness>
+  <!-- List row (TaskListRow): flex gap 12; the 18 px priority button has margin-left −4 (12 − 4 = 8). -->
+  <x:Double x:Key="Size.Row.Priority">18</x:Double>
+  <Thickness x:Key="Space.Row.Priority">8,0,0,0</Thickness>
+  <Thickness x:Key="Space.Row.Gap">12,0,0,0</Thickness>
+  <x:Double x:Key="Space.Row.MetaGap">12</x:Double>
+  <!-- "Add task" row: plus icon 14 / stroke 1.8, gap 10. -->
+  <x:Double x:Key="Space.AddTask.Gap">10</x:Double>
+  <x:Double x:Key="Size.AddTask.Icon">14</x:Double>
+  <x:Double x:Key="Size.AddTask.IconStroke">1.8</x:Double>
+  <!-- Schedule (Today / Day aside): header margin 4 0 14, column bottom padding 8; hour rows 16 px centred on their line
+       (the layer overhangs the grid by 8 px top and bottom); hour label column 40, gap 12; the line sits 7 px down the
+       row; now-line: label column 46, 7 px dot 4 px after it. -->
+  <Thickness x:Key="Space.Schedule.Column">0,0,0,8</Thickness>
+  <Thickness x:Key="Space.Schedule.Header">0,4,0,14</Thickness>
+  <Thickness x:Key="Space.Schedule.HourLayer">0,-8,0,-8</Thickness>
+  <x:Double x:Key="Size.Schedule.Row">16</x:Double>
+  <GridLength x:Key="Size.Schedule.HourLabel">40</GridLength>
+  <x:Double x:Key="Space.Schedule.HourGap">12</x:Double>
+  <Thickness x:Key="Space.Schedule.Line">0,7,0,0</Thickness>
+  <GridLength x:Key="Size.Schedule.NowLabel">46</GridLength>
+  <x:Double x:Key="Size.Schedule.NowDot">7</x:Double>
+  <Thickness x:Key="Space.Schedule.NowDot">4,0,0,0</Thickness>
+  <!-- Settings (markup 271–351). Page: scroll padding-right 12, column margin 2 0 32. Row: min height 66, control gap 24,
+       description margin-top 4, export / import message margin-top 6. Shortcuts: 52 px lines, padding 0 4, gap 12,
+       key caps gap 4. Data footnote margin 18 4 0. -->
+  <Thickness x:Key="Space.Settings.Scroll">0,0,12,0</Thickness>
+  <Thickness x:Key="Space.Settings.Column">0,2,0,32</Thickness>
+  <x:Double x:Key="Size.Settings.Row">66</x:Double>
+  <x:Double x:Key="Space.Settings.RowGap">24</x:Double>
+  <Thickness x:Key="Space.Settings.Desc">0,4,0,0</Thickness>
+  <Thickness x:Key="Space.Settings.Message">0,6,0,0</Thickness>
+  <x:Double x:Key="Size.Settings.Shortcut">52</x:Double>
+  <Thickness x:Key="Space.Settings.Shortcut">4,0</Thickness>
+  <x:Double x:Key="Space.Settings.ShortcutGap">12</x:Double>
+  <x:Double x:Key="Space.Settings.KeyCapGap">4</x:Double>
+  <Thickness x:Key="Space.Settings.Footnote">4,18,4,0</Thickness>
+  <!-- Accent swatches: 22 px circles (r11), gap 10; the selection ring (2 px Bg.Main gap + 1.5 px Text.Primary, a
+       box-shadow) is drawn 3.5 px outside each circle, so the group keeps 3.5 px of padding (design 0 4: 0.5 + 3.5). -->
+  <x:Double x:Key="Size.Settings.Swatch">22</x:Double>
+  <CornerRadius x:Key="Radius.Settings.Swatch">11</CornerRadius>
+  <x:Double x:Key="Space.Settings.SwatchGap">10</x:Double>
+  <Thickness x:Key="Space.Settings.Swatches">0.5,0</Thickness>
+  <Thickness x:Key="Space.Settings.SwatchPad">3.5</Thickness>
+  <Thickness x:Key="Space.Settings.SwatchRing">-3.5</Thickness>
+  <Thickness x:Key="Space.Settings.SwatchRingWidth">1.5</Thickness>
+  <!-- Window transparency: slider 180, value 38 right-aligned, gap 8. Key caps and buttons rows: gap 8. -->
+  <x:Double x:Key="Size.Settings.Slider">180</x:Double>
+  <x:Double x:Key="Size.Settings.RangeValue">38</x:Double>
+  <x:Double x:Key="Space.Settings.ControlGap">8</x:Double>
+  <!-- Density cards: 150 wide, gap 10, padding 10, preview ↔ label 8; preview 76 px of rows with an 8 px checkbox and a
+       4 px bar; the selection ring is an inset 1.5 px box-shadow. -->
+  <x:Double x:Key="Size.Settings.Density">150</x:Double>
+  <x:Double x:Key="Space.Settings.DensityGap">10</x:Double>
+  <Thickness x:Key="Space.Settings.DensityCard">10</Thickness>
+  <x:Double x:Key="Space.Settings.DensityStack">8</x:Double>
+  <x:Double x:Key="Size.Settings.DensityPreview">76</x:Double>
+  <x:Double x:Key="Size.Settings.PreviewCheck">8</x:Double>
+  <x:Double x:Key="Size.Settings.PreviewBar">4</x:Double>
+  <Thickness x:Key="Thickness.Settings.DensityRing">1.5</Thickness>
+
+  <!-- == Calendar (Week / Year) == -->
+  <!-- Week: the next-week preview cell's cards (opacity 0.55; 0.2 when a tag filter also dims them). -->
+  <x:Double x:Key="Opacity.Week.Preview">0.55</x:Double>
+  <x:Double x:Key="Opacity.Week.PreviewDimmed">0.2</x:Double>
+  <!-- Week card title: Avalonia puts the 18 px line's extra leading above the glyphs (CSS splits it), which drew the
+       titles low; this moves 1 px from above the title to below it (same block height). Measured with unhinted text:
+       x-height top at card top + 15, as in the reference (2 px drew it at + 14). -->
+  <Thickness x:Key="Space.Week.CardTitle">0,-1,0,1</Thickness>
+  <!-- Week multi-day bar: padding 0 10; the design's ring is an inset box-shadow (no layout), here Button.Bar's 1 px
+       border, so 9 + 1. -->
+  <Thickness x:Key="Space.Week.Bar">9,0</Thickness>
+  <!-- Week grid: 12 px under row 1, a 1 px rule, 14 px above row 2 (rows: flex 1 1 0 after the padding). -->
+  <Thickness x:Key="Space.Week.RowRule">0,12,0,14</Thickness>
+  <!-- Week day header (markup 517–531): padding 2 14 0; "● TODAY" / "NEXT WEEK →" gap 6 (6 px dot, 11 px arrow, stroke
+       2); day number row margin-top 6, gap 8; the 40 px number and "Nov" are nudged onto the prototype's glyph positions
+       (number 5 px higher, "Nov" on its baseline); progress line margin-top 14. -->
+  <Thickness x:Key="Space.Week.Header">14,2,14,0</Thickness>
+  <x:Double x:Key="Space.Week.BadgeGap">6</x:Double>
+  <x:Double x:Key="Size.Week.Dot">6</x:Double>
+  <x:Double x:Key="Size.Week.NextIcon">11</x:Double>
+  <x:Double x:Key="Size.Week.NextIconStroke">2</x:Double>
+  <Thickness x:Key="Space.Week.DayRow">0,6,0,0</Thickness>
+  <x:Double x:Key="Space.Week.DayGap">8</x:Double>
+  <Thickness x:Key="Space.Week.DayNumber">0,-5,0,5</Thickness>
+  <Thickness x:Key="Space.Week.Month">-1,0,0,2</Thickness>
+  <Thickness x:Key="Space.Week.Progress">0,14,0,0</Thickness>
+  <!-- Card list: padding 10 8 0 (WeekLayout.ListPaddingTop / ListPaddingX, which the card fitting uses); "Nothing here"
+       padding 6; "+N more" margin-top 6 (WeekLayout.CardGap). Multi-day bar: checkbox ↔ title ↔ meta gap 8. -->
+  <Thickness x:Key="Space.Week.List">8,10,8,0</Thickness>
+  <Thickness x:Key="Space.Week.Empty">6</Thickness>
+  <Thickness x:Key="Space.Week.More">0,6,0,0</Thickness>
+  <x:Double x:Key="Space.Week.BarGap">8</x:Double>
+
+  <!-- Year (design-reference lines 425–454, yearData `cell`): cell padding top 6 (first row) / 18, right 22 (0 in the
+       last column), bottom 12, left 22 (0 in the first column); a 1 px Border.Subtle rule left / on top except at the
+       grid's outer edges. -->
+  <Thickness x:Key="Space.Year.Cell">22,18,22,12</Thickness>
+  <Thickness x:Key="Space.Year.Cell.First">0,18,22,12</Thickness>
+  <Thickness x:Key="Space.Year.Cell.Last">22,18,0,12</Thickness>
+  <Thickness x:Key="Space.Year.Cell.Top">22,6,22,12</Thickness>
+  <Thickness x:Key="Space.Year.Cell.TopFirst">0,6,22,12</Thickness>
+  <Thickness x:Key="Space.Year.Cell.TopLast">22,6,0,12</Thickness>
+  <Thickness x:Key="Year.CellRule">1,1,0,0</Thickness>
+  <Thickness x:Key="Year.CellRule.First">0,1,0,0</Thickness>
+  <Thickness x:Key="Year.CellRule.Top">1,0,0,0</Thickness>
+  <Thickness x:Key="Year.CellRule.TopFirst">0</Thickness>
+  <x:Double x:Key="Year.Gap">6</x:Double>                 <!-- flex gap: header, items, "+N more" -->
+  <Thickness x:Key="Space.Year.Header">0,0,0,8</Thickness> <!-- header margin-bottom 8 -->
+  <!-- Stat row: 11 px × 1.4 = 15.4 (glyphs keep their natural top: CSS's +0.4 px half-leading rounds away). -->
+  <x:Double x:Key="Year.StatLineHeight">15.4</x:Double>
+  <!-- Month name: margin-top 6, 24 px × line-height 1.1 = 26.4, i.e. CSS pulls Geist's natural 32 px line in by 2.8 px
+       top and bottom. Avalonia never applies a negative half-leading, so the margin does it (6 − 2.8 on top, −2.8 below);
+       the top is 1 px less again (2.2) because whole-pixel layout rounded the fractional stack 1 px low against the
+       reference (name ink 22 px below the stat ink there, progress line 59 px below the cell's content top). -->
+  <Thickness x:Key="Space.Year.Name">0,2.2,0,-2.8</Thickness>
+  <Thickness x:Key="Space.Year.Progress">0,12,0,0</Thickness>
+  <x:Double x:Key="Size.Year.Dot">6</x:Double>            <!-- "● NOW" dot -->
+  <x:Double x:Key="Year.NowGap">6</x:Double>              <!-- dot ↔ "NOW": gap 6 -->
+  <x:Double x:Key="Year.ItemHeight">28</x:Double>         <!-- key item row -->
+  <Thickness x:Key="Space.Year.Item">8,0</Thickness>      <!-- padding 0 9, minus the 1 px ring drawn as a border here -->
+  <x:Double x:Key="Year.ItemGap">8</x:Double>             <!-- checkbox ↔ title ↔ meta -->
+  <x:Double x:Key="Size.Year.Check">12</x:Double>
+  <Thickness x:Key="Space.Year.More">9,2</Thickness>      <!-- "+N more": padding 2px 9px -->
+</ResourceDictionary>

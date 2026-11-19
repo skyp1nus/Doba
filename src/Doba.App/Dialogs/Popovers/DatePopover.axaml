@@ -1,0 +1,174 @@
+<!--
+  Date popover (design-reference lines 677-713, script 1738-1793): month header with "Today" and ‹ ›, weekday initials
+  (configured week start; weekend letters dimmer), the 6×7 mini calendar (TaskDialog.MiniCalendar), the quick options
+  (Today, Tomorrow, Next week + date, No date) and, for a dated draft, "Lasts N days" with its until-label and stepper.
+  Picking a day or a quick option closes the popover; ‹ ›, Today and the stepper keep it open. DataContext: the dialog.
+-->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:Doba.App.Controls"
+             xmlns:d="using:Doba.App.Dialogs"
+             xmlns:p="using:Doba.App.Dialogs.Popovers"
+             x:Class="Doba.App.Dialogs.Popovers.DatePopover"
+             x:DataType="d:TaskDialogViewModel"
+             ClipToBounds="False">
+  <UserControl.Styles>
+    <Style Selector="TextBlock.weekday">
+      <Setter Property="FontFamily" Value="{DynamicResource Font.Mono}" />
+      <Setter Property="FontSize" Value="{DynamicResource FontSize.10.5}" />
+      <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Muted}" />
+      <Setter Property="HorizontalAlignment" Value="Center" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Margin" Value="{DynamicResource Space.Dialog.Lift2}" />
+    </Style>
+    <Style Selector="TextBlock.weekday.weekend">
+      <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Faded}" />
+    </Style>
+  </UserControl.Styles>
+
+  <Border Name="PART_Surface"
+          Classes="popover"
+          Width="{DynamicResource Size.Popover.Date}"
+          Padding="{DynamicResource Space.Dialog.Popover}">
+    <StackPanel>
+      <!-- Month header: height 32, padding-left 6, gap 4. -->
+      <Grid Height="{DynamicResource Size.Dialog.PopoverRow}"
+            Margin="{DynamicResource Space.Dialog.PopoverRowPad}"
+            ColumnDefinitions="*,Auto,Auto,Auto"
+            ColumnSpacing="{DynamicResource Space.Dialog.CalHeaderGap}">
+        <TextBlock Name="PART_Month"
+                   Text="{Binding CalendarLabel}"
+                   FontSize="{DynamicResource FontSize.14}"
+                   FontWeight="Medium"
+                   LetterSpacing="{DynamicResource LetterSpacing.PopoverTitle}"
+                   VerticalAlignment="Center" />
+        <Button Name="PART_CalendarToday"
+                Grid.Column="1"
+                Theme="{StaticResource Button.PopoverTool}"
+                Classes="text"
+                Content="Today"
+                VerticalAlignment="Center"
+                Command="{Binding ShowTodayMonthCommand}" />
+        <Button Name="PART_PreviousMonth"
+                Grid.Column="2"
+                Theme="{StaticResource Button.PopoverTool}"
+                VerticalAlignment="Center"
+                Command="{Binding PreviousMonthCommand}"
+                AutomationProperties.Name="Previous month">
+          <c:Icon Data="{StaticResource Icon.ChevronLeft}" Size="{DynamicResource Size.Dialog.ChevronIcon}" StrokeWidth="2" />
+        </Button>
+        <Button Name="PART_NextMonth"
+                Grid.Column="3"
+                Theme="{StaticResource Button.PopoverTool}"
+                VerticalAlignment="Center"
+                Command="{Binding NextMonthCommand}"
+                AutomationProperties.Name="Next month">
+          <c:Icon Data="{StaticResource Icon.ChevronRight}" Size="{DynamicResource Size.Dialog.ChevronIcon}" StrokeWidth="2" />
+        </Button>
+      </Grid>
+
+      <!-- Weekday initials and the 42 days (7 equal columns, margin-top 6). -->
+      <ItemsControl Name="PART_Weekdays" ItemsSource="{Binding WeekdayLetters}" Margin="{DynamicResource Space.Dialog.CalGrid}">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate>
+            <p:WeekColumns />
+          </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="d:WeekdayLetter">
+            <Panel Height="{DynamicResource Size.Dialog.Weekday}">
+              <TextBlock Classes="weekday" Classes.weekend="{Binding IsWeekend}" Text="{Binding Letter}" />
+            </Panel>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+      <ItemsControl Name="PART_Days" ItemsSource="{Binding CalendarDays}">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate>
+            <p:WeekColumns />
+          </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="d:CalendarDayItem">
+            <Button Theme="{StaticResource Button.CalendarDay}"
+                    Content="{Binding DayNumber}"
+                    Command="{Binding PickCommand}"
+                    Classes.past="{Binding IsPast}"
+                    Classes.outside="{Binding IsOutside}"
+                    Classes.today="{Binding IsToday}"
+                    Classes.marked="{Binding IsMarked}"
+                    Classes.band="{Binding InRange}"
+                    Classes.start="{Binding BandStart}"
+                    Classes.end="{Binding BandEnd}"
+                    AutomationProperties.Name="{Binding Label}" />
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+
+      <Border Classes="divider-strong" Margin="{DynamicResource Space.Dialog.PopoverRule}" />
+
+      <!-- Quick options: wrap, gap 4. -->
+      <ItemsControl Name="PART_Quick" ItemsSource="{Binding DateOptions}">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate>
+            <WrapPanel ItemSpacing="{DynamicResource Space.Dialog.ChipGap}" LineSpacing="{DynamicResource Space.Dialog.ChipGap}" />
+          </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="d:DateChipItem">
+            <ToggleButton Theme="{StaticResource ToggleButton.Chip}"
+                          Padding="{DynamicResource Space.Dialog.Chip}"
+                          IsChecked="{Binding IsSelected, Mode=OneWay}"
+                          Command="{Binding PickCommand}"
+                          AutomationProperties.Name="{Binding Label}">
+              <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space.Dialog.ChipHintGap}">
+                <TextBlock Text="{Binding Label}" VerticalAlignment="Center" />
+                <!-- Always present, as the prototype's (possibly empty) hint span: it keeps the 6 px gap in every chip. -->
+                <TextBlock Classes="meta-sm" Text="{Binding Hint}" VerticalAlignment="Center" />
+              </StackPanel>
+            </ToggleButton>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+
+      <!-- "Lasts N days" (dated drafts only): height 32, padding-left 6, gap 8. -->
+      <StackPanel Name="PART_Lasts" IsVisible="{Binding HasDate}">
+        <Border Classes="divider-strong" Margin="{DynamicResource Space.Dialog.PopoverRule}" />
+        <Grid Height="{DynamicResource Size.Dialog.PopoverRow}"
+              Margin="{DynamicResource Space.Dialog.PopoverRowPad}"
+              ColumnDefinitions="Auto,*,Auto"
+              ColumnSpacing="{DynamicResource Space.Dialog.LastsGap}">
+          <TextBlock Classes="tertiary" FontSize="{DynamicResource FontSize.12.5}" Text="Lasts" VerticalAlignment="Center" Margin="{DynamicResource Space.Dialog.Lift}" />
+          <TextBlock Name="PART_Until" Grid.Column="1" Classes="meta" Text="{Binding UntilLabel}" VerticalAlignment="Center" Margin="{DynamicResource Space.Dialog.Lift}" />
+          <Border Grid.Column="2"
+                  Height="{DynamicResource Size.ControlSmall}"
+                  CornerRadius="{DynamicResource Radius.Control}"
+                  Background="{DynamicResource Brush.Overlay.Hover}">
+            <StackPanel Orientation="Horizontal">
+              <Button Name="PART_FewerDays"
+                      Theme="{StaticResource Button.Stepper}"
+                      Command="{Binding FewerDaysCommand}"
+                      AutomationProperties.Name="Fewer days">
+                <c:Icon Data="{StaticResource Icon.Minus}" Size="{DynamicResource Size.Dialog.StepperIcon}" StrokeWidth="2" />
+              </Button>
+              <TextBlock Name="PART_DaysLabel"
+                         MinWidth="{DynamicResource Size.Dialog.StepperLabel}"
+                         TextAlignment="Center"
+                         VerticalAlignment="Center"
+                         FontFamily="{DynamicResource Font.Mono}"
+                         FontSize="{DynamicResource FontSize.11.5}"
+                         Classes="primary"
+                         Text="{Binding DaysLabel}" />
+              <Button Name="PART_MoreDays"
+                      Theme="{StaticResource Button.Stepper}"
+                      Command="{Binding MoreDaysCommand}"
+                      AutomationProperties.Name="More days">
+                <c:Icon Data="{StaticResource Icon.PlusSmall}" Size="{DynamicResource Size.Dialog.StepperIcon}" StrokeWidth="2" />
+              </Button>
+            </StackPanel>
+          </Border>
+        </Grid>
+      </StackPanel>
+    </StackPanel>
+  </Border>
+</UserControl>

@@ -1,0 +1,75 @@
+<!--
+  Time popover (design-reference lines 724-762, script 1762-1801): "Any time | Set time"; with a set time the two-column
+  wheel (one shared band, ":" between), Duration (15m 30m 1h 2h) and the range "14:00 – 15:00"; without one the
+  "Anytime" note; then Done. The wheels commit through TaskDialog.CommitWheel (code-behind), which also switches on
+  "Set time". Only Done (or Esc, another pill, focus in the title) closes it. DataContext: the dialog.
+-->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:Doba.App.Controls"
+             xmlns:d="using:Doba.App.Dialogs"
+             x:Class="Doba.App.Dialogs.Popovers.TimePopover"
+             x:DataType="d:TaskDialogViewModel"
+             ClipToBounds="False">
+  <Border Name="PART_Surface"
+          Classes="popover"
+          Width="{DynamicResource Size.Popover.Time}"
+          Padding="{DynamicResource Space.Dialog.Popover}">
+    <StackPanel>
+      <ListBox Name="PART_Mode"
+               Theme="{StaticResource SegmentedControl.Fill}"
+               SelectedIndex="{Binding TimeModeIndex, Mode=TwoWay}"
+               AutomationProperties.Name="Time mode">
+        <ListBoxItem Content="Any time" />
+        <ListBoxItem Content="Set time" />
+      </ListBox>
+
+      <StackPanel Name="PART_Timed" IsVisible="{Binding IsTimed}">
+        <!-- Wheel area: 170 px, margin 10 0 4; one band behind both columns (left/right 4). -->
+        <Panel Height="{DynamicResource Size.TimeWheel.Height}" Margin="{DynamicResource Space.Dialog.Wheels}">
+          <Border Theme="{StaticResource TimeWheelBand}" Margin="{DynamicResource Space.TimeWheel.Band}" />
+          <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space.Dialog.WheelGap}" HorizontalAlignment="Center">
+            <c:TimeWheel Name="PART_Hours" ShowsBand="False" AutomationProperties.Name="Hour" />
+            <TextBlock Text=":"
+                       FontSize="{DynamicResource FontSize.18}"
+                       FontWeight="SemiBold"
+                       Classes="primary"
+                       VerticalAlignment="Center"
+                       Margin="{DynamicResource Space.Dialog.WheelColon}" />
+            <c:TimeWheel Name="PART_Minutes" ShowsBand="False" AutomationProperties.Name="Minutes" />
+          </StackPanel>
+        </Panel>
+
+        <Border Classes="divider-strong" Margin="{DynamicResource Space.Dialog.TimeRule}" />
+
+        <Grid ColumnDefinitions="*,Auto" Margin="{DynamicResource Space.Dialog.Duration}">
+          <TextBlock Classes="tertiary" FontSize="{DynamicResource FontSize.12.5}" Text="Duration" VerticalAlignment="Center" Margin="{DynamicResource Space.Dialog.Lift}" />
+          <ListBox Name="PART_Duration"
+                   Grid.Column="1"
+                   Theme="{StaticResource SegmentedControl.Mono}"
+                   ItemsSource="{Binding Durations}"
+                   SelectedIndex="{Binding DurationIndex, Mode=TwoWay}"
+                   AutomationProperties.Name="Duration" />
+        </Grid>
+        <TextBlock Name="PART_Range" Classes="meta" Margin="{DynamicResource Space.Dialog.Range}" Text="{Binding RangeLabel}" />
+      </StackPanel>
+
+      <TextBlock Name="PART_Untimed"
+                 IsVisible="{Binding !IsTimed}"
+                 Classes="muted"
+                 Padding="{DynamicResource Space.Dialog.Untimed}"
+                 FontSize="{DynamicResource FontSize.12.5}"
+                 LineHeight="{DynamicResource LineHeight.Dialog.Untimed}"
+                 TextAlignment="Center"
+                 TextWrapping="Wrap"
+                 Text="No set time — the task sits in “Anytime” for that day." />
+
+      <Button Name="PART_Done"
+              Theme="{StaticResource Button.PopoverDone}"
+              Content="Done"
+              HorizontalAlignment="Right"
+              Margin="{DynamicResource Space.Dialog.Done}"
+              Command="{Binding ClosePopoverCommand}" />
+    </StackPanel>
+  </Border>
+</UserControl>

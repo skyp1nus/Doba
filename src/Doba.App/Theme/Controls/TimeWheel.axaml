@@ -1,0 +1,56 @@
+<!-- TimeWheel control theme (Doba.App.Controls.TimeWheel): one column of the Time popover's wheel.
+     Design: docs/design/design-reference.dc.html lines 731-743, motion-spec "Барабан часу". Column 70×170, rows 34,
+     numbers 15/400 Text.Muted, selected 19/600 Text.Primary (colour over WheelText, size as a composition scale, see
+     TimeWheel.cs); band 7 % white r8 fixed in the centre behind the numbers; top/bottom fade through Brush.TimeWheel.Mask. -->
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:c="using:Doba.App.Controls">
+
+  <!-- The selection band (rgba(255,255,255,0.07), r8, one row high, vertically centred, not hit-testable). Used inside the
+       wheel, and by the Time popover for the one band behind both columns:
+       <Border Theme="{StaticResource TimeWheelBand}" Margin="{DynamicResource Space.TimeWheel.Band}" /> with
+       ShowsBand="False" on the two wheels. -->
+  <ControlTheme x:Key="TimeWheelBand" TargetType="Border">
+    <Setter Property="Height" Value="{DynamicResource Size.TimeWheel.Row}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Radius.Card}" />
+    <Setter Property="Background" Value="{DynamicResource Brush.Overlay.Edge}" />
+    <Setter Property="IsHitTestVisible" Value="False" />
+  </ControlTheme>
+
+  <ControlTheme x:Key="{x:Type c:TimeWheel}" TargetType="c:TimeWheel">
+    <Setter Property="Width" Value="{DynamicResource Size.TimeWheel.Width}" />
+    <Setter Property="Height" Value="{DynamicResource Size.TimeWheel.Height}" />
+    <Setter Property="ItemHeight" Value="{DynamicResource Size.TimeWheel.Row}" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Muted}" />
+    <Setter Property="SelectedForeground" Value="{DynamicResource Brush.Text.Primary}" />
+    <Setter Property="FontSize" Value="{DynamicResource FontSize.15}" />
+    <Setter Property="SelectedFontSize" Value="{DynamicResource FontSize.19}" />
+    <Setter Property="FontWeight" Value="Normal" />
+    <Setter Property="SelectedFontWeight" Value="SemiBold" />
+    <!-- The keyboard focus ring (app-wide focus adorner) follows this radius. -->
+    <Setter Property="CornerRadius" Value="{DynamicResource Radius.Card}" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Panel Background="{TemplateBinding Background}">
+          <Border Name="PART_Band"
+                  Theme="{StaticResource TimeWheelBand}"
+                  Height="{TemplateBinding ItemHeight}"
+                  IsVisible="{TemplateBinding ShowsBand}" />
+          <!-- The numbers move only through PART_Items' render transform (set by TimeWheel.cs) plus composition FLIP
+               offsets; the viewport clips and fades them. Its (transparent) background matters: the opacity mask is
+               stretched over the drawn content's bounds, so without it the mask would follow the strip (e.g. start at
+               68 px when the first row is selected) instead of the 170 px column. -->
+          <Panel Name="PART_Viewport"
+                 Background="Transparent"
+                 ClipToBounds="True"
+                 OpacityMask="{DynamicResource Brush.TimeWheel.Mask}">
+            <StackPanel Name="PART_Items" VerticalAlignment="Top" />
+          </Panel>
+        </Panel>
+      </ControlTemplate>
+    </Setter>
+  </ControlTheme>
+</ResourceDictionary>

@@ -55,3 +55,9 @@ CodeCoverage/
 *.VisualState.xml
 TestResult.xml
 nunit-*.xml
+
+# Doba
+.vs/
+*.user
+TestResults/
+.claude/worktrees/

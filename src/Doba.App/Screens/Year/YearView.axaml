@@ -1,0 +1,205 @@
+<!--
+  Year view (design-reference.dc.html lines 425–454, yearData 1432–1467): twelve months in a 4 × 3 grid filling the
+  content area. Each cell: header button (stat "N TASKS · M DONE" + "● NOW", 24 px light month name, progress line)
+  → Month view; up to four key items (28 px, 12 px checkbox, title 12.5/500, mono 10.5 meta) that toggle done on
+  click — fewer when the cell is short (measured in YearView.ArrangeOverride, fitted by Core's YearMetrics) — and "+N more" → Month view. Cell rules and paddings: the prototype's per-position `cell` string, as classes
+  (first / last column, top row) over the Space.Year.Cell* tokens.
+-->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:Doba.App.Controls"
+             xmlns:m="using:Doba.App.Motion"
+             xmlns:vm="using:Doba.App.ViewModels"
+             xmlns:y="using:Doba.App.Screens.Year"
+             xmlns:w="using:Doba.App.Screens.Week"
+             x:Class="Doba.App.Screens.Year.YearView"
+             x:DataType="y:YearViewModel">
+  <UserControl.Styles>
+    <!-- Month cell: rule left / on top except at the grid's outer edges; padding per position. -->
+    <Style Selector="Border.cell">
+      <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Subtle}" />
+      <Setter Property="BorderThickness" Value="{DynamicResource Year.CellRule}" />
+      <Setter Property="Padding" Value="{DynamicResource Space.Year.Cell}" />
+      <Setter Property="ClipToBounds" Value="True" />
+    </Style>
+    <Style Selector="Border.cell.first">
+      <Setter Property="BorderThickness" Value="{DynamicResource Year.CellRule.First}" />
+      <Setter Property="Padding" Value="{DynamicResource Space.Year.Cell.First}" />
+    </Style>
+    <Style Selector="Border.cell.last">
+      <Setter Property="Padding" Value="{DynamicResource Space.Year.Cell.Last}" />
+    </Style>
+    <Style Selector="Border.cell.top">
+      <Setter Property="BorderThickness" Value="{DynamicResource Year.CellRule.Top}" />
+      <Setter Property="Padding" Value="{DynamicResource Space.Year.Cell.Top}" />
+    </Style>
+    <Style Selector="Border.cell.top.first">
+      <Setter Property="BorderThickness" Value="{DynamicResource Year.CellRule.TopFirst}" />
+      <Setter Property="Padding" Value="{DynamicResource Space.Year.Cell.TopFirst}" />
+    </Style>
+    <Style Selector="Border.cell.top.last">
+      <Setter Property="Padding" Value="{DynamicResource Space.Year.Cell.TopLast}" />
+    </Style>
+
+    <!-- "25 TASKS · 25 DONE" / "NOW": mono 11, 0.06em, Text.Muted. -->
+    <Style Selector="TextBlock.stat">
+      <Setter Property="FontFamily" Value="{DynamicResource Font.Mono}" />
+      <Setter Property="FontSize" Value="{DynamicResource FontSize.11}" />
+      <Setter Property="LetterSpacing" Value="{DynamicResource LetterSpacing.Stat}" />
+      <Setter Property="VerticalAlignment" Value="Top" />
+      <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Muted}" />
+    </Style>
+    <Style Selector="TextBlock.stat.accent">
+      <Setter Property="Foreground" Value="{DynamicResource Brush.Accent}" />
+    </Style>
+
+    <!-- Month name: current = accent, past = Text.Tertiary, future = Text.Primary. -->
+    <Style Selector="TextBlock.month-name">
+      <Setter Property="Margin" Value="{DynamicResource Space.Year.Name}" />
+      <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
+    </Style>
+    <Style Selector="TextBlock.month-name.past">
+      <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Tertiary}" />
+    </Style>
+    <Style Selector="TextBlock.month-name.current">
+      <Setter Property="Foreground" Value="{DynamicResource Brush.Accent}" />
+    </Style>
+
+    <!-- Key item (.hv2): single-day = Bg.Card, no ring; multi-day = Accent10 + Accent25 ring; done multi-day =
+         Bg.SpanDone + Bg.Track ring. Tag filter: other tags at Opacity.Dimmed. The content fills the 26 px inside the
+         ring and each part centres itself in it (align-items: center). -->
+    <Style Selector="Button.item">
+      <Setter Property="Height" Value="{DynamicResource Year.ItemHeight}" />
+      <Setter Property="Padding" Value="{DynamicResource Space.Year.Item}" />
+      <Setter Property="VerticalContentAlignment" Value="Stretch" />
+      <Setter Property="Background" Value="{DynamicResource Brush.Bg.Card}" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+    </Style>
+    <Style Selector="Button.item.span">
+      <Setter Property="Background" Value="{DynamicResource Brush.Accent10}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent25}" />
+    </Style>
+    <Style Selector="Button.item.span.done">
+      <Setter Property="Background" Value="{DynamicResource Brush.Bg.SpanDone}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource Brush.Bg.Track}" />
+    </Style>
+    <Style Selector="Button.item.dimmed">
+      <Setter Property="Opacity" Value="{DynamicResource Opacity.Dimmed}" />
+    </Style>
+
+    <!-- Item title: 12.5 / 500, Text.Primary; done → Text.Muted (300 ms); the strike is always there and fades in. -->
+    <Style Selector="TextBlock.item-title">
+      <Setter Property="FontSize" Value="{DynamicResource FontSize.12.5}" />
+      <Setter Property="FontWeight" Value="Medium" />
+      <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
+      <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="TextBlock.item-title.done">
+      <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Muted}" />
+    </Style>
+  </UserControl.Styles>
+
+  <ItemsControl Name="MonthGrid" ItemsSource="{Binding Months}">
+    <ItemsControl.ItemsPanel>
+      <ItemsPanelTemplate>
+        <w:TrackGrid Columns="4" Rows="3" />
+      </ItemsPanelTemplate>
+    </ItemsControl.ItemsPanel>
+    <ItemsControl.ItemTemplate>
+      <DataTemplate x:DataType="y:YearMonthViewModel">
+        <Border Classes="cell"
+                Classes.first="{Binding IsFirstColumn}"
+                Classes.last="{Binding IsLastColumn}"
+                Classes.top="{Binding IsFirstRow}">
+          <StackPanel Spacing="{DynamicResource Year.Gap}">
+            <!-- Header (.hd): whole header fades to 0.75 on hover. margin-bottom 8. -->
+            <Button Theme="{StaticResource Button.Header}"
+                    Classes="month-header"
+                    HorizontalAlignment="Stretch"
+                    Margin="{DynamicResource Space.Year.Header}"
+                    AutomationProperties.Name="{Binding OpenLabel}"
+                    Click="OnOpenMonth">
+              <StackPanel>
+                <Grid ColumnDefinitions="*,Auto" Height="{DynamicResource Year.StatLineHeight}">
+                  <!-- Trimmed in a narrow cell instead of running under "● NOW". -->
+                  <TextBlock Name="PART_Stat" Classes="stat" TextTrimming="CharacterEllipsis"
+                             Text="{Binding StatLabel}" />
+                  <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="{DynamicResource Year.NowGap}" IsVisible="{Binding IsCurrent}">
+                    <Ellipse Width="{DynamicResource Size.Year.Dot}"
+                             Height="{DynamicResource Size.Year.Dot}"
+                             Fill="{DynamicResource Brush.Accent}"
+                             VerticalAlignment="Center" />
+                    <TextBlock Classes="stat accent" Text="NOW" />
+                  </StackPanel>
+                </Grid>
+                <TextBlock Classes="month-name"
+                           Classes.past="{Binding IsPast}"
+                           Classes.current="{Binding IsCurrent}"
+                           Text="{Binding Name}" />
+                <c:ProgressLine Value="{Binding Progress}" Margin="{DynamicResource Space.Year.Progress}" />
+              </StackPanel>
+            </Button>
+
+            <ItemsControl ItemsSource="{Binding Rows}">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                  <StackPanel Spacing="{DynamicResource Year.Gap}" />
+                </ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:TaskRowViewModel">
+                  <Button Theme="{StaticResource Button.Bar}"
+                          Classes="item"
+                          Classes.span="{Binding IsMultiDay}"
+                          Classes.done="{Binding Done}"
+                          Classes.dimmed="{Binding Dimmed}"
+                          Command="{Binding ToggleCommand}"
+                          AutomationProperties.Name="{Binding ToggleLabel}">
+                    <Button.Transitions>
+                      <Transitions>
+                        <DoubleTransition Property="Opacity" Duration="{x:Static m:MotionTimes.Dim}" Easing="{x:Static m:Motion.EaseStd}" />
+                      </Transitions>
+                    </Button.Transitions>
+                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{DynamicResource Year.ItemGap}">
+                      <c:TaskCheckBox BoxSize="{DynamicResource Size.Year.Check}"
+                                      VerticalAlignment="Center"
+                                      IsChecked="{Binding Done, Mode=OneWay}"
+                                      IsHitTestVisible="False"
+                                      Focusable="False" />
+                      <c:StrikeText Grid.Column="1"
+                                    Classes="item-title"
+                                    Classes.done="{Binding Done}"
+                                    HorizontalAlignment="Left"
+                                    Text="{Binding Title}"
+                                    Struck="{Binding Done}"
+                                    StrikeColor="{DynamicResource Color.Text.Muted}">
+                        <c:StrikeText.Transitions>
+                          <Transitions>
+                            <BrushTransition Property="Foreground" Duration="{x:Static m:MotionTimes.Strike}" Easing="{x:Static m:Motion.EaseStd}" />
+                          </Transitions>
+                        </c:StrikeText.Transitions>
+                      </c:StrikeText>
+                      <TextBlock Grid.Column="2"
+                                 Classes="meta-sm"
+                                 VerticalAlignment="Center"
+                                 Text="{Binding Meta}" />
+                    </Grid>
+                  </Button>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <!-- "+N more" (.wkl): mono 10.5 Text.Muted → Text.Primary, padding 2 9. -->
+            <Button Theme="{StaticResource Button.Link}"
+                    Classes="more"
+                    Padding="{DynamicResource Space.Year.More}"
+                    IsVisible="{Binding HasMore}"
+                    Content="{Binding MoreLabel}"
+                    Click="OnOpenMonth" />
+          </StackPanel>
+        </Border>
+      </DataTemplate>
+    </ItemsControl.ItemTemplate>
+  </ItemsControl>
+</UserControl>

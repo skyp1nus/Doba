@@ -1,0 +1,88 @@
+<!--
+  Day content area (design-reference.dc.html lines 564–641): a scrolling list (padding-right 32, content max-width 680,
+  padding-top 4, gap 8) — "TASKS" + "N / M done", multi-day spans, task cards, "Nothing here", the dashed "Add task" at
+  the bottom — and the Schedule aside (380 px, padding-left 24, Border.Subtle left border).
+-->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:Doba.App.Controls"
+             xmlns:local="using:Doba.App.Screens.Day"
+             xmlns:vm="using:Doba.App.ViewModels"
+             x:Class="Doba.App.Screens.Day.DayView"
+             x:DataType="local:DayViewModel"
+             c:TaskListRow.Entrances="{Binding Entrances}">
+  <Grid ColumnDefinitions="*,Auto">
+    <ScrollViewer Name="PART_Scroll" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Padding="{StaticResource Space.Day.Scroll}">
+      <Grid>
+        <!-- max-width 680, left-aligned. The list column takes (nearly) all the width up to its maximum and the second
+             column the rest; with a lone capped star column (and an empty Auto one) the Grid laid the list out 681 px
+             wide. -->
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="1000*" MaxWidth="{StaticResource Size.Day.MaxWidth}" />
+          <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+        <StackPanel Name="PART_List" Spacing="{StaticResource Space.Day.ListGap}" Margin="{StaticResource Space.Day.List}">
+          <Grid Name="PART_Header" ColumnDefinitions="*,Auto" Margin="{StaticResource Space.Day.Header}">
+            <TextBlock Classes="section" Text="TASKS" VerticalAlignment="Center"
+                       LineHeight="{Binding $self.FontSize, Converter={x:Static c:TaskListRow.CssLineHeight}}" />
+            <TextBlock Name="PART_Progress"
+                       Grid.Column="1"
+                       Classes="mono tertiary"
+                       FontSize="{DynamicResource FontSize.12}"
+                       Text="{Binding Progress}"
+                       VerticalAlignment="Center"
+                       LineHeight="{Binding $self.FontSize, Converter={x:Static c:TaskListRow.CssLineHeight}}" />
+          </Grid>
+
+          <ItemsControl Name="PART_Spans" ItemsSource="{Binding Spans}" IsVisible="{Binding HasSpans}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <StackPanel Spacing="{StaticResource Space.Day.ListGap}" />
+              </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:TaskRowViewModel">
+                <local:DaySpanRow />
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+
+          <ItemsControl Name="PART_Items" ItemsSource="{Binding Items}" IsVisible="{Binding HasItems}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <StackPanel Spacing="{StaticResource Space.Day.ListGap}" />
+              </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:TaskRowViewModel">
+                <local:DayCard />
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+
+          <TextBlock Name="PART_Empty"
+                     Text="Nothing here"
+                     Classes="muted"
+                     FontSize="{DynamicResource FontSize.12.5}"
+                     Margin="{StaticResource Space.Day.Empty}"
+                     LineHeight="{Binding $self.FontSize, Converter={x:Static c:TaskListRow.CssLineHeight}}"
+                     IsVisible="{Binding IsEmpty}" />
+
+          <c:AddTaskButton Name="PART_AddTask" Command="{Binding AddTaskCommand}" />
+        </StackPanel>
+      </Grid>
+    </ScrollViewer>
+
+    <!-- As on Today: the aside does not scroll at 1600×1000 (the 812 px timeline fits); in a shorter window it scrolls on
+         its own and shows the now-line (today) or the earliest block (ScheduleScroll). -->
+    <Border Name="PART_Aside"
+            Grid.Column="1"
+            BorderBrush="{DynamicResource Brush.Border.Subtle}"
+            BorderThickness="1,0,0,0"
+            Padding="{StaticResource Space.Day.Aside}">
+      <ScrollViewer Name="PART_ScheduleScroll" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+        <c:ScheduleTimeline Name="PART_Schedule" Width="{DynamicResource Size.Schedule.Width}" DataContext="{Binding Schedule}" />
+      </ScrollViewer>
+    </Border>
+  </Grid>
+</UserControl>

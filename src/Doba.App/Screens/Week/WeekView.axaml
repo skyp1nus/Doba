@@ -1,0 +1,18 @@
+<!--
+  Week screen (design-reference lines 503–562): two rows of equal height; 12 px under row 1, a 1 px Border.Subtle
+  rule, 14 px above row 2 (WeekRowsPanel). DataContext: WeekViewModel. The view reports the rows' size before it
+  measures them (WeekView.axaml.cs) so the projection fits "+N more" to the real space from the first frame.
+-->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:Doba.App.Controls"
+             xmlns:w="using:Doba.App.Screens.Week"
+             x:Class="Doba.App.Screens.Week.WeekView"
+             x:DataType="w:WeekViewModel"
+             c:TaskListRow.Entrances="{Binding Entrances}">
+  <w:WeekRowsPanel Name="RowsPanel">
+    <w:WeekRowView Name="Row1View" DataContext="{Binding Row1}" />
+    <Border Height="1" Margin="{DynamicResource Space.Week.RowRule}" Background="{DynamicResource Brush.Border.Subtle}" />
+    <w:WeekRowView Name="Row2View" DataContext="{Binding Row2}" />
+  </w:WeekRowsPanel>
+</UserControl>

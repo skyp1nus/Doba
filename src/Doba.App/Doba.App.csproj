@@ -1,0 +1,46 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <RootNamespace>Doba.App</RootNamespace>
+    <AssemblyName>Doba</AssemblyName>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- The title-bar app mark at 16–256 px; also the window and tray icon (avares://Doba/Assets/doba.ico). -->
+    <ApplicationIcon>Assets\doba.ico</ApplicationIcon>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <BuiltInComInteropSupport>false</BuiltInComInteropSupport>
+    <!-- NativeAOT publish (win-x64 in CI); analyzers are on for every build via Directory.Build.props. -->
+    <PublishAot>true</PublishAot>
+    <TrimMode>full</TrimMode>
+    <OptimizationPreference>Speed</OptimizationPreference>
+    <StackTraceSupport>false</StackTraceSupport>
+    <!-- Off: .NET's own exception messages stay sentences in doba.log and the startup error box (with it on they read
+         "IO_AlreadyExists_Name, <path>"). Measured: +58 KB on Doba.exe (20,384,256 -> 20,442,624 bytes), warm startup
+         unchanged within noise (scripts/perf.ps1 -Runs 5). -->
+    <UseSystemResourceKeys>false</UseSystemResourceKeys>
+    <SelfContained Condition="'$(RuntimeIdentifier)' != ''">true</SelfContained>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Doba.Core\Doba.Core.csproj" />
+    <ProjectReference Include="..\Doba.Storage\Doba.Storage.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Avalonia" />
+    <PackageReference Include="Avalonia.Desktop" />
+    <PackageReference Include="CommunityToolkit.Mvvm" />
+  </ItemGroup>
+  <ItemGroup>
+    <AvaloniaResource Include="Assets\**" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Doba.App.Tests" />
+  </ItemGroup>
+  <!-- GC (NativeAOT only; embedded in Doba.exe). An 8 MB gen0 budget instead of the default, which follows the CPU's
+       cache size (~30 MB on a 96 MB-L3 CPU): with the default, a navigation that rebuilds a screen's cards triggers
+       a gen1 collection of ~30 MB of young objects that stops the render thread for 60-110 ms (visible stalls in the
+       Week transitions); with 8 MB the collections are smaller and the worst render frame stays under ~34 ms. Measured
+       with scripts/perf.ps1; table and trade-off (about +10-25 ms warm startup from one or two startup
+       collections) in docs/DECISIONS.md. Overridable at run time with DOTNET_GCgen0size (hex). -->
+  <ItemGroup Condition="'$(PublishAot)' == 'true'">
+    <IlcArg Include="--runtimeopt:GCgen0size=800000" />
+  </ItemGroup>
+</Project>

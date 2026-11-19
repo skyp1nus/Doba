@@ -1,0 +1,489 @@
+<!--
+  Buttons. One ControlTheme per look in the prototype; pick it with Theme="{StaticResource Button.Outline}" etc.
+  Content (icon + label + Kbd) is supplied by the caller, usually a StackPanel Orientation="Horizontal" with the gap
+  noted per theme. Hover/colour transitions live inside the templates so their durations (MotionTimes, via x:Static)
+  are evaluated per control and honour Motion.SystemAnimationsEnabled.
+-->
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:m="using:Doba.App.Motion"
+                    xmlns:t="using:Doba.App.Theme">
+
+  <!-- Templates ================================================================================================ -->
+
+  <!-- .ob family: background / border / text colour over Motion.Hover (180 ms, ease). -->
+  <ControlTemplate x:Key="Template.Button.Hover" TargetType="ContentControl">
+    <ContentPresenter Name="PART_ContentPresenter"
+                      Background="{TemplateBinding Background}"
+                      BorderBrush="{TemplateBinding BorderBrush}"
+                      BorderThickness="{TemplateBinding BorderThickness}"
+                      CornerRadius="{TemplateBinding CornerRadius}"
+                      Padding="{TemplateBinding Padding}"
+                      Content="{TemplateBinding Content}"
+                      ContentTemplate="{TemplateBinding ContentTemplate}"
+                      HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                      VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                      Foreground="{TemplateBinding Foreground}">
+      <ContentPresenter.Transitions>
+        <Transitions>
+          <BrushTransition Property="Background" Duration="{x:Static m:MotionTimes.Hover}" Easing="{x:Static m:Motion.EaseStd}" />
+          <BrushTransition Property="BorderBrush" Duration="{x:Static m:MotionTimes.Hover}" Easing="{x:Static m:Motion.EaseStd}" />
+          <BrushTransition Property="Foreground" Duration="{x:Static m:MotionTimes.Hover}" Easing="{x:Static m:Motion.EaseStd}" />
+        </Transitions>
+      </ContentPresenter.Transitions>
+    </ContentPresenter>
+  </ControlTemplate>
+
+  <!-- Caption buttons and menu items: Motion.HoverFast (150 ms). -->
+  <ControlTemplate x:Key="Template.Button.Fast" TargetType="ContentControl">
+    <ContentPresenter Name="PART_ContentPresenter"
+                      Background="{TemplateBinding Background}"
+                      BorderBrush="{TemplateBinding BorderBrush}"
+                      BorderThickness="{TemplateBinding BorderThickness}"
+                      CornerRadius="{TemplateBinding CornerRadius}"
+                      Padding="{TemplateBinding Padding}"
+                      Content="{TemplateBinding Content}"
+                      ContentTemplate="{TemplateBinding ContentTemplate}"
+                      HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                      VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                      Foreground="{TemplateBinding Foreground}">
+      <ContentPresenter.Transitions>
+        <Transitions>
+          <BrushTransition Property="Background" Duration="{x:Static m:MotionTimes.HoverFast}" Easing="{x:Static m:Motion.EaseStd}" />
+          <BrushTransition Property="BorderBrush" Duration="{x:Static m:MotionTimes.HoverFast}" Easing="{x:Static m:Motion.EaseStd}" />
+          <BrushTransition Property="Foreground" Duration="{x:Static m:MotionTimes.HoverFast}" Easing="{x:Static m:Motion.EaseStd}" />
+        </Transitions>
+      </ContentPresenter.Transitions>
+    </ContentPresenter>
+  </ControlTemplate>
+
+  <!-- Crumbs, links, month cells: Motion.ColorChange (200 ms). (Sidebar rows are Shell's SidebarItem.) -->
+  <ControlTemplate x:Key="Template.Button.Color" TargetType="ContentControl">
+    <ContentPresenter Name="PART_ContentPresenter"
+                      Background="{TemplateBinding Background}"
+                      BorderBrush="{TemplateBinding BorderBrush}"
+                      BorderThickness="{TemplateBinding BorderThickness}"
+                      CornerRadius="{TemplateBinding CornerRadius}"
+                      Padding="{TemplateBinding Padding}"
+                      Content="{TemplateBinding Content}"
+                      ContentTemplate="{TemplateBinding ContentTemplate}"
+                      HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                      VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                      Foreground="{TemplateBinding Foreground}">
+      <ContentPresenter.Transitions>
+        <Transitions>
+          <BrushTransition Property="Background" Duration="{x:Static m:MotionTimes.Color}" Easing="{x:Static m:Motion.EaseStd}" />
+          <BrushTransition Property="Foreground" Duration="{x:Static m:MotionTimes.Color}" Easing="{x:Static m:Motion.EaseStd}" />
+        </Transitions>
+      </ContentPresenter.Transitions>
+    </ContentPresenter>
+  </ControlTemplate>
+
+  <!-- Task titles (.tt): text colour over Motion.Strike (300 ms) — the same transition as done/undone. -->
+  <ControlTemplate x:Key="Template.Button.Title" TargetType="ContentControl">
+    <ContentPresenter Name="PART_ContentPresenter"
+                      Background="{TemplateBinding Background}"
+                      Padding="{TemplateBinding Padding}"
+                      Content="{TemplateBinding Content}"
+                      ContentTemplate="{TemplateBinding ContentTemplate}"
+                      HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                      VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                      Foreground="{TemplateBinding Foreground}">
+      <ContentPresenter.Transitions>
+        <Transitions>
+          <BrushTransition Property="Foreground" Duration="{x:Static m:MotionTimes.Strike}" Easing="{x:Static m:Motion.EaseStd}" />
+        </Transitions>
+      </ContentPresenter.Transitions>
+    </ContentPresenter>
+  </ControlTemplate>
+
+  <!-- Opacity changes (.hd day/month headers on hover, the primary button's disabled state): 200 ms. -->
+  <ControlTemplate x:Key="Template.Button.Fade" TargetType="ContentControl">
+    <ContentPresenter Name="PART_ContentPresenter"
+                      Background="{TemplateBinding Background}"
+                      BorderBrush="{TemplateBinding BorderBrush}"
+                      BorderThickness="{TemplateBinding BorderThickness}"
+                      CornerRadius="{TemplateBinding CornerRadius}"
+                      Padding="{TemplateBinding Padding}"
+                      Content="{TemplateBinding Content}"
+                      ContentTemplate="{TemplateBinding ContentTemplate}"
+                      HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                      VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                      Foreground="{TemplateBinding Foreground}">
+      <ContentPresenter.Transitions>
+        <Transitions>
+          <DoubleTransition Property="Opacity" Duration="{x:Static m:MotionTimes.Color}" Easing="{x:Static m:Motion.EaseStd}" />
+        </Transitions>
+      </ContentPresenter.Transitions>
+    </ContentPresenter>
+  </ControlTemplate>
+
+  <!-- "Add task" row: 1 px dashed border (3 on / 2 off, as Chromium draws it) + .ob hover. -->
+  <ControlTemplate x:Key="Template.Button.Dashed" TargetType="ContentControl">
+    <Panel>
+      <Rectangle Name="PART_Dash"
+                 RadiusX="{TemplateBinding CornerRadius, Converter={x:Static t:ThemeConverters.TopLeftRadius}}"
+                 RadiusY="{TemplateBinding CornerRadius, Converter={x:Static t:ThemeConverters.TopLeftRadius}}"
+                 Stroke="{TemplateBinding BorderBrush}"
+                 StrokeThickness="1"
+                 StrokeDashArray="3,2"
+                 StrokeDashOffset="0.5" />
+      <ContentPresenter Name="PART_ContentPresenter"
+                        Background="{TemplateBinding Background}"
+                        CornerRadius="{TemplateBinding CornerRadius}"
+                        Padding="{TemplateBinding Padding}"
+                        Content="{TemplateBinding Content}"
+                        ContentTemplate="{TemplateBinding ContentTemplate}"
+                        HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                        VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                        Foreground="{TemplateBinding Foreground}">
+        <ContentPresenter.Transitions>
+          <Transitions>
+            <BrushTransition Property="Background" Duration="{x:Static m:MotionTimes.Hover}" Easing="{x:Static m:Motion.EaseStd}" />
+          </Transitions>
+        </ContentPresenter.Transitions>
+      </ContentPresenter>
+    </Panel>
+  </ControlTemplate>
+
+  <!-- Multi-day bars / schedule blocks (.hv2): CSS brightness(1.2) approximated by a white overlay fading in (200 ms).
+       The fill runs under the 1 px ring (OuterBorderEdge), as the CSS inset box-shadow is painted over the background. -->
+  <ControlTemplate x:Key="Template.Button.Bar" TargetType="ContentControl">
+    <Panel>
+      <ContentPresenter Name="PART_ContentPresenter"
+                        BackgroundSizing="OuterBorderEdge"
+                        Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}"
+                        CornerRadius="{TemplateBinding CornerRadius}"
+                        Padding="{TemplateBinding Padding}"
+                        Content="{TemplateBinding Content}"
+                        ContentTemplate="{TemplateBinding ContentTemplate}"
+                        HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                        VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                        Foreground="{TemplateBinding Foreground}" />
+      <Border Name="PART_Brighten"
+              CornerRadius="{TemplateBinding CornerRadius}"
+              Background="{DynamicResource Brush.Overlay.Hover}"
+              IsHitTestVisible="False"
+              Opacity="0">
+        <Border.Transitions>
+          <Transitions>
+            <DoubleTransition Property="Opacity" Duration="{x:Static m:MotionTimes.Color}" Easing="{x:Static m:Motion.EaseStd}" />
+          </Transitions>
+        </Border.Transitions>
+      </Border>
+    </Panel>
+  </ControlTemplate>
+
+  <!-- Themes ================================================================================================== -->
+
+  <!-- Ghost (.ob without border) — also the default Button look. Tag "+" 24×24, dialog close 28×28, priority 18×18 r4. -->
+  <ControlTheme x:Key="Button.Ghost" TargetType="Button">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Muted}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Radius.Item}" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Template" Value="{StaticResource Template.Button.Hover}" />
+    <Style Selector="^:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource Brush.Overlay.Hover}" />
+    </Style>
+    <Style Selector="^:disabled">
+      <Setter Property="Opacity" Value="{DynamicResource Opacity.Disabled}" />
+    </Style>
+  </ControlTheme>
+
+  <ControlTheme x:Key="{x:Type Button}" TargetType="Button" BasedOn="{StaticResource Button.Ghost}" />
+
+  <ControlTheme x:Key="{x:Type RepeatButton}" TargetType="RepeatButton" BasedOn="{StaticResource Button.Ghost}" />
+
+  <!-- Outline ("Today", "Cancel", settings buttons): 30 px, 1 px Border.Default, r7, 0 12, 12.5 Medium, Text.Bright. -->
+  <ControlTheme x:Key="Button.Outline" TargetType="Button" BasedOn="{StaticResource Button.Ghost}">
+    <Setter Property="Height" Value="{DynamicResource Size.Control}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Default}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Radius.Control}" />
+    <Setter Property="Padding" Value="{DynamicResource Space.Button}" />
+    <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Bright}" />
+    <Setter Property="FontSize" Value="{DynamicResource FontSize.12.5}" />
+    <Setter Property="FontWeight" Value="Medium" />
+  </ControlTheme>
+
+  <!-- Outline icon (sidebar toggle, ‹ ›): 30×30, r7, Text.Tertiary. Icon 15-16 px. -->
+  <ControlTheme x:Key="Button.OutlineIcon" TargetType="Button" BasedOn="{StaticResource Button.Outline}">
+    <Setter Property="Width" Value="{DynamicResource Size.Control}" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Tertiary}" />
+  </ControlTheme>
+
+  <!-- Danger outline ("Delete" in the edit dialog). -->
+  <ControlTheme x:Key="Button.Danger" TargetType="Button" BasedOn="{StaticResource Button.Outline}">
+    <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Danger}" />
+    <Setter Property="Foreground" Value="{DynamicResource Brush.Danger}" />
+  </ControlTheme>
+
+  <!-- Small outline ("→ Today" in Today rows): 24 px, r6, 0 8, mono 10.5, Text.Bright. -->
+  <ControlTheme x:Key="Button.Small" TargetType="Button" BasedOn="{StaticResource Button.Outline}">
+    <Setter Property="Height" Value="24" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Radius.Item}" />
+    <Setter Property="Padding" Value="8,0" />
+    <Setter Property="FontFamily" Value="{DynamicResource Font.Mono}" />
+    <Setter Property="FontSize" Value="{DynamicResource FontSize.10.5}" />
+    <Setter Property="FontWeight" Value="Normal" />
+  </ControlTheme>
+
+  <!-- Popover "Done": 28 px, r7, 0 12, 1 px Border.Popover, 12 Medium, Text.Bright. -->
+  <ControlTheme x:Key="Button.PopoverDone" TargetType="Button" BasedOn="{StaticResource Button.Outline}">
+    <Setter Property="Height" Value="{DynamicResource Size.ControlSmall}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Popover}" />
+    <Setter Property="FontSize" Value="{DynamicResource FontSize.12}" />
+  </ControlTheme>
+
+  <!-- Primary ("New task", "Create task"): 30 px, r7, 12 0 6 when followed by a Kbd.onPrimary (gap 8), Bg.Primary,
+       Text.OnPrimary, 12.5 SemiBold. Disabled = Opacity.Disabled with a 200 ms fade. -->
+  <ControlTheme x:Key="Button.Primary" TargetType="Button">
+    <Setter Property="Height" Value="{DynamicResource Size.Control}" />
+    <Setter Property="Background" Value="{DynamicResource Brush.Bg.Primary}" />
+    <Setter Property="Foreground" Value="{DynamicResource Brush.Text.OnPrimary}" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Radius.Control}" />
+    <Setter Property="Padding" Value="{DynamicResource Space.ButtonWithKbd}" />
+    <Setter Property="FontSize" Value="{DynamicResource FontSize.12.5}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Template" Value="{StaticResource Template.Button.Fade}" />
+    <Style Selector="^:disabled /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Opacity" Value="{DynamicResource Opacity.Disabled}" />
+    </Style>
+  </ControlTheme>
+
+  <!-- Menu item (.mi, popover rows): 32 px, r6, 0 8, 13 px Text.Primary, gap 10; hover Overlay.Press (150 ms);
+       Classes="selected" = Overlay.Selected. Also the popover header buttons with Foreground Text.Tertiary. -->
+  <ControlTheme x:Key="Button.Menu" TargetType="Button">
+    <Setter Property="Height" Value="{DynamicResource Size.NavItem}" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Radius.Item}" />
+    <Setter Property="Padding" Value="8,0" />
+    <Setter Property="FontSize" Value="{DynamicResource FontSize.13}" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Template" Value="{StaticResource Template.Button.Fast}" />
+    <Style Selector="^.selected /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource Brush.Overlay.Selected}" />
+    </Style>
+    <Style Selector="^:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource Brush.Overlay.Press}" />
+    </Style>
+  </ControlTheme>
+
+  <!-- Window caption buttons: 46×40, Text.Secondary, hover Overlay.Press (150 ms), not in the tab order.
+       Glyphs: Icon ViewBox="10" Size="10" StrokeWidth="1" with Icon.Caption.* -->
+  <ControlTheme x:Key="Button.Caption" TargetType="Button">
+    <Setter Property="Width" Value="{DynamicResource Size.Caption.Width}" />
+    <Setter Property="Height" Value="{DynamicResource Size.TitleBar}" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="CornerRadius" Value="0" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Secondary}" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="Focusable" Value="False" />
+    <Setter Property="Template" Value="{StaticResource Template.Button.Fast}" />
+    <Style Selector="^:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource Brush.Overlay.Press}" />
+    </Style>
+  </ControlTheme>
+
+  <ControlTheme x:Key="Button.CaptionClose" TargetType="Button" BasedOn="{StaticResource Button.Caption}">
+    <Style Selector="^:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource Brush.CloseHover}" />
+    </Style>
+  </ControlTheme>
+
+  <!-- Breadcrumb link (.crumb): mono 11, letter spacing 0.88, 0 2, Text.Muted → Text.Primary on hover (200 ms).
+       Upper-case the label in the projection (Avalonia has no text-transform). -->
+  <ControlTheme x:Key="Button.Crumb" TargetType="Button">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Padding" Value="2,0" />
+    <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Muted}" />
+    <Setter Property="FontFamily" Value="{DynamicResource Font.Mono}" />
+    <Setter Property="FontSize" Value="{DynamicResource FontSize.11}" />
+    <Setter Property="LetterSpacing" Value="{DynamicResource LetterSpacing.Label}" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Template" Value="{StaticResource Template.Button.Color}" />
+    <Style Selector="^:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
+    </Style>
+  </ControlTheme>
+
+  <!-- Text link (.wkl: "+N more", week numbers, inbox day headers): mono 10.5, Text.Muted → Text.Primary (200 ms).
+       Padding per use: 2 6 (week "+N more"), 2 9 (year), 0 (group headers: set FontSize 11 + LetterSpacing). -->
+  <ControlTheme x:Key="Button.Link" TargetType="Button" BasedOn="{StaticResource Button.Crumb}">
+    <Setter Property="Padding" Value="6,2" />
+    <Setter Property="FontSize" Value="{DynamicResource FontSize.10.5}" />
+    <Setter Property="LetterSpacing" Value="0" />
+    <Setter Property="HorizontalAlignment" Value="Left" />
+  </ControlTheme>
+
+  <!-- Add task row: 38 px, dashed Border.Strong, r8, 12 0 8, 13.5 px Text.Muted, gap 10 (Icon.Plus 14/1.8 + label + Kbd.muted). -->
+  <ControlTheme x:Key="Button.Dashed" TargetType="Button">
+    <Setter Property="Height" Value="{DynamicResource Size.AddTask}" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Strong}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Radius.Card}" />
+    <Setter Property="Padding" Value="{DynamicResource Space.AddTask}" />
+    <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Muted}" />
+    <Setter Property="FontSize" Value="{DynamicResource FontSize.13.5}" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Template" Value="{StaticResource Template.Button.Dashed}" />
+    <Style Selector="^:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource Brush.Overlay.Hover}" />
+    </Style>
+  </ControlTheme>
+
+  <!-- Title bar search: 28 px, 1 px Overlay.Active, r7, Overlay.Field, 10 0 6, 12.5 Text.Tertiary, gap 8. -->
+  <ControlTheme x:Key="Button.Search" TargetType="Button" BasedOn="{StaticResource Button.Ghost}">
+    <Setter Property="Height" Value="{DynamicResource Size.ControlSmall}" />
+    <Setter Property="Background" Value="{DynamicResource Brush.Overlay.Field}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Brush.Overlay.Active}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Radius.Control}" />
+    <Setter Property="Padding" Value="10,0,6,0" />
+    <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Tertiary}" />
+    <Setter Property="FontSize" Value="{DynamicResource FontSize.12.5}" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <!-- CSS paints the fill under the translucent border (background-clip: border-box). -->
+    <Style Selector="^ /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="BackgroundSizing" Value="OuterBorderEdge" />
+    </Style>
+  </ControlTheme>
+
+  <!-- Day / month header (.hd): transparent, whole header fades to Opacity.HeaderHover on hover (200 ms). -->
+  <ControlTheme x:Key="Button.Header" TargetType="Button">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="VerticalContentAlignment" Value="Top" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Template" Value="{StaticResource Template.Button.Fade}" />
+    <Style Selector="^:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Opacity" Value="{DynamicResource Opacity.HeaderHover}" />
+    </Style>
+  </ControlTheme>
+
+  <!-- Task title (.tt): no chrome, left aligned, Text.Primary → Text.White on hover (300 ms, shared with done/undone).
+       Set Foreground to Text.Muted for done tasks. -->
+  <ControlTheme x:Key="Button.Title" TargetType="Button">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
+    <Setter Property="FontSize" Value="{DynamicResource Density.TitleSize}" />
+    <Setter Property="HorizontalContentAlignment" Value="Left" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Template" Value="{StaticResource Template.Button.Title}" />
+    <Style Selector="^:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Foreground" Value="{DynamicResource Brush.Text.White}" />
+    </Style>
+  </ControlTheme>
+
+  <!-- Month day cell (.cell): transparent (Overlay.Faint outside the month via Background), hover Overlay.Cell (200 ms). -->
+  <ControlTheme x:Key="Button.Cell" TargetType="Button">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Subtle}" />
+    <Setter Property="BorderThickness" Value="1,1,0,0" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="VerticalAlignment" Value="Stretch" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Template" Value="{StaticResource Template.Button.Color}" />
+    <Style Selector="^:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource Brush.Overlay.Cell}" />
+    </Style>
+  </ControlTheme>
+
+  <!-- Multi-day bar / schedule block (.hv2): Background Brush.Accent10 + BorderBrush Brush.Accent25 (1 px inset ring),
+       done: Bg.SpanDone + Bg.Track. Hover brightens (overlay, 200 ms). Week bar 28 px r6 0 10 gap 8; day span 38 px r8;
+       schedule block r7. -->
+  <ControlTheme x:Key="Button.Bar" TargetType="Button">
+    <Setter Property="Background" Value="{DynamicResource Brush.Accent10}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent25}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Radius.Item}" />
+    <Setter Property="Padding" Value="10,0" />
+    <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Template" Value="{StaticResource Template.Button.Bar}" />
+    <Style Selector="^:pointerover /template/ Border#PART_Brighten">
+      <Setter Property="Opacity" Value="1" />
+    </Style>
+  </ControlTheme>
+
+  <!-- ToggleButtons ============================================================================================ -->
+
+  <ControlTheme x:Key="{x:Type ToggleButton}" TargetType="ToggleButton">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Tertiary}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Radius.Item}" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Template" Value="{StaticResource Template.Button.Hover}" />
+    <Style Selector="^:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource Brush.Overlay.Hover}" />
+    </Style>
+    <Style Selector="^:checked /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource Brush.Overlay.Selected}" />
+      <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
+    </Style>
+  </ControlTheme>
+
+  <!-- Date quick option chip ("Today", "Tomorrow", "Next week 16 Nov"): 28 px, r7, 0 10, 1 px Border.Popover,
+       12 Medium Text.Tertiary, gap 6 (+ mono 10.5 Text.Muted hint); checked: Bg.Control + Border.Emphasis + Text.Primary. -->
+  <ControlTheme x:Key="ToggleButton.Chip" TargetType="ToggleButton">
+    <Setter Property="Height" Value="{DynamicResource Size.ControlSmall}" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Popover}" />
+    <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Tertiary}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Radius.Control}" />
+    <Setter Property="Padding" Value="10,0" />
+    <Setter Property="FontSize" Value="{DynamicResource FontSize.12}" />
+    <Setter Property="FontWeight" Value="Medium" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Template" Value="{StaticResource Template.Button.Fast}" />
+    <Style Selector="^:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource Brush.Overlay.Hover}" />
+    </Style>
+    <Style Selector="^:checked /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource Brush.Bg.Control}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Emphasis}" />
+      <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
+    </Style>
+  </ControlTheme>
+</ResourceDictionary>

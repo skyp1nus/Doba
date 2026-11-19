@@ -1,0 +1,71 @@
+<!--
+  Title bar (design markup lines 52-76): 40 px, app mark + "Doba", the "Search tasks" button (Ctrl K) and the three
+  caption buttons. The bar itself is the window's drag area (TitleBar role: drag, double-click maximise, snap layouts);
+  the caption buttons carry the Minimize / Maximize / Close roles, the search button the User role.
+  DataContext: MainViewModel.
+-->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:Doba.App.Controls"
+             xmlns:sh="using:Doba.App.Shell"
+             x:Class="Doba.App.Shell.TitleBar"
+             x:DataType="sh:MainViewModel"
+             Height="{DynamicResource Size.TitleBar}">
+  <Grid Name="PART_DragArea" Background="Transparent" ColumnDefinitions="*,Auto,*"
+        ColumnSpacing="{DynamicResource Space.Shell.TitleBarGap}"
+        Margin="{DynamicResource Space.Shell.TitleBar}">
+    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Space.Shell.TitleBarGap}">
+      <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space.Shell.BrandGap}" VerticalAlignment="Center"
+                  IsHitTestVisible="False">
+        <Border Width="{DynamicResource Size.Shell.Logo}" Height="{DynamicResource Size.Shell.Logo}"
+                CornerRadius="{DynamicResource Radius.KeyCap}" Background="{DynamicResource Brush.Bg.Logo}">
+          <c:Icon Data="{StaticResource Icon.Logo}" Size="{DynamicResource Size.Shell.LogoGlyph}" StrokeWidth="3.2"
+                  Foreground="{DynamicResource Brush.Bg.DialogFooter}"
+                  HorizontalAlignment="Center" VerticalAlignment="Center" />
+        </Border>
+        <TextBlock Text="Doba" FontSize="{DynamicResource FontSize.12.5}" FontWeight="Medium"
+                   Foreground="{DynamicResource Brush.Text.Secondary}" VerticalAlignment="Center" />
+      </StackPanel>
+
+      <!-- Not in the design: shown only after a change could not be written to disk (the store and the disk now differ).
+           The tool tip has the folder and the reason; a click opens the data folder, where doba.log has the details. -->
+      <Button Name="PART_SaveProblem" Grid.Column="1" Theme="{StaticResource Button.Link}" VerticalAlignment="Center"
+              Foreground="{DynamicResource Brush.Danger}"
+              IsVisible="{Binding SaveProblem, Converter={x:Static ObjectConverters.IsNotNull}}"
+              Command="{Binding OpenDataFolderCommand}"
+              ToolTip.Tip="{Binding SaveProblem}" AutomationProperties.Name="{Binding SaveProblem}">
+        <TextBlock Text="Changes not saved" TextTrimming="CharacterEllipsis" />
+      </Button>
+    </Grid>
+
+    <Button Name="PART_Search" Grid.Column="1" Theme="{StaticResource Button.Search}"
+            Width="{DynamicResource Size.Shell.Search}" MinWidth="{DynamicResource Size.Shell.SearchMin}"
+            VerticalAlignment="Center" Command="{Binding OpenSearchCommand}"
+            AutomationProperties.Name="Search tasks">
+      <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{DynamicResource Space.Shell.SearchGap}">
+        <c:Icon Data="{StaticResource Icon.Search}" Size="{DynamicResource Size.Shell.SearchIcon}" StrokeWidth="1.8" />
+        <TextBlock Grid.Column="1" Text="Search tasks" VerticalAlignment="Center" />
+        <c:Kbd Grid.Column="2" Content="Ctrl K" />
+      </Grid>
+    </Button>
+
+    <!-- Caption glyphs are drawn in their own 10-unit view box (the design's viewBox="0 0 10 10", stroke 1). -->
+    <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right">
+      <Button Name="PART_Minimize" Theme="{StaticResource Button.Caption}" AutomationProperties.Name="Minimize"
+              Click="OnMinimize">
+        <c:Icon Data="{StaticResource Icon.Caption.Minimize}" ViewBox="10"
+                Size="{DynamicResource Size.Shell.CaptionGlyph}" StrokeWidth="1" />
+      </Button>
+      <Button Name="PART_Maximize" Theme="{StaticResource Button.Caption}" AutomationProperties.Name="Maximize"
+              Click="OnMaximize">
+        <c:Icon Data="{StaticResource Icon.Caption.Maximize}" ViewBox="10"
+                Size="{DynamicResource Size.Shell.CaptionGlyph}" StrokeWidth="1" />
+      </Button>
+      <Button Name="PART_Close" Theme="{StaticResource Button.CaptionClose}" AutomationProperties.Name="Close"
+              Click="OnClose">
+        <c:Icon Data="{StaticResource Icon.Caption.Close}" ViewBox="10"
+                Size="{DynamicResource Size.Shell.CaptionGlyph}" StrokeWidth="1" />
+      </Button>
+    </StackPanel>
+  </Grid>
+</UserControl>

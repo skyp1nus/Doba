@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Doba.Core\Doba.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="xunit.v3.mtp-v2" />
+  </ItemGroup>
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Golden fixtures generated from the prototype by Golden/generate.js (Node is not needed to run the tests). -->
+    <None Include="Golden\fixtures\*.json" CopyToOutputDirectory="PreserveNewest" LinkBase="Golden\fixtures" />
+  </ItemGroup>
+</Project>

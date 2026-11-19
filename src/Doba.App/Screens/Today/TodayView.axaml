@@ -1,0 +1,57 @@
+<!--
+  Today content area (design-reference.dc.html lines 353–423): a scrolling list (padding-right 32, content max-width 760,
+  sections gap 28, padding 6 0 24) — summary + 2 px progress, "Add task", groups — and the Schedule aside (380 px,
+  padding-left 24, Border.Subtle left border).
+-->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:Doba.App.Controls"
+             xmlns:local="using:Doba.App.Screens.Today"
+             xmlns:vm="using:Doba.App.ViewModels"
+             x:Class="Doba.App.Screens.Today.TodayView"
+             x:DataType="local:TodayViewModel"
+             c:TaskListRow.Entrances="{Binding Entrances}">
+  <Grid ColumnDefinitions="*,Auto">
+    <ScrollViewer Name="PART_Scroll" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Padding="{StaticResource Space.Today.Scroll}">
+      <!-- max-width 760: a star column capped at 760 and a near-zero star column for the rest (with an Auto column the
+           Grid's layout rounding hands the capped column 1 px of slack: 761 px). -->
+      <Grid>
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="1000*" MaxWidth="{StaticResource Size.Today.MaxWidth}" />
+          <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+        <StackPanel Name="PART_List" Spacing="{StaticResource Space.List.SectionGap}" Margin="{StaticResource Space.List.Sections}">
+          <StackPanel>
+            <TextBlock Name="PART_Summary" Classes="mono tertiary" FontSize="{DynamicResource FontSize.12}" Text="{Binding Summary}" />
+            <c:ProgressLine Name="PART_Progress" Value="{Binding Progress}" Margin="{StaticResource Space.Today.Progress}" />
+          </StackPanel>
+          <c:AddTaskButton Name="PART_AddTask" Command="{Binding AddTaskCommand}" />
+          <ItemsControl ItemsSource="{Binding Groups}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <StackPanel Spacing="{StaticResource Space.List.SectionGap}" />
+              </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:TaskGroupViewModel">
+                <c:TaskGroupList />
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </Grid>
+    </ScrollViewer>
+
+    <!-- The design's aside does not scroll (the 812 px timeline fits at 1600×1000); below that height it scrolls on its
+         own (gap-fill, DECISIONS), and the first show brings the now-line into view. -->
+    <Border Name="PART_Aside"
+            Grid.Column="1"
+            BorderBrush="{DynamicResource Brush.Border.Subtle}"
+            BorderThickness="1,0,0,0"
+            Padding="{StaticResource Space.Today.Aside}">
+      <ScrollViewer Name="PART_ScheduleScroll" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+        <c:ScheduleTimeline Name="PART_Schedule" Width="{DynamicResource Size.Schedule.Width}" DataContext="{Binding Schedule}" />
+      </ScrollViewer>
+    </Border>
+  </Grid>
+</UserControl>

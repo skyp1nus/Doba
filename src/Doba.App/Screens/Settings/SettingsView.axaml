@@ -1,0 +1,264 @@
+<!--
+  Settings content (design-reference.dc.html lines 271–351): a scrolling column, max 780 px, of rows with a 1 px
+  Border.Subtle rule on top and under each row. Row: label 14 Medium + description 12.5 muted (mono for the data
+  path), control on the right (gap 24, min height 66, padding 14 4). Shortcuts: 52 px lines with key caps. Data: a
+  footnote. The settings navigation and the page title are drawn by the shell.
+-->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:Doba.App.Controls"
+             xmlns:m="using:Doba.App.Motion"
+             xmlns:vm="using:Doba.App.Screens.Settings"
+             x:Class="Doba.App.Screens.Settings.SettingsView"
+             x:DataType="vm:SettingsViewModel">
+
+  <UserControl.Styles>
+    <!-- Swatch selection ring (box-shadow 0 0 0 2px Bg.Main, 0 0 0 3.5px Text.Primary). -->
+    <Style Selector="Panel.swatch-ring">
+      <Setter Property="Opacity" Value="0" />
+    </Style>
+    <Style Selector="Panel.swatch-ring.selected">
+      <Setter Property="Opacity" Value="1" />
+    </Style>
+    <!-- Density option card: inset 1.5 px ring Bg.Control, accent when selected; label Tertiary → Primary. -->
+    <Style Selector="Border.density-card">
+      <Setter Property="BorderBrush" Value="{DynamicResource Brush.Bg.Control}" />
+    </Style>
+    <Style Selector="Border.density-card.selected">
+      <Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
+    </Style>
+    <Style Selector="TextBlock.density-label">
+      <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Tertiary}" />
+    </Style>
+    <Style Selector="TextBlock.density-label.selected">
+      <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
+    </Style>
+    <!-- Export / import feedback under the row description. -->
+    <Style Selector="TextBlock.row-message.error">
+      <Setter Property="Foreground" Value="{DynamicResource Brush.Danger}" />
+    </Style>
+  </UserControl.Styles>
+
+  <UserControl.DataTemplates>
+    <!-- Controls on the right of a row, by row type. -->
+    <DataTemplate DataType="vm:SwitchRow">
+      <c:ToggleSwitch IsChecked="{Binding IsOn, Mode=TwoWay}" AutomationProperties.Name="{Binding Label}" />
+    </DataTemplate>
+
+    <DataTemplate DataType="vm:SegmentRow">
+      <ListBox Theme="{StaticResource SegmentedControl}"
+               ItemsSource="{Binding Options}"
+               SelectedIndex="{Binding SelectedIndex, Mode=TwoWay}"
+               AutomationProperties.Name="{Binding Label}" />
+    </DataTemplate>
+
+    <DataTemplate DataType="vm:SwatchRow">
+      <!-- Padding 0 4 in the design; 3.5 of it is padding here so the selection ring stays inside the group's bounds. -->
+      <ItemsControl ItemsSource="{Binding Swatches}" Margin="{StaticResource Space.Settings.Swatches}" Padding="{StaticResource Space.Settings.SwatchPad}" AutomationProperties.Name="{Binding Label}">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate>
+            <StackPanel Orientation="Horizontal" Spacing="{StaticResource Space.Settings.SwatchGap}" />
+          </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate DataType="vm:SwatchOption">
+            <!-- The ring is drawn outside the 22 px button (like a box-shadow it takes no layout space). -->
+            <Panel Width="{StaticResource Size.Settings.Swatch}" Height="{StaticResource Size.Settings.Swatch}">
+              <Panel Classes="swatch-ring" Classes.selected="{Binding IsSelected}" Margin="{StaticResource Space.Settings.SwatchRing}" IsHitTestVisible="False">
+                <Panel.Transitions>
+                  <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="{x:Static m:MotionTimes.Color}" Easing="{x:Static m:Motion.EaseStd}" />
+                  </Transitions>
+                </Panel.Transitions>
+                <Ellipse Fill="{DynamicResource Brush.Text.Primary}" />
+                <Ellipse Margin="{StaticResource Space.Settings.SwatchRingWidth}" Fill="{DynamicResource Brush.Bg.Main}" />
+              </Panel>
+              <Button Theme="{StaticResource Button.Ghost}"
+                      Width="{StaticResource Size.Settings.Swatch}" Height="{StaticResource Size.Settings.Swatch}" CornerRadius="{StaticResource Radius.Settings.Swatch}"
+                      Command="{Binding PickCommand}"
+                      ToolTip.Tip="{Binding Name}"
+                      AutomationProperties.Name="{Binding Name}">
+                <Ellipse Width="{StaticResource Size.Settings.Swatch}" Height="{StaticResource Size.Settings.Swatch}" Fill="{Binding Fill}" />
+              </Button>
+            </Panel>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </DataTemplate>
+
+    <DataTemplate DataType="vm:RangeRow">
+      <StackPanel Orientation="Horizontal" Spacing="{StaticResource Space.Settings.ControlGap}">
+        <Slider Width="{StaticResource Size.Settings.Slider}" VerticalAlignment="Center"
+                Minimum="{x:Static vm:RangeRow.Minimum}" Maximum="{x:Static vm:RangeRow.Maximum}"
+                SmallChange="1" LargeChange="10" TickFrequency="1" IsSnapToTickEnabled="True"
+                Value="{Binding Value, Mode=TwoWay}"
+                AutomationProperties.Name="{Binding Label}" />
+        <TextBlock Classes="meta tertiary" Width="{StaticResource Size.Settings.RangeValue}" TextAlignment="Right" VerticalAlignment="Center" Text="{Binding ValueLabel}" />
+      </StackPanel>
+    </DataTemplate>
+
+    <DataTemplate DataType="vm:DensityRow">
+      <ItemsControl ItemsSource="{Binding Options}" AutomationProperties.Name="{Binding Label}">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate>
+            <StackPanel Orientation="Horizontal" Spacing="{StaticResource Space.Settings.DensityGap}" />
+          </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate DataType="vm:DensityOption">
+            <Button Theme="{StaticResource Button.Ghost}"
+                    Width="{StaticResource Size.Settings.Density}" CornerRadius="{DynamicResource Radius.Panel}"
+                    HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"
+                    Command="{Binding PickCommand}"
+                    AutomationProperties.Name="{Binding Label}">
+              <Panel>
+                <Border Background="{DynamicResource Brush.Bg.Dialog}" CornerRadius="{DynamicResource Radius.Panel}" Padding="{StaticResource Space.Settings.DensityCard}">
+                  <StackPanel Spacing="{StaticResource Space.Settings.DensityStack}">
+                    <!-- Mini preview: four rows (checkbox + bar) in 76 px, placed on whole pixels (DensityOption). The
+                         8 px boxes have a 1 px ring: the prototype's 1.5 px border, as Chromium paints it. -->
+                    <ItemsControl Height="{StaticResource Size.Settings.DensityPreview}" ItemsSource="{Binding PreviewRows}">
+                      <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                          <Panel />
+                        </ItemsPanelTemplate>
+                      </ItemsControl.ItemsPanel>
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="vm:DensityPreviewRow">
+                          <Border Margin="{Binding Margin}" Height="{Binding Height}" VerticalAlignment="Top"
+                                  CornerRadius="{DynamicResource Radius.Check}" Background="{DynamicResource Brush.Bg.CardHover}">
+                            <Panel>
+                              <Border Width="{StaticResource Size.Settings.PreviewCheck}" Height="{StaticResource Size.Settings.PreviewCheck}" Margin="{Binding CheckMargin}" HorizontalAlignment="Left" VerticalAlignment="Top"
+                                      CornerRadius="{DynamicResource Radius.Bar}" BorderThickness="1" BorderBrush="{DynamicResource Brush.Border.Check}" />
+                              <Border Width="{Binding BarWidth}" Height="{StaticResource Size.Settings.PreviewBar}" Margin="{Binding BarMargin}" HorizontalAlignment="Left" VerticalAlignment="Top"
+                                      CornerRadius="{DynamicResource Radius.Bar}" Background="{DynamicResource Brush.Border.Emphasis}" />
+                            </Panel>
+                          </Border>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <TextBlock Classes="density-label" Classes.selected="{Binding IsSelected}"
+                               FontSize="{DynamicResource FontSize.12.5}" FontWeight="Medium" Text="{Binding Label}">
+                      <TextBlock.Transitions>
+                        <Transitions>
+                          <BrushTransition Property="Foreground" Duration="{x:Static m:MotionTimes.Color}" Easing="{x:Static m:Motion.EaseStd}" />
+                        </Transitions>
+                      </TextBlock.Transitions>
+                    </TextBlock>
+                  </StackPanel>
+                </Border>
+                <!-- The ring (inset box-shadow 1.5 px): drawn over the card, so it takes no layout space and the
+                     content keeps whole-pixel positions; layout rounding off so it stays 1.5 px (not 2). -->
+                <Border Classes="density-card" Classes.selected="{Binding IsSelected}"
+                        CornerRadius="{DynamicResource Radius.Panel}"
+                        BorderThickness="{StaticResource Thickness.Settings.DensityRing}" UseLayoutRounding="False" IsHitTestVisible="False">
+                  <Border.Transitions>
+                    <Transitions>
+                      <BrushTransition Property="BorderBrush" Duration="{x:Static m:MotionTimes.Color}" Easing="{x:Static m:Motion.EaseStd}" />
+                    </Transitions>
+                  </Border.Transitions>
+                </Border>
+              </Panel>
+            </Button>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </DataTemplate>
+
+    <DataTemplate DataType="vm:KeysRow">
+      <ItemsControl ItemsSource="{Binding Keys}">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate>
+            <StackPanel Orientation="Horizontal" Spacing="{StaticResource Space.Settings.ControlGap}" />
+          </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="x:String">
+            <c:Kbd Classes="keycap" Content="{Binding}" />
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </DataTemplate>
+
+    <DataTemplate DataType="vm:ButtonsRow">
+      <ItemsControl ItemsSource="{Binding Buttons}">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate>
+            <StackPanel Orientation="Horizontal" Spacing="{StaticResource Space.Settings.ControlGap}" />
+          </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate DataType="vm:RowButton">
+            <Button Theme="{StaticResource Button.Outline}" Content="{Binding Label}" Command="{Binding Command}" />
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </DataTemplate>
+  </UserControl.DataTemplates>
+
+  <ScrollViewer Name="Scroller" Padding="{StaticResource Space.Settings.Scroll}" HorizontalScrollBarVisibility="Disabled">
+    <!-- max-width 780: a star column capped at 780, with a near-zero star column taking the rest. With a single star
+         column the Grid's layout rounding hands the column the 1 px of rounding slack (781 px). -->
+    <Grid Margin="{StaticResource Space.Settings.Column}" VerticalAlignment="Top">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="1000*" MaxWidth="{StaticResource Size.Settings.MaxWidth}" />
+        <ColumnDefinition Width="*" />
+      </Grid.ColumnDefinitions>
+      <StackPanel>
+        <Border Classes="divider" />
+
+        <!-- Rows of the current tab. -->
+        <ItemsControl Name="RowList" ItemsSource="{Binding Rows}" IsVisible="{Binding HasRows}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate DataType="vm:SettingsRow">
+              <Border MinHeight="{StaticResource Size.Settings.Row}" Padding="{DynamicResource Space.SettingsRow}"
+                      BorderThickness="0,0,0,1" BorderBrush="{DynamicResource Brush.Border.Subtle}">
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Space.Settings.RowGap}">
+                  <StackPanel VerticalAlignment="Center">
+                    <TextBlock Classes="row-label" Text="{Binding Label}" />
+                    <TextBlock Classes="desc" Classes.mono="{Binding MonoDescription}" Margin="{StaticResource Space.Settings.Desc}" Text="{Binding Description}" />
+                    <TextBlock Classes="desc row-message" Classes.error="{Binding IsError}" Margin="{StaticResource Space.Settings.Message}"
+                               IsVisible="{Binding HasMessage}" Text="{Binding Message}" />
+                  </StackPanel>
+                  <ContentControl Grid.Column="1" VerticalAlignment="Center" Content="{Binding}" />
+                </Grid>
+              </Border>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <!-- Shortcuts tab. -->
+        <ItemsControl Name="ShortcutList" ItemsSource="{x:Static vm:SettingsViewModel.Shortcuts}" IsVisible="{Binding IsShortcuts}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate DataType="vm:ShortcutRow">
+              <Border MinHeight="{StaticResource Size.Settings.Shortcut}" Padding="{StaticResource Space.Settings.Shortcut}"
+                      BorderThickness="0,0,0,1" BorderBrush="{DynamicResource Brush.Border.Subtle}">
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Space.Settings.ShortcutGap}">
+                  <TextBlock VerticalAlignment="Center" FontSize="{DynamicResource FontSize.13.5}"
+                             Foreground="{DynamicResource Brush.Text.Bright}" Text="{Binding Label}" />
+                  <ItemsControl Grid.Column="1" VerticalAlignment="Center" ItemsSource="{Binding Keys}">
+                    <ItemsControl.ItemsPanel>
+                      <ItemsPanelTemplate>
+                        <StackPanel Orientation="Horizontal" Spacing="{StaticResource Space.Settings.KeyCapGap}" />
+                      </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="x:String">
+                        <c:Kbd Classes="keycap" Content="{Binding}" />
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </Grid>
+              </Border>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <!-- Data tab footnote. -->
+        <TextBlock Margin="{StaticResource Space.Settings.Footnote}" IsVisible="{Binding IsData}"
+                   FontSize="{DynamicResource FontSize.12.5}" LineHeight="{DynamicResource LineHeight.Para}"
+                   Foreground="{DynamicResource Brush.Text.Muted}" TextWrapping="Wrap"
+                   Text="{x:Static vm:SettingsViewModel.DataFootnote}" />
+      </StackPanel>
+    </Grid>
+  </ScrollViewer>
+</UserControl>

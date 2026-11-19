@@ -1,0 +1,145 @@
+<!--
+  Text and surface style classes (no animation here: global styles load before the OS animation setting is known,
+  so anything that animates lives in a ControlTheme template).
+  TextBlock classes: mono, label, section, label-sm, meta, meta-sm, title, subtitle, day-number, month-name, desc,
+  row-label, and colour classes primary/secondary/tertiary/muted/faint/accent/warning.
+  Border classes: popover, popover-sm, dialog, divider, divider-strong, vsep.
+-->
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <!-- Mono family (counts, times, tags, kbd-like labels). -->
+  <Style Selector="TextBlock.mono">
+    <Setter Property="FontFamily" Value="{DynamicResource Font.Mono}" />
+  </Style>
+
+  <!-- Upper-case mono label (crumbs, weekday names, SCHEDULE): 11 px, 0.08em, Text.Muted. Upper-case the text in the
+       projection or with ThemeConverters.Upper. -->
+  <Style Selector="TextBlock.label">
+    <Setter Property="FontFamily" Value="{DynamicResource Font.Mono}" />
+    <Setter Property="FontSize" Value="{DynamicResource FontSize.11}" />
+    <Setter Property="LetterSpacing" Value="{DynamicResource LetterSpacing.Label}" />
+    <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Muted}" />
+  </Style>
+
+  <!-- Group header (OVERDUE, SCHEDULED …): label + Medium. Overdue/ASAP use .warning. -->
+  <Style Selector="TextBlock.section">
+    <Setter Property="FontFamily" Value="{DynamicResource Font.Mono}" />
+    <Setter Property="FontSize" Value="{DynamicResource FontSize.11}" />
+    <Setter Property="FontWeight" Value="Medium" />
+    <Setter Property="LetterSpacing" Value="{DynamicResource LetterSpacing.Label}" />
+    <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Muted}" />
+  </Style>
+
+  <!-- Sidebar TAGS / SETTINGS heading: 10.5 px, 0.08em. -->
+  <Style Selector="TextBlock.label-sm">
+    <Setter Property="FontFamily" Value="{DynamicResource Font.Mono}" />
+    <Setter Property="FontSize" Value="{DynamicResource FontSize.10.5}" />
+    <Setter Property="LetterSpacing" Value="{DynamicResource LetterSpacing.LabelSmall}" />
+    <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Muted}" />
+  </Style>
+
+  <!-- Row meta (tag, date, counts): mono 11 Text.Muted; times use .secondary. -->
+  <Style Selector="TextBlock.meta">
+    <Setter Property="FontFamily" Value="{DynamicResource Font.Mono}" />
+    <Setter Property="FontSize" Value="{DynamicResource FontSize.11}" />
+    <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Muted}" />
+  </Style>
+
+  <!-- Card meta, "+N more", hints: mono 10.5 Text.Muted. -->
+  <Style Selector="TextBlock.meta-sm">
+    <Setter Property="FontFamily" Value="{DynamicResource Font.Mono}" />
+    <Setter Property="FontSize" Value="{DynamicResource FontSize.10.5}" />
+    <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Muted}" />
+  </Style>
+
+  <!-- Page title (h1): 24 Medium, -0.02em, line height 1.15. -->
+  <Style Selector="TextBlock.title">
+    <Setter Property="FontSize" Value="{DynamicResource FontSize.24}" />
+    <Setter Property="FontWeight" Value="Medium" />
+    <Setter Property="LetterSpacing" Value="{DynamicResource LetterSpacing.Title}" />
+    <Setter Property="LineHeight" Value="{DynamicResource LineHeight.Title}" />
+    <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
+  </Style>
+
+  <!-- Title suffix ("9 – 15 Nov"): 15 Normal Text.Muted, no letter spacing. -->
+  <Style Selector="TextBlock.subtitle">
+    <Setter Property="FontSize" Value="{DynamicResource FontSize.15}" />
+    <Setter Property="FontWeight" Value="Normal" />
+    <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Muted}" />
+  </Style>
+
+  <!-- Week day number: 40 Light, -0.04em, line height 1. -->
+  <Style Selector="TextBlock.day-number">
+    <Setter Property="FontSize" Value="{DynamicResource FontSize.40}" />
+    <Setter Property="FontWeight" Value="Light" />
+    <Setter Property="LetterSpacing" Value="{DynamicResource LetterSpacing.DayNumber}" />
+    <Setter Property="LineHeight" Value="{DynamicResource FontSize.40}" />
+  </Style>
+
+  <!-- Year view month name: 24 Light, -0.03em. -->
+  <Style Selector="TextBlock.month-name">
+    <Setter Property="FontSize" Value="{DynamicResource FontSize.24}" />
+    <Setter Property="FontWeight" Value="Light" />
+    <Setter Property="LetterSpacing" Value="{DynamicResource LetterSpacing.MonthName}" />
+  </Style>
+
+  <!-- Settings row: label 14 Medium Text.Primary; description 12.5 Text.Muted, line height 1.45. -->
+  <Style Selector="TextBlock.row-label">
+    <Setter Property="FontSize" Value="{DynamicResource FontSize.14}" />
+    <Setter Property="FontWeight" Value="Medium" />
+    <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
+  </Style>
+  <Style Selector="TextBlock.desc">
+    <Setter Property="FontSize" Value="{DynamicResource FontSize.12.5}" />
+    <Setter Property="LineHeight" Value="{DynamicResource LineHeight.Desc}" />
+    <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Muted}" />
+    <Setter Property="TextWrapping" Value="Wrap" />
+  </Style>
+
+  <!-- Colour classes (TextBlock). -->
+  <Style Selector="TextBlock.primary"><Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" /></Style>
+  <Style Selector="TextBlock.bright"><Setter Property="Foreground" Value="{DynamicResource Brush.Text.Bright}" /></Style>
+  <Style Selector="TextBlock.secondary"><Setter Property="Foreground" Value="{DynamicResource Brush.Text.Secondary}" /></Style>
+  <Style Selector="TextBlock.tertiary"><Setter Property="Foreground" Value="{DynamicResource Brush.Text.Tertiary}" /></Style>
+  <Style Selector="TextBlock.muted"><Setter Property="Foreground" Value="{DynamicResource Brush.Text.Muted}" /></Style>
+  <Style Selector="TextBlock.faint"><Setter Property="Foreground" Value="{DynamicResource Brush.Text.Faint}" /></Style>
+  <Style Selector="TextBlock.accent"><Setter Property="Foreground" Value="{DynamicResource Brush.Accent}" /></Style>
+  <Style Selector="TextBlock.warning"><Setter Property="Foreground" Value="{DynamicResource Brush.Warning}" /></Style>
+
+  <!-- Surfaces -->
+  <!-- Date / Time popover: Bg.Popover, r12, ring 1 px Border.Popover + 0 18 44 rgba(0,0,0,0.55). Padding 10. -->
+  <Style Selector="Border.popover">
+    <Setter Property="Background" Value="{DynamicResource Brush.Bg.Popover}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Radius.Dialog}" />
+    <Setter Property="BoxShadow" Value="{DynamicResource Shadow.Popover}" />
+  </Style>
+  <!-- Priority / Tag popover: r10, ring + 0 16 40 rgba(0,0,0,0.5). Padding 6. -->
+  <Style Selector="Border.popover-sm">
+    <Setter Property="Background" Value="{DynamicResource Brush.Bg.Popover}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Radius.Panel}" />
+    <Setter Property="BoxShadow" Value="{DynamicResource Shadow.PopoverSmall}" />
+  </Style>
+  <!-- Task dialog: 640 wide, Bg.Dialog, r12, ring 1 px Border.Default + 0 30 80 rgba(0,0,0,0.6). -->
+  <Style Selector="Border.dialog">
+    <Setter Property="Background" Value="{DynamicResource Brush.Bg.Dialog}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Radius.Dialog}" />
+    <Setter Property="BoxShadow" Value="{DynamicResource Shadow.Dialog}" />
+  </Style>
+  <!-- 1 px rules: list/row dividers (Border.Subtle) and popover separators (Border.Default). -->
+  <Style Selector="Border.divider">
+    <Setter Property="Height" Value="1" />
+    <Setter Property="Background" Value="{DynamicResource Brush.Border.Subtle}" />
+  </Style>
+  <Style Selector="Border.divider-strong">
+    <Setter Property="Height" Value="1" />
+    <Setter Property="Background" Value="{DynamicResource Brush.Border.Default}" />
+  </Style>
+  <!-- Page header vertical separator: 1×18, margin 0 6, Border.Default. -->
+  <Style Selector="Border.vsep">
+    <Setter Property="Width" Value="1" />
+    <Setter Property="Height" Value="18" />
+    <Setter Property="Margin" Value="6,0" />
+    <Setter Property="Background" Value="{DynamicResource Brush.Border.Default}" />
+  </Style>
+</Styles>

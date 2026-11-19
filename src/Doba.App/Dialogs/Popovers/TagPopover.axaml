@@ -1,0 +1,45 @@
+<!--
+  Tag popover (design-reference lines 795-803): "– No tag" and "# name" for every tag in the store, the chosen one on
+  Overlay.Selected with the accent tick. Picking closes it. DataContext: the dialog.
+  Many tags: PopoverAnchor measures the popover no taller than the window minus its 8 px edges, and the list scrolls
+  (the app's scrollbar; a focused row is brought into view). A long name ends in an ellipsis before the tick.
+-->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:Doba.App.Controls"
+             xmlns:d="using:Doba.App.Dialogs"
+             x:Class="Doba.App.Dialogs.Popovers.TagPopover"
+             x:DataType="d:TaskDialogViewModel"
+             ClipToBounds="False">
+  <Border Name="PART_Surface"
+          Classes="popover-sm"
+          Width="{DynamicResource Size.Popover.List}"
+          Padding="{DynamicResource Space.Dialog.PopoverList}">
+    <ScrollViewer Name="PART_Scroll" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+      <ItemsControl Name="PART_Items" ItemsSource="{Binding TagOptions}">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="d:TagOptionItem">
+            <Button Theme="{StaticResource Button.Menu}"
+                    Classes.selected="{Binding IsSelected}"
+                    Command="{Binding PickCommand}"
+                    AutomationProperties.Name="{Binding Label}">
+              <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{DynamicResource Space.Dialog.MenuGap}" Margin="{DynamicResource Space.Dialog.Raise}">
+                <Panel Width="{DynamicResource Size.Dialog.MenuIcon}">
+                  <TextBlock Classes="mono muted" Text="{Binding Symbol}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Panel>
+                <TextBlock Name="PART_Label" Grid.Column="1" Text="{Binding Label}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                <Panel Grid.Column="2" Width="{DynamicResource Size.Dialog.MenuIcon}">
+                  <c:Icon Data="{StaticResource Icon.Check}"
+                          Size="{DynamicResource Size.Dialog.MenuTick}"
+                          StrokeWidth="2.4"
+                          Foreground="{DynamicResource Brush.Accent}"
+                          IsVisible="{Binding IsSelected}" />
+                </Panel>
+              </Grid>
+            </Button>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </ScrollViewer>
+  </Border>
+</UserControl>

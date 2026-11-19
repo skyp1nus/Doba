@@ -1,0 +1,173 @@
+<!--
+  New / Edit task dialog (design-reference lines 651-819), hosted by Shell/OverlayHost in its 640 px panel 150 px from
+  the top. DataContext: TaskDialogViewModel.
+  Rows: header 46 (heading / where, close) · title 40 + notes 3 lines · pill row (Date, Time, Priority, Tag; each a
+  PopoverAnchor that shows its popover under the pill) · footer (Delete in edit mode, key hint, Cancel, primary ↵).
+  The pill row is drawn above the footer (ZIndex) so an open popover covers it; nothing clips the popovers.
+-->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:Doba.App.Controls"
+             xmlns:d="using:Doba.App.Dialogs"
+             xmlns:p="using:Doba.App.Dialogs.Popovers"
+             xmlns:e="using:Doba.Core.Editing"
+             xmlns:t="using:Doba.App.Theme"
+             x:Class="Doba.App.Dialogs.TaskDialogView"
+             x:DataType="d:TaskDialogViewModel"
+             ClipToBounds="False">
+  <Border Name="PART_Dialog" Classes="dialog">
+    <Grid RowDefinitions="Auto,Auto,Auto,Auto">
+
+      <!-- Header: mono 11, gap 8, padding 0 10 0 20. -->
+      <DockPanel Height="{DynamicResource Size.Dialog.Header}" Margin="{DynamicResource Space.Dialog.Header}">
+        <Button Name="PART_Close"
+                DockPanel.Dock="Right"
+                Width="{DynamicResource Size.Dialog.Close}"
+                Height="{DynamicResource Size.Dialog.Close}"
+                VerticalAlignment="Center"
+                Command="{Binding CancelCommand}"
+                AutomationProperties.Name="Close">
+          <c:Icon Data="{StaticResource Icon.Close}" Size="{DynamicResource Size.Dialog.CloseIcon}" StrokeWidth="1.8" />
+        </Button>
+        <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space.Dialog.Gap}" VerticalAlignment="Center" Margin="{DynamicResource Space.Dialog.Lift}">
+          <TextBlock Name="PART_Heading"
+                     Classes="label"
+                     FontWeight="Medium"
+                     Text="{Binding Heading, Converter={x:Static t:ThemeConverters.Upper}}" />
+          <TextBlock Classes="mono faint" FontSize="{DynamicResource FontSize.11}" Text="/" />
+          <TextBlock Name="PART_Where" Classes="mono tertiary" FontSize="{DynamicResource FontSize.11}" Text="{Binding WhereLabel}" />
+        </StackPanel>
+      </DockPanel>
+
+      <!-- Title and notes: gap 6, padding 0 20 4. No focus ring (.qa:focus{outline:none}): the caret shows focus. -->
+      <StackPanel Grid.Row="1" Spacing="{DynamicResource Space.Dialog.BodyGap}" Margin="{DynamicResource Space.Dialog.Body}">
+        <TextBox Name="PART_Title"
+                 Classes="title"
+                 PlaceholderText="Task name"
+                 FocusAdorner="{x:Null}"
+                 AutomationProperties.Name="Task name"
+                 Text="{Binding Title, Mode=TwoWay}" />
+        <TextBox Name="PART_Notes"
+                 Classes="notes"
+                 Height="{DynamicResource Size.Dialog.Notes}"
+                 PlaceholderText="Add notes…"
+                 FocusAdorner="{x:Null}"
+                 AutomationProperties.Name="Notes"
+                 Text="{Binding Notes, Mode=TwoWay}" />
+      </StackPanel>
+
+      <!-- Pills: wrap, gap 6, padding 10 20 18. Above the footer so the popovers cover it. -->
+      <WrapPanel Name="PART_Pills"
+                 Grid.Row="2"
+                 ZIndex="1"
+                 ItemSpacing="{DynamicResource Space.Dialog.PillGap}"
+                 LineSpacing="{DynamicResource Space.Dialog.PillGap}"
+                 Margin="{DynamicResource Space.Dialog.Pills}">
+        <p:PopoverAnchor Name="PART_DateAnchor"
+                         IsOpen="{Binding IsDateOpen}"
+                         Offset="{DynamicResource Space.Dialog.PopoverTop}"
+                         Edge="{DynamicResource Space.Dialog.PopoverEdge}">
+          <c:Pill Name="PART_DatePill"
+                  HasValue="{Binding HasDate}"
+                  IsChecked="{Binding IsDateOpen, Mode=OneWay}"
+                  Command="{Binding TogglePopoverCommand}"
+                  CommandParameter="{x:Static e:DraftPopover.Date}"
+                  AutomationProperties.Name="{Binding DateLabel}">
+            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space.Dialog.PillContentGap}">
+              <c:Icon Data="{StaticResource Icon.Date}" Size="{DynamicResource Size.Dialog.PillIcon}" StrokeWidth="1.7" />
+              <TextBlock Text="{Binding DateLabel}" VerticalAlignment="Center" Margin="{DynamicResource Space.Dialog.Raise}" />
+            </StackPanel>
+          </c:Pill>
+        </p:PopoverAnchor>
+
+        <p:PopoverAnchor Name="PART_TimeAnchor"
+                         IsVisible="{Binding ShowTime}"
+                         IsOpen="{Binding IsTimeOpen}"
+                         Offset="{DynamicResource Space.Dialog.PopoverTop}"
+                         Edge="{DynamicResource Space.Dialog.PopoverEdge}">
+          <c:Pill Name="PART_TimePill"
+                  HasValue="{Binding IsTimed}"
+                  IsChecked="{Binding IsTimeOpen, Mode=OneWay}"
+                  Command="{Binding TogglePopoverCommand}"
+                  CommandParameter="{x:Static e:DraftPopover.Time}"
+                  AutomationProperties.Name="{Binding TimeLabel}">
+            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space.Dialog.PillContentGap}">
+              <c:Icon Data="{StaticResource Icon.Clock}" Size="{DynamicResource Size.Dialog.PillIcon}" StrokeWidth="1.7" />
+              <TextBlock Text="{Binding TimeLabel}" VerticalAlignment="Center" Margin="{DynamicResource Space.Dialog.Raise}" />
+            </StackPanel>
+          </c:Pill>
+        </p:PopoverAnchor>
+
+        <p:PopoverAnchor Name="PART_PriorityAnchor"
+                         IsOpen="{Binding IsPriorityOpen}"
+                         Offset="{DynamicResource Space.Dialog.PopoverTop}"
+                         Edge="{DynamicResource Space.Dialog.PopoverEdge}">
+          <c:Pill Name="PART_PriorityPill"
+                  HasValue="{Binding HasPriority}"
+                  IsChecked="{Binding IsPriorityOpen, Mode=OneWay}"
+                  Command="{Binding TogglePopoverCommand}"
+                  CommandParameter="{x:Static e:DraftPopover.Priority}"
+                  AutomationProperties.Name="{Binding PriorityLabel}">
+            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space.Dialog.PillContentGap}">
+              <c:PriorityIcon Priority="{Binding Priority}" VerticalAlignment="Center" />
+              <TextBlock Text="{Binding PriorityLabel}" VerticalAlignment="Center" Margin="{DynamicResource Space.Dialog.Raise}" />
+            </StackPanel>
+          </c:Pill>
+        </p:PopoverAnchor>
+
+        <p:PopoverAnchor Name="PART_TagAnchor"
+                         IsOpen="{Binding IsTagOpen}"
+                         Offset="{DynamicResource Space.Dialog.PopoverTop}"
+                         Edge="{DynamicResource Space.Dialog.PopoverEdge}">
+          <c:Pill Name="PART_TagPill"
+                  HasValue="{Binding HasTag}"
+                  IsChecked="{Binding IsTagOpen, Mode=OneWay}"
+                  Command="{Binding TogglePopoverCommand}"
+                  CommandParameter="{x:Static e:DraftPopover.Tag}"
+                  AutomationProperties.Name="{Binding TagLabel}">
+            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space.Dialog.PillContentGap}">
+              <TextBlock Classes="mono muted" Text="#" VerticalAlignment="Center" Margin="{DynamicResource Space.Dialog.Raise}" />
+              <TextBlock Text="{Binding TagLabel}" VerticalAlignment="Center" Margin="{DynamicResource Space.Dialog.Raise}" />
+            </StackPanel>
+          </c:Pill>
+        </p:PopoverAnchor>
+      </WrapPanel>
+
+      <!-- Footer: border-top 1 Border.Subtle, Bg.DialogFooter, r 0 0 12 12, padding 12 14 12 20, gap 8. -->
+      <Border Grid.Row="3"
+              Background="{DynamicResource Brush.Bg.DialogFooter}"
+              BorderBrush="{DynamicResource Brush.Border.Subtle}"
+              BorderThickness="{DynamicResource Thickness.Dialog.FooterRule}"
+              CornerRadius="{DynamicResource Radius.Dialog.Footer}"
+              Padding="{DynamicResource Space.Dialog.Footer}">
+        <Grid ColumnDefinitions="Auto,*,Auto">
+          <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space.Dialog.Gap}">
+            <Button Name="PART_Delete"
+                    Theme="{StaticResource Button.Danger}"
+                    Content="Delete"
+                    IsVisible="{Binding IsEdit}"
+                    Command="{Binding DeleteCommand}" />
+            <TextBlock Name="PART_Hint" Classes="meta" Text="{Binding KeyHint}" VerticalAlignment="Center" Margin="{DynamicResource Space.Dialog.Lift}" />
+          </StackPanel>
+          <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="{DynamicResource Space.Dialog.Gap}">
+            <Button Name="PART_Cancel"
+                    Theme="{StaticResource Button.Outline}"
+                    Command="{Binding CancelCommand}">
+              <TextBlock Text="Cancel" Margin="{DynamicResource Space.Dialog.Raise}" />
+            </Button>
+            <Button Name="PART_Commit"
+                    Theme="{StaticResource Button.DialogPrimary}"
+                    Classes.inactive="{Binding !CanSave}"
+                    Command="{Binding CommitCommand}"
+                    AutomationProperties.Name="{Binding CommitLabel}">
+              <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space.Dialog.KbdGap}">
+                <TextBlock Text="{Binding CommitLabel}" VerticalAlignment="Center" />
+                <c:Kbd Classes="onPrimary" Content="↵" />
+              </StackPanel>
+            </Button>
+          </StackPanel>
+        </Grid>
+      </Border>
+    </Grid>
+  </Border>
+</UserControl>

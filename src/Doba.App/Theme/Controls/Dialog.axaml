@@ -1,0 +1,132 @@
+<!-- Task dialog control themes: the primary button's "no title yet" look, the popover tool buttons (calendar "Today",
+     ‹ ›, the "Lasts" stepper) and the mini-calendar day cell. Owned by the Task dialog package.
+     Design: docs/design/design-reference.dc.html lines 648-821; motion-spec "Оверлеї". -->
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:m="using:Doba.App.Motion">
+
+  <!-- Primary "Create task" / "Save": Button.Primary; .inactive (empty title) fades to Opacity.Disabled (200 ms) but stays
+       clickable — activating it focuses the title box, as in the prototype (aria-disabled, not disabled). -->
+  <ControlTheme x:Key="Button.DialogPrimary" TargetType="Button" BasedOn="{StaticResource Button.Primary}">
+    <Style Selector="^.inactive /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Opacity" Value="{DynamicResource Opacity.Disabled}" />
+    </Style>
+  </ControlTheme>
+
+  <!-- Popover tool button (.mi): 28×28, r6, transparent, Text.Tertiary, hover Overlay.Press (150 ms). Mini-calendar ‹ ›.
+       The calendar "Today" text button: Classes="text" (26 px, padding 0 8, 12 px). -->
+  <ControlTheme x:Key="Button.PopoverTool" TargetType="Button" BasedOn="{StaticResource Button.Menu}">
+    <Setter Property="Width" Value="{DynamicResource Size.ControlSmall}" />
+    <Setter Property="Height" Value="{DynamicResource Size.ControlSmall}" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Tertiary}" />
+    <Setter Property="FontSize" Value="{DynamicResource FontSize.12}" />
+    <Setter Property="HorizontalAlignment" Value="Left" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Style Selector="^.text">
+      <Setter Property="Width" Value="NaN" />
+      <Setter Property="Height" Value="{DynamicResource Size.Dialog.CalToday}" />
+      <Setter Property="Padding" Value="{DynamicResource Space.Dialog.CalToday}" />
+    </Style>
+  </ControlTheme>
+
+  <!-- "Lasts" stepper − / +: a popover tool button with radius 7 inside the Overlay.Hover r7 group. -->
+  <ControlTheme x:Key="Button.Stepper" TargetType="Button" BasedOn="{StaticResource Button.PopoverTool}">
+    <Setter Property="CornerRadius" Value="{DynamicResource Radius.Control}" />
+  </ControlTheme>
+
+  <!-- Mini-calendar day (.cd): 36 px tall with margin 1 0, the band (selection range, Accent15, rounded at its ends) under
+       a centred 32×32 r8 number square; 13 px Text.Primary, Text.Muted before today, Text.Dim outside the month, accent
+       600 today (+ a 4 px accent dot 3 px from the bottom), Text.OnPrimary 600 on an accent square at the start/end.
+       Hover: an inset 1 px Border.Focus ring on the square; square background and ring change over 150 ms. The square's
+       fill reaches its outer edge (BackgroundSizing OuterBorderEdge): drawn inside the transparent 1 px ring it would
+       stop half a pixel short and leave soft half-intensity edges.
+       Classes (from CalendarDayItem): past, outside, today, marked, band, start, end. -->
+  <ControlTheme x:Key="Button.CalendarDay" TargetType="Button">
+    <Setter Property="Height" Value="{DynamicResource Size.Dialog.Day}" />
+    <Setter Property="Margin" Value="{DynamicResource Space.Dialog.Day}" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
+    <Setter Property="FontSize" Value="{DynamicResource FontSize.13}" />
+    <Setter Property="FontWeight" Value="Normal" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Radius.Card}" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Panel Background="Transparent">
+          <Border Name="PART_Band" CornerRadius="{DynamicResource Radius.Dialog.BandNone}" />
+          <Border Name="PART_Dot"
+                  Width="{DynamicResource Size.Dialog.DayDot}"
+                  Height="{DynamicResource Size.Dialog.DayDot}"
+                  HorizontalAlignment="Center"
+                  VerticalAlignment="Center"
+                  CornerRadius="{DynamicResource Radius.Card}"
+                  BackgroundSizing="OuterBorderEdge"
+                  Background="Transparent"
+                  BorderBrush="Transparent"
+                  BorderThickness="{DynamicResource Thickness.Dialog.DayHover}">
+            <Border.Transitions>
+              <Transitions>
+                <BrushTransition Property="Background" Duration="{x:Static m:MotionTimes.HoverFast}" Easing="{x:Static m:Motion.EaseStd}" />
+                <BrushTransition Property="BorderBrush" Duration="{x:Static m:MotionTimes.HoverFast}" Easing="{x:Static m:Motion.EaseStd}" />
+              </Transitions>
+            </Border.Transitions>
+          </Border>
+          <ContentPresenter Name="PART_ContentPresenter"
+                            Content="{TemplateBinding Content}"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            Margin="{DynamicResource Space.Dialog.Lift}"
+                            Foreground="{TemplateBinding Foreground}" />
+          <Ellipse Name="PART_TodayDot"
+                   Width="{DynamicResource Size.Dialog.TodayDot}"
+                   Height="{DynamicResource Size.Dialog.TodayDot}"
+                   HorizontalAlignment="Center"
+                   VerticalAlignment="Bottom"
+                   Margin="{DynamicResource Space.Dialog.TodayDot}"
+                   Fill="{DynamicResource Brush.Accent}"
+                   IsVisible="False" />
+        </Panel>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^.past">
+      <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Muted}" />
+    </Style>
+    <Style Selector="^.outside">
+      <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Dim}" />
+    </Style>
+    <Style Selector="^.today">
+      <Setter Property="Foreground" Value="{DynamicResource Brush.Accent}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="^.today /template/ Ellipse#PART_TodayDot">
+      <Setter Property="IsVisible" Value="True" />
+    </Style>
+    <Style Selector="^.marked">
+      <Setter Property="Foreground" Value="{DynamicResource Brush.Text.OnPrimary}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="^.marked /template/ Border#PART_Dot">
+      <Setter Property="Background" Value="{DynamicResource Brush.Accent}" />
+    </Style>
+    <Style Selector="^.marked /template/ Ellipse#PART_TodayDot">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector="^.band /template/ Border#PART_Band">
+      <Setter Property="Background" Value="{DynamicResource Brush.Accent15}" />
+    </Style>
+    <Style Selector="^.band.start /template/ Border#PART_Band">
+      <Setter Property="CornerRadius" Value="{DynamicResource Radius.Dialog.BandStart}" />
+    </Style>
+    <Style Selector="^.band.end /template/ Border#PART_Band">
+      <Setter Property="CornerRadius" Value="{DynamicResource Radius.Dialog.BandEnd}" />
+    </Style>
+    <Style Selector="^.band.start.end /template/ Border#PART_Band">
+      <Setter Property="CornerRadius" Value="{DynamicResource Radius.Card}" />
+    </Style>
+    <Style Selector="^:pointerover /template/ Border#PART_Dot">
+      <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Focus}" />
+    </Style>
+  </ControlTheme>
+</ResourceDictionary>

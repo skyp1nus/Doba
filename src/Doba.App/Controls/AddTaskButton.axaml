@@ -1,0 +1,21 @@
+<!--
+  The dashed "Add task" row (Inbox, Today, Day): Button.Dashed, 38 px — Icon.Plus 14/1.8 · label · Kbd.muted "N", gap 10.
+-->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:Doba.App.Controls"
+             x:Class="Doba.App.Controls.AddTaskButton"
+             x:DataType="c:AddTaskButton">
+  <Button Name="PART_Button"
+          Theme="{StaticResource Button.Dashed}"
+          Command="{Binding $parent[c:AddTaskButton].Command}"
+          CommandParameter="{Binding $parent[c:AddTaskButton].CommandParameter}"
+          AutomationProperties.Name="{Binding $parent[c:AddTaskButton].Label}">
+    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{StaticResource Space.AddTask.Gap}">
+      <c:Icon Data="{StaticResource Icon.Plus}" Size="{StaticResource Size.AddTask.Icon}" StrokeWidth="{StaticResource Size.AddTask.IconStroke}" />
+      <TextBlock Grid.Column="1" Text="{Binding $parent[c:AddTaskButton].Label}" VerticalAlignment="Center" />
+      <c:Kbd Grid.Column="2" Classes="muted" Content="{Binding $parent[c:AddTaskButton].Shortcut}"
+             IsVisible="{Binding $parent[c:AddTaskButton].Shortcut, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+    </Grid>
+  </Button>
+</UserControl>

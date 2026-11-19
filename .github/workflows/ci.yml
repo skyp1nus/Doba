@@ -1,0 +1,74 @@
+name: CI
+
+# Kept deliberately cheap (owner's request): no runs on plain pushes, and no manual runs for
+# mid-way checks — everything is verified locally on Windows. The workflow runs once on a
+# pull request into main (docs-only changes are skipped); workflow_dispatch stays for the owner.
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - 'docs/**'
+      - '**/*.md'
+      - 'tools/**'
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: 1
+  DOTNET_NOLOGO: 1
+  AVALONIA_TELEMETRY_OPTOUT: 1
+
+jobs:
+  windows:
+    name: Windows — build, test, NativeAOT publish
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Build (warnings as errors, trim + AOT analyzers)
+        run: dotnet build -c Release -warnaserror
+
+      - name: Test
+        run: dotnet test -c Release --no-build
+
+      - name: Publish NativeAOT win-x64
+        run: dotnet publish src/Doba.App -c Release -r win-x64 -o artifacts/doba-win-x64 -warnaserror
+
+      # The two steps below run the real executable with demo data. They are informational:
+      # a hosted runner has no GPU, no Mica and may have no notification area, so their
+      # results are printed but do not fail the job. Neither touches real data or the Run key.
+      - name: Startup timing (--perf)
+        timeout-minutes: 2
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          $exe = "artifacts/doba-win-x64/Doba.exe"
+          if (-not (Test-Path $exe)) { throw "Doba.exe was not published" }
+          $p = Start-Process $exe -ArgumentList "--demo","--perf","--exit-after-first-frame" -PassThru -RedirectStandardOutput perf.txt -Wait
+          Get-Content perf.txt
+          "exit code: $($p.ExitCode)"
+
+      - name: Windows platform self-check (--selfcheck)
+        timeout-minutes: 2
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          $exe = "artifacts/doba-win-x64/Doba.exe"
+          $p = Start-Process $exe -ArgumentList "--selfcheck" -PassThru -RedirectStandardOutput selfcheck.txt -Wait
+          Get-Content selfcheck.txt
+          "exit code: $($p.ExitCode)"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: doba-win-x64
+          path: |
+            artifacts/doba-win-x64
+            !artifacts/doba-win-x64/*.pdb
