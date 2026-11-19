@@ -28,6 +28,7 @@ internal sealed class FrameMeter
 
     private readonly TopLevel _top;
     private readonly List<double> _ui = new(4096);
+    private readonly List<int> _uiGc = new(4096);
     private readonly RenderProbe _probe = new(Capacity);
     private CompositionCustomVisual? _visual;
     private CompositionVisual? _previousChild;
@@ -45,8 +46,15 @@ internal sealed class FrameMeter
     /// <summary>UI-thread frame timestamps recorded so far (complete after <see cref="StopAsync"/>).</summary>
     public IReadOnlyList<double> UiFrames => _ui;
 
+    /// <summary>The GC count (<see cref="GC.CollectionCount(int)"/> of gen 0, which every collection raises) read at each
+    /// UI frame, parallel to <see cref="UiFrames"/>.</summary>
+    public IReadOnlyList<int> UiGcCounts => _uiGc;
+
     /// <summary>Render-thread frame timestamps (filled by <see cref="StopAsync"/>).</summary>
     public IReadOnlyList<double> RenderFrames { get; private set; } = [];
+
+    /// <summary>The GC count read at each render frame, parallel to <see cref="RenderFrames"/>.</summary>
+    public IReadOnlyList<int> RenderGcCounts { get; private set; } = [];
 
     /// <summary>Starts both recorders (UI thread).</summary>
     public void Start()
@@ -78,7 +86,7 @@ internal sealed class FrameMeter
             // Once this batch is applied on the render thread the probe has stopped writing; the task completion
             // orders its writes before the read below.
             await visual.Compositor.RequestCommitAsync().ConfigureAwait(true);
-            RenderFrames = _probe.Snapshot();
+            (RenderFrames, RenderGcCounts) = _probe.Snapshot();
             ElementComposition.SetElementChildVisual(_top, _previousChild);
             _visual = null;
         }
@@ -108,6 +116,7 @@ internal sealed class FrameMeter
         }
 
         _ui.Add(Now);
+        _uiGc.Add(GC.CollectionCount(0));
         _top.RequestAnimationFrame(OnUiFrame);
     }
 
@@ -118,6 +127,7 @@ internal sealed class FrameMeter
         public static readonly object StopMessage = new();
 
         private readonly double[] _times = new double[capacity];
+        private readonly int[] _gcs = new int[capacity];
         private int _count;
         private bool _on;
 
@@ -144,6 +154,7 @@ internal sealed class FrameMeter
 
             if (_count < _times.Length)
             {
+                _gcs[_count] = GC.CollectionCount(0);
                 _times[_count++] = Now;
             }
 
@@ -156,7 +167,8 @@ internal sealed class FrameMeter
             // Draws nothing: the invalidation alone makes the compositor render a frame.
         }
 
-        /// <summary>The recorded timestamps (read after the stop message was processed).</summary>
-        public double[] Snapshot() => _times.AsSpan(0, _count).ToArray();
+        /// <summary>The recorded timestamps and GC counts (read after the stop message was processed).</summary>
+        public (double[] Times, int[] GcCounts) Snapshot() =>
+            (_times.AsSpan(0, _count).ToArray(), _gcs.AsSpan(0, _count).ToArray());
     }
 }

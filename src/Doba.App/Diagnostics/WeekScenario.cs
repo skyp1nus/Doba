@@ -14,6 +14,10 @@ namespace Doba.App.Diagnostics;
 /// <c>--perf-scenario week</c>: opens the Week view on the busiest week near today, then repeats next / previous week,
 /// Inbox and back to the calendar, Month and back to Week, through the shell's public navigation API (so it plays
 /// whatever content transitions are installed), while <see cref="FrameMeter"/> records frames on both threads.
+/// <para>Besides the frame statistics the line carries what the long frames (over two 60 Hz frames) had in them
+/// (<see cref="LongFrames"/>: a GC, a step start), the KB allocated per warm step in round order (next, previous,
+/// Inbox, calendar, Month, Week: <c>warm-step-alloc-kb</c>), the GC counts (<c>gc0</c> counts every collection,
+/// <c>gc1</c> those of gen 1 or 2, <c>gc2</c> those of gen 2) and the density the Week view was drawn in.</para>
 /// </summary>
 internal static class WeekScenario
 {
@@ -54,6 +58,10 @@ internal static class WeekScenario
         await Task.Delay(StepMs).ConfigureAwait(true);
 
         var steps = new List<double>(rounds * StepsPerRound);
+        var stepStarts = new List<double>(rounds * StepsPerRound);
+        // Bytes allocated from one step's start to the next (its call, transition, layout and rendering), per step of
+        // the round, over the warm rounds only (first visits build views).
+        var warmAllocated = new long[StepsPerRound];
         Action[] round =
         [
             () => vm.Shift(1),
@@ -78,12 +86,18 @@ internal static class WeekScenario
                 warmFrom = FrameMeter.Now;
             }
 
-            foreach (var step in round)
+            for (var s = 0; s < round.Length; s++)
             {
+                var bytes = GC.GetTotalAllocatedBytes();
+                stepStarts.Add(FrameMeter.Now);
                 var t0 = Stopwatch.GetTimestamp();
-                step();
+                round[s]();
                 steps.Add(Stopwatch.GetElapsedTime(t0).TotalMilliseconds);
                 await Task.Delay(StepMs).ConfigureAwait(true);
+                if (r > 0)
+                {
+                    warmAllocated[s] += GC.GetTotalAllocatedBytes() - bytes;
+                }
             }
         }
 
@@ -97,6 +111,12 @@ internal static class WeekScenario
             $"gc-pause-ms={(GC.GetTotalPauseDuration() - gcPause).TotalMilliseconds:F1} " +
             $"allocated-mb={(GC.GetTotalAllocatedBytes() - allocated) / (1024.0 * 1024.0):F1} " +
             $"live-heap-mb={GC.GetTotalMemory(forceFullCollection: true) / (1024.0 * 1024.0):F1}");
+        string memory;
+        using (var process = Process.GetCurrentProcess())
+        {
+            memory = string.Create(CultureInfo.InvariantCulture,
+                $"working-set-mb={process.WorkingSet64 / (1024.0 * 1024.0):F1} private-mb={process.PrivateMemorySize64 / (1024.0 * 1024.0):F1}");
+        }
         steps.Sort();
 
         // "warm" = rounds 2+: every view already exists, so only the transitions and re-projections remain.
@@ -105,10 +125,17 @@ internal static class WeekScenario
         var warm = double.IsNaN(warmFrom) ? "" : string.Concat(
             " ", FrameStats.FromTimestamps(FrameMeter.Between(meter.UiFrames, warmFrom, end)).Format("ui-warm"),
             " ", FrameStats.FromTimestamps(FrameMeter.Between(meter.RenderFrames, warmFrom, end)).Format("render-warm"));
+        // Long frames (over two 60 Hz frames) and what was in them.
+        var uiLong = LongFrames.Find(meter.UiFrames, meter.UiGcCounts, stepStarts, start, end, 2 * FrameStats.Frame60);
+        var renderLong = LongFrames.Find(meter.RenderFrames, meter.RenderGcCounts, stepStarts, start, end, 2 * FrameStats.Frame60);
+        var warmRounds = Math.Max(rounds - 1, 1);
+        var alloc = string.Join(',', warmAllocated.Select(b => (b / 1024.0 / warmRounds).ToString("F0", CultureInfo.InvariantCulture)));
         return string.Create(CultureInfo.InvariantCulture,
             $"doba-perf scenario=week rounds={rounds} steps={steps.Count} step-wait-ms={StepMs} seconds={(end - start) / 1000:F1} " +
-            $"anchor={anchor:yyyy-MM-dd} day-tasks-in-week={tasksInWeek} cards={cards} bars={bars} {ui.Format("ui")} {render.Format("render")}{warm} " +
-            $"step-call-p50-ms={PerfProbe.Ms(FrameStats.Percentile(steps, 0.5))} step-call-max-ms={PerfProbe.Ms(steps.Count > 0 ? steps[^1] : double.NaN)} {gc}");
+            $"anchor={anchor:yyyy-MM-dd} day-tasks-in-week={tasksInWeek} cards={cards} bars={bars} density={app.Settings.Current.Density} " +
+            $"{ui.Format("ui")} {render.Format("render")}{warm} {uiLong.Format("ui")} {renderLong.Format("render")} " +
+            $"step-call-p50-ms={PerfProbe.Ms(FrameStats.Percentile(steps, 0.5))} step-call-max-ms={PerfProbe.Ms(steps.Count > 0 ? steps[^1] : double.NaN)} " +
+            $"warm-step-alloc-kb={alloc} {gc} {memory}");
     }
 
     /// <summary>

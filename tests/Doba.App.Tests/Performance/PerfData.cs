@@ -48,9 +48,48 @@ internal static class PerfData
         return tasks;
     }
 
+    /// <summary>Single-day tasks added to every day of the dense week (more than any Week cell can show).</summary>
+    public const int DenseTasksPerDay = 10;
+
+    /// <summary>Multi-day tasks added inside the dense week (bars above the cards).</summary>
+    public const int DenseBars = 2;
+
+    /// <summary>
+    /// The Week view at its fullest for the frame budget ("60 fps on the Week view with about 40 cards"): the
+    /// <see cref="Many"/> set plus, in the Monday-start week of <paramref name="today"/>, <see cref="DenseTasksPerDay"/>
+    /// open single-day tasks on every day (the demo's titles, tags and priorities, every third one timed) and
+    /// <see cref="DenseBars"/> multi-day tasks, so every day cell is filled to what its height holds and shows "+N more".
+    /// </summary>
+    public static IReadOnlyList<TaskItem> DenseWeek(int count, DateOnly today)
+    {
+        var tasks = new List<TaskItem>(Many(count, today));
+        var titles = DemoData.Tasks().Where(t => t.End is null).Select(t => (t.Title, t.Tag, t.Priority)).Distinct().ToArray();
+        var monday = today.AddDays(-(((int)today.DayOfWeek + 6) % 7));
+        var n = 0;
+        for (var d = 0; d < 7; d++)
+        {
+            for (var k = 0; k < DenseTasksPerDay; k++, n++)
+            {
+                var (title, tag, priority) = titles[n % titles.Length];
+                TimeOnly? time = n % 3 == 0 ? new TimeOnly(8 + (k % 10), 0) : null;
+                tasks.Add(new TaskItem(tasks.Count + 1, title, string.Empty, monday.AddDays(d), null, time, time is null ? 0 : 45,
+                    priority, tag, Done: false));
+            }
+        }
+
+        for (var b = 0; b < DenseBars; b++)
+        {
+            var (title, tag, _) = titles[b];
+            tasks.Add(new TaskItem(tasks.Count + 1, title, string.Empty, monday.AddDays(1 + (2 * b)), monday.AddDays(3 + (2 * b)), null, 0,
+                Priority.Medium, tag, Done: false));
+        }
+
+        return tasks;
+    }
+
     /// <summary>Creates (or replaces) <c>doba.db</c> in <paramref name="folder"/> holding <paramref name="tasks"/> and the
-    /// demo tags, with default settings, through <see cref="DobaDatabase"/>.</summary>
-    public static async Task WriteDatabaseAsync(string folder, IReadOnlyList<TaskItem> tasks, CancellationToken ct)
+    /// demo tags, with <paramref name="settings"/> (default settings when null), through <see cref="DobaDatabase"/>.</summary>
+    public static async Task WriteDatabaseAsync(string folder, IReadOnlyList<TaskItem> tasks, CancellationToken ct, AppSettings? settings = null)
     {
         Directory.CreateDirectory(folder);
         foreach (var stale in Directory.EnumerateFiles(folder, "doba.db*"))
@@ -66,6 +105,11 @@ internal static class PerfData
 
         await using var db = DobaDatabase.Open(new DataLocation(folder));
         db.Tasks.ReplaceAll(tasks, DemoData.Tags);
+        if (settings is not null)
+        {
+            db.Settings.Save(settings);
+        }
+
         await db.Tasks.FlushAsync(ct);
     }
 

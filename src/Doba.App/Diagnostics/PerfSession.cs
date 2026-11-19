@@ -18,8 +18,9 @@ namespace Doba.App.Diagnostics;
 /// doba-perf time-to-first-frame-ms=… working-set-mb=… private-mb=… frame-rendered-ms=… process-to-main-ms=…
 ///           main-to-shown-ms=… shown-to-rendered-ms=… from-process-start-ms=… data=demo|disk tasks=…
 /// doba-perf marks platform=… app-xaml=… framework=… services=… window=… icon=… lifecycle=… shown=… first-frame=… rendered=…
-/// doba-perf idle-seconds=… working-set-mb=… private-mb=… managed-heap-mb=…
+/// doba-perf idle-seconds=… working-set-mb=… private-mb=… managed-heap-mb=… gc-count=… gc-committed-mb=… (as of the last GC; 0 before the first)
 /// doba-perf scenario=week …   (see WeekScenario)
+/// doba-perf scenario=overlay … (see OverlayScenario; runs after the week scenario, over the Week view)
 /// </code>
 /// <c>time-to-first-frame-ms</c> keeps its original meaning (since Main, to the first animation-frame callback after the
 /// window opened, i.e. the UI thread is about to commit the first frame). <c>frame-rendered-ms</c> is when the render
@@ -110,6 +111,7 @@ internal static class PerfSession
             if (string.Equals(flags.PerfScenario, StartupFlags.WeekScenario, StringComparison.Ordinal))
             {
                 Console.WriteLine(await WeekScenario.RunAsync(window, flags.PerfRounds).ConfigureAwait(true));
+                Console.WriteLine(await OverlayScenario.RunAsync(window, OverlayScenario.DefaultCycles).ConfigureAwait(true));
             }
         }
 #pragma warning disable CA1031 // A failed measurement is reported on stdout; a perf run must still end.
@@ -148,7 +150,8 @@ internal static class PerfSession
         using var process = Process.GetCurrentProcess();
         return string.Create(CultureInfo.InvariantCulture,
             $"doba-perf idle-seconds={seconds} working-set-mb={Mb(process.WorkingSet64)} private-mb={Mb(process.PrivateMemorySize64)} " +
-            $"managed-heap-mb={Mb(GC.GetTotalMemory(forceFullCollection: false))} gc-count={GC.CollectionCount(0)}");
+            $"managed-heap-mb={Mb(GC.GetTotalMemory(forceFullCollection: false))} gc-count={GC.CollectionCount(0)} " +
+            $"gc-committed-mb={Mb(GC.GetGCMemoryInfo().TotalCommittedBytes)}");
     }
 
     private static string Mb(long bytes) => (bytes / (1024.0 * 1024.0)).ToString("F1", CultureInfo.InvariantCulture);

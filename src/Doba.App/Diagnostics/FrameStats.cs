@@ -33,7 +33,52 @@ internal sealed record FrameStats(int Frames, double P50, double P95, double Max
             intervals[i - 1] = timestamps[i] - timestamps[i - 1];
         }
 
-        Array.Sort(intervals);
+        return FromIntervals(intervals, timestamps.Count);
+    }
+
+    /// <summary>
+    /// The intervals between consecutive <paramref name="timestamps"/> (ascending, ms) whose later frame falls inside one
+    /// of <paramref name="windows"/> ([From, To], ms): the frames drawn during those windows, including the first frame
+    /// after a window opens (the one that carries the work started at its beginning).
+    /// </summary>
+    public static List<double> IntervalsEndingIn(IReadOnlyList<double> timestamps, IReadOnlyList<(double From, double To)> windows)
+    {
+        ArgumentNullException.ThrowIfNull(timestamps);
+        ArgumentNullException.ThrowIfNull(windows);
+        var result = new List<double>();
+        for (var i = 1; i < timestamps.Count; i++)
+        {
+            var t = timestamps[i];
+            foreach (var (from, to) in windows)
+            {
+                if (t > from && t <= to)
+                {
+                    result.Add(t - timestamps[i - 1]);
+                    break;
+                }
+            }
+        }
+
+        return result;
+    }
+
+    /// <summary>From frame intervals (ms, any order); <paramref name="frames"/> is the frame count reported (for
+    /// intervals picked from several windows, the number of intervals).</summary>
+    public static FrameStats FromIntervals(IReadOnlyList<double> intervals, int frames)
+    {
+        ArgumentNullException.ThrowIfNull(intervals);
+        if (intervals.Count == 0)
+        {
+            return Empty with { Frames = frames };
+        }
+
+        var sorted = intervals.ToArray();
+        Array.Sort(sorted);
+        return FromSorted(sorted, frames);
+    }
+
+    private static FrameStats FromSorted(double[] intervals, int frames)
+    {
         int over16 = 0, over33 = 0, over50 = 0;
         foreach (var d in intervals)
         {
@@ -42,7 +87,7 @@ internal sealed record FrameStats(int Frames, double P50, double P95, double Max
             over50 += d > 3 * Frame60 ? 1 : 0;
         }
 
-        return new FrameStats(timestamps.Count, Percentile(intervals, 0.50), Percentile(intervals, 0.95), intervals[^1],
+        return new FrameStats(frames, Percentile(intervals, 0.50), Percentile(intervals, 0.95), intervals[^1],
             over16, over33, over50);
     }
 
