@@ -322,6 +322,16 @@ the same on Today and in the Day view; try each on both at least once.
     start again. Expected: the new time is kept. A task with no length set (drawn as 30 minutes) still has no length
     after a move; a resize sets one.
 
+**Memory in the tray**
+
+62. Start with `--data <folder under artifacts\>`. Visit every screen, open and close New task, scroll the Inbox
+    down. In Task Manager › Details note "Memory (active private working set)" and "Commit size" of `Doba.exe`. Close
+    the window with × and wait a minute. Expected: about 30 s after the hide both numbers drop (§4 has the measured
+    sizes). Left-click the tray icon. Expected: the window is there at once, on the same screen, the Inbox still
+    scrolled where it was, text and icons sharp from the first frame. Hide it again, wait a minute, press Ctrl+Alt+N.
+    Expected: the New task dialog opens over the blurred page as before, with no visible stutter. Hiding and showing
+    again within 30 s changes neither number.
+
 ## 4. Performance
 
 Final run of `scripts\perf.ps1` on `dev` at `938bdb9` (2026-11-19, quiet machine, nothing else building).
@@ -344,6 +354,74 @@ render frame is about 28 ms. `DOTNET_GCgen0size` overrides it at run time. The S
 24 MB (Avalonia's default is about 28 MB); it saves about 3 MB idle and was the largest cap that left frame times
 unchanged here — on a much larger or high-DPI window it is worth re-checking with `scripts\perf.ps1`. The candidate
 tables are in `DECISIONS.md`.
+
+### Memory by state, and what the tray gives back
+
+**Where the memory goes.** Measured from outside the process on `dev` at `41b4a30` (before the release below existed),
+348 tasks, median of 5 runs (3 for the hidden start), MB. Counters: `GetProcessMemoryInfo`; the rows under them: the
+resident pages of each kind of region (`VirtualQueryEx` + `QueryWorkingSetEx`), which add up to 1–6 MB more than the
+working-set counter. "Every screen" here is Inbox, Year, Month, Week, Day and back to Today.
+
+| | Started hidden (`--minimized`) | 15 s after the start | Every screen visited | Hidden in the tray 60 s |
+|---|---|---|---|---|
+| **Working set** | 60.3 | 109.4 | 178.2 | 178.2 |
+| **Private bytes** | 43.2 | 126.3 | 195.4 | 186.7 |
+| Managed heap | 3.0 | 14.0 | 61.2 | 61.2 |
+| Native heaps | 5.1 | 20.2 | 39.4 | 39.4 |
+| Other private blocks | 13.5 | 26.0 | 28.1 | 28.1 |
+| Code of `Doba.exe` | 9.9 | 12.4 | 13.1 | 13.1 |
+| Skia, HarfBuzz, ANGLE, SQLite, GPU driver, D3D / DComp / DWrite | 15.2 | 23.6 | 23.8 | 23.8 |
+| Other Windows DLLs, mapped files, thread stacks | 15.0 | 17.4 | 17.4 | 17.4 |
+| GPU dedicated memory (not part of the sums) | 15.4 | 73.6 | 76.6 | 68.1 |
+
+With 10,000 tasks: 121.5 / 142.5 MB (working set / private bytes) after the start, 200.9 / 221.7 after every screen,
+200.9 / 212.9 in the tray. Demo: 105.4 / 124.0 and 175.5 / 194.8. What it shows:
+
+- Hiding to the tray released nothing: the working set stayed within 0.05 MB in all 10 runs. (The 8.5 MB drop of
+  private bytes is one GPU buffer the driver lets go when idle; it also happens with the window visible.)
+- The growth from the start to "every screen" (+69 MB; +79 MB at 10,000 tasks) is the built screens: managed heap +47,
+  native heaps +19. They are kept by decision (`DECISIONS.md`, "Views stay cached in the tray").
+- Private bytes are well above the working set because the graphics stack commits memory it does not touch: about
+  55 MB after the start, moving with the GPU memory. The first New task dialog adds 63–73 MB of it (the blur's
+  surfaces) and 9–10 MB of working set. A larger window costs about 17 bytes of commit per pixel and almost no
+  working set.
+- Fonts: the 7 Geist faces are 0.89 MB, all in use, and no system font file is mapped. The controls gallery is not in
+  `Doba.exe` (NativeAOT trims it).
+- Not measured: which component owns the native heaps (needs an elevated ETW heap trace), the minimised (not tray)
+  window, another DPI or GPU.
+
+**What the release in the tray changes** (`HiddenMemoryRelease`: 30 s after the hide, see ARCHITECTURE §5.8).
+`--perf-scenario tray` on `dev` at `60f6ded` plus this change, 348 tasks, hidden 45 s, one run of each build back to
+back on 2026-11-19 while the PC was in use. "Every screen" here also has Settings and the New task dialog, each
+visited twice. Working set / private bytes, MB:
+
+| State | Before | After |
+|---|---|---|
+| 5 s after the start | 125.2 / 153.3 | 114.1 / 130.1 |
+| Every screen visited | 206.5 / 228.7 | 203.7 / 219.0 |
+| Hidden in the tray | 206.5 / 228.5 | **176.0 / 180.4** |
+| Shown again and every screen walked once more | 208.7 / 231.1 | 192.3 / 215.4 |
+
+The first two rows are the same state in both builds; their difference is the spread between two single runs. Within
+the "after" run the release took the working set from 203.7 to 176.0 MB (−28) and private bytes from 219.0 to 180.4
+(−39). It emptied Skia's GPU cache from 17.9 to 6.2 MB (the rest is in use by the window's own surfaces), trimmed the
+driver, and paused the hidden app for 62 ms for the collection (70 ms for the whole release).
+
+What it costs, same two runs: the first frame after the tray click is rendered 16.2 ms after the show call instead of
+13.1 ms. The frames of one walk over all screens and the dialog right after the show: render thread p95 11.2 ms and
+max 16.4 ms in both builds, no frame over 33 ms; UI thread max 34.2 ms (35.0 before). Warm start, `--demo`, 8 launches
+of each build alternating: 227 ms (216–241) after, 225 ms (219–240) before.
+
+A hidden start (`--minimized`, never shown), sampled from outside 15 s after the release, two runs each: 348 tasks
+61.1 and 65.5 MB without the release, 60.3 and 60.3 MB with it; 10,000 tasks 69.3 and 65.3 against 63.8 and 63.8.
+
+Not measured, and how to finish it: the numbers above are single runs on a PC that was being used, so the render p95
+of 11 ms is that evening's machine (the build without the change shows the same), not the 5.6 ms of the quiet run in
+the table at the top. Still open: medians over several runs, demo and 10,000 tasks after the change, the Week
+scenario on the new build, and the memory after a long time in the tray (the minute tick keeps allocating a little,
+so the managed heap can grow back by up to its 8 MB gen0 budget). `scripts\perf.ps1` on a quiet PC prints all of it
+("Memory states" and "Back from the tray"); run it on the commit before this change and on the one with it, one
+after the other, and compare (frame times are only comparable within one session).
 ## 5. Known gaps and accepted deviations
 
 Accepted deviations (each has a line in `DECISIONS.md`):

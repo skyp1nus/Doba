@@ -85,6 +85,10 @@ Desktop (MSIX) and Claude Code to a `--data` copy and try the tools — `docs/HA
   - Tests: real headless mouse and key events (threshold, snapping, Alt, edges, Esc, capture loss, one write, cursors, autoscroll, keyboard, "+N" list, Tab order), motion timings and the animations-off path, and the 2 / 3 / N layouts against the golden numbers.
   - Screenshots: all of `docs/screenshots/` refreshed (the demo data changed) plus `schedule-normal|hover|drag|resize|two|three|overflow|focus.png`, 420 px crops compared with the new reference renders `docs/design/screens/schedule-*.png` (block edges, rings, text colours and the chip on the same pixels; text antialiasing and the shadow blur differ slightly, as elsewhere). All reference renders were redone with `tools/design-render` (new seed).
 
+## Phase 7 — Memory (2026-11-19)
+
+- [x] **P7.1 Memory in the tray** _(built 2026-11-19 on `perf/memory`; build with warnings as errors clean, 1668 tests green, NativeAOT publish 0 warnings; independent review (9 findings, all fixed); measured once on the real window, the quiet-machine run of `scripts\perf.ps1` is still to come)_ — where the memory goes in each state (HANDOFF §4), and `HiddenMemoryRelease`: 30 s after the window is hidden in the tray Doba empties Skia's GPU cache, trims the graphics driver's buffers, collects the managed heap with decommit and returns the native heaps' free blocks. 348 tasks, every screen visited: working set 204 → 176 MB, private bytes 219 → 180 MB; the first frame after the tray click 13 → 16 ms; warm start unchanged. Views, scroll positions and view-models are kept (owner's choice: nothing the user could notice). `--perf-scenario tray` and the "Memory states" / "Back from the tray" tables of `scripts\perf.ps1` measure it.
+
 ## Blocked
 
 (none)
@@ -111,3 +115,4 @@ Still needs a person. Exact steps and expected results: `docs/HANDOFF.md` sectio
 - Claude (MCP) on a `--data` copy: the Settings rows, Claude Desktop (MSIX) and Claude Code connected, Read versus
   Read & edit, the editor conflict, access off and Doba not running (41–45).
 - Schedule drag on a real window: hover, click vs drag, move, Alt, edges and autoscroll, Esc, Alt+Tab, resize, keyboard steps, Narrator, "+N" list, animations off, 125 / 150 % scaling, pen / touch, persistence (46–61).
+- Memory in the tray: both Task Manager numbers drop about 30 s after the hide; the window comes back at once, as it was (62).
