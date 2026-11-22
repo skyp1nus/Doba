@@ -20,7 +20,8 @@ token and control reference.
 ## Commands
 
 Development happens on Windows 11 (PowerShell; Git Bash also works — there prefix git commands that take
-`rev:path` arguments with `MSYS_NO_PATHCONV=1`). Everything is verified locally; do not trigger GitHub Actions.
+`rev:path` arguments with `MSYS_NO_PATHCONV=1`). Everything is verified locally; do not trigger GitHub Actions
+(rules: `.claude/rules/ci-minutes.md`).
 
 ```powershell
 $env:DOTNET_CLI_TELEMETRY_OPTOUT='1'; $env:DOTNET_NOLOGO='1'; $env:AVALONIA_TELEMETRY_OPTOUT='1'
