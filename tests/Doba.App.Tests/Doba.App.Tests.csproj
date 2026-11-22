@@ -4,7 +4,13 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\Doba.App\Doba.App.csproj" />
+    <!-- Not referenced as an assembly: the Claude end-to-end test runs Doba.Mcp.exe as a child process. Listed so it is
+         built first (as in Doba.Bridge.Tests). -->
+    <ProjectReference Include="..\..\src\Doba.Mcp\Doba.Mcp.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>
+  <!-- Doba.Mcp.exe next to the tests' copy of Doba.dll, as next to Doba.exe: Data › Connect Claude finds it there (the
+       screens and screenshots show its path, not the "missing" warning). -->
+  <Import Project="..\..\src\Doba.Mcp\CopyNextToApp.targets" />
   <ItemGroup>
     <PackageReference Include="Avalonia.Headless.XUnit" />
     <PackageReference Include="Avalonia.Skia" />
@@ -12,5 +18,17 @@
   </ItemGroup>
   <ItemGroup>
     <Using Include="Xunit" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- The MCP client of Doba.Bridge.Tests (one source): Doba.Mcp.exe over stdio, found through TestPaths. -->
+    <Compile Include="..\Doba.Bridge.Tests\McpProcess.cs" Link="Platform\Mcp\McpProcess.cs" />
+    <Compile Include="..\Doba.Bridge.Tests\TestPaths.cs" Link="Platform\Mcp\TestPaths.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Where the build put Doba.Mcp (same configuration and framework); DOBA_MCP_EXE overrides it at run time. -->
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>DobaMcpExe</_Parameter1>
+      <_Parameter2>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\..\src\Doba.Mcp\bin\$(Configuration)\$(TargetFramework)\Doba.Mcp.exe'))</_Parameter2>
+    </AssemblyAttribute>
   </ItemGroup>
 </Project>

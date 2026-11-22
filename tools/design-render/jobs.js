@@ -19,6 +19,13 @@ const dialog = (name, idx) => ({
   },
 });
 
+// The canvas's "Schedule states" artboards: Main rendered at 1600×1000 and cropped to a 420 px frame
+// (left −1176, top −161 / −393 / −491 / −251).
+const sched = (name, demo, y, h, extra) => ({
+  name, attrs: Object.assign({ 'start-view': 'today', 'sched-demo': demo }, extra || {}),
+  clip: { x: 1176, y, width: 420, height: h },
+});
+
 module.exports = [
   view('inbox'), view('today'), view('year'), view('month'), view('week'), view('day'),
   settingsTab('settings-appearance', 1), settingsTab('settings-calendar', 2), settingsTab('settings-tasks', 3),
@@ -35,4 +42,8 @@ module.exports = [
       await p.locator('nav[aria-label="Settings"] button', { hasText: 'Back to app' }).click();
       await p.waitForTimeout(900);
     } },
+  sched('schedule-normal', 'none', 161, 300), sched('schedule-hover', 'hover', 161, 300),
+  sched('schedule-drag', 'drag', 161, 300), sched('schedule-resize', 'resize', 161, 300),
+  sched('schedule-two', 'none', 393, 100), sched('schedule-three', 'none', 491, 140),
+  sched('schedule-overflow', 'overflow', 251, 250, { 'start-view': 'day', 'start-date': '2026-11-16' }),
 ];

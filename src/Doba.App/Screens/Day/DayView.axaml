@@ -73,16 +73,14 @@
       </Grid>
     </ScrollViewer>
 
-    <!-- As on Today: the aside does not scroll at 1600×1000 (the 812 px timeline fits); in a shorter window it scrolls on
-         its own and shows the now-line (today) or the earliest block (ScheduleScroll). -->
+    <!-- As on Today: the schedule's grid scrolls inside the timeline in a shorter window and shows the now-line (today)
+         or the earliest block (ScheduleScroll). -->
     <Border Name="PART_Aside"
             Grid.Column="1"
             BorderBrush="{DynamicResource Brush.Border.Subtle}"
             BorderThickness="1,0,0,0"
             Padding="{StaticResource Space.Day.Aside}">
-      <ScrollViewer Name="PART_ScheduleScroll" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-        <c:ScheduleTimeline Name="PART_Schedule" Width="{DynamicResource Size.Schedule.Width}" DataContext="{Binding Schedule}" />
-      </ScrollViewer>
+      <c:ScheduleTimeline Name="PART_Schedule" Width="{DynamicResource Size.Schedule.Width}" DataContext="{Binding Schedule}" />
     </Border>
   </Grid>
 </UserControl>

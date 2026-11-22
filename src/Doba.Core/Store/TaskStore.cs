@@ -62,7 +62,8 @@ public sealed class TaskStore : ITaskStore
         }
 
         // Every span overlapping [from, to] starts in [from − maxSpan, to].
-        var i = LowerBound(_multi, from.AddDays(-_maxSpanDays));
+        // Clamped at DateOnly.MinValue: no span starts before it (and AddDays would throw there).
+        var i = LowerBound(_multi, DateOnly.FromDayNumber(Math.Max(0, from.DayNumber - _maxSpanDays)));
         for (; i < _multi.Count; i++)
         {
             var t = _multi[i];

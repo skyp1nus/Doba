@@ -59,7 +59,7 @@ public sealed partial class TodayViewModel : ScreenViewModel
         TaskGroupSync.Apply([(Groups, model.Groups)], Services.Actions, Services.Commands);
         Summary = model.Summary;
         Progress = model.Progress;
-        Schedule.Update(model.Schedule);
+        Schedule.Update(model.Schedule, ctx.Today);
     }
 
     /// <summary>Minute tick: move the now-line only; a new day re-projects everything.</summary>

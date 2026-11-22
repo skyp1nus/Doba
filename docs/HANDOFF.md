@@ -28,14 +28,15 @@ request for its result. That run (pull request #1, 2026-11-19) was green: Releas
 | §10 CI on `windows-latest` builds, tests, publishes NativeAOT, uploads | Workflow in `.github/workflows/ci.yml`; its steps were run locally in the same configuration (Release build, Release tests, AOT publish, `--perf`, `--selfcheck`). It runs once, on the pull request into `main`. |
 | §10 README and HANDOFF | This file and `README.md`. |
 
-**Tests.** 1088 tests, all green on the final `dev`, in Debug and in Release (`dotnet test -c Release`, as CI runs
-them):
+**Tests.** 1377 tests, all green on `feature/mcp` with the Claude (MCP) feature (Debug, `dotnet test`, 2026-11-19;
+the `dev → main` run above had 1088, before the feature):
 
 | Project | Tests | Covers |
 |---|---|---|
-| `Doba.Core.Tests` | 246 | store, date math, projections (incl. the week lane cap, year fit, labels), navigation, dialog rules, carry-over, golden fixtures, projection timing |
-| `Doba.Storage.Tests` | 123 | database, write-behind writer incl. failure handling and transient retry, backup, JSON import / export, load timing |
-| `Doba.App.Tests` | 719 | headless UI: screens, shell, overlays, keyboard, motion, lifecycle, platform plan, single instance, screenshots, performance |
+| `Doba.Core.Tests` | 287 | store, date math, projections (incl. the week lane cap, year fit, labels), navigation, dialog rules, carry-over, Claude's task edits (`TaskEdits`, `TaskQueries`), golden fixtures, projection timing |
+| `Doba.Storage.Tests` | 129 | database, write-behind writer incl. failure handling and transient retry, backup, JSON import / export (Claude access never in the file), load timing |
+| `Doba.Bridge.Tests` | 173 | tool executor per tool and rule, tool catalog, wire format, pipe host / client and its ACL, architecture rules, `Doba.Mcp.exe` end to end over stdio (also green against the published NativeAOT exe with `DOBA_MCP_EXE`) |
+| `Doba.App.Tests` | 788 | headless UI: screens, shell, overlays, keyboard, motion, lifecycle, platform plan, single instance, Claude bridge on a real pipe and end to end through `Doba.Mcp.exe`, Settings › Data Claude rows, screenshots, performance |
 
 The counts are from the test runner's own summary of the final run.
 **Gates used for every package and fix.** `dotnet build -warnaserror` (0 warnings; trim and AOT analyzers on),
@@ -134,6 +135,7 @@ Everything below needs a person at the Windows PC. Use the published build:
 
 ```powershell
 dotnet publish src/Doba.App -c Release -r win-x64 -o artifacts\doba-win-x64 -warnaserror
+dotnet publish src/Doba.Mcp -c Release -r win-x64 -o artifacts\doba-win-x64 -warnaserror
 ```
 
 Most steps use a scratch data folder so your real data is not touched, e.g.
@@ -255,6 +257,81 @@ Write the outcome next to each item.
     fades show frames well over 20 ms there, the blur can be dropped (`DECISIONS.md` "Backdrop blur behind overlays").
     Also open and close the task dialog by hand (N, Esc) and judge whether it stutters.
 
+**Claude (MCP)** — on a copy, never on your real data: start
+`.\artifacts\doba-win-x64\Doba.exe --data <full path of artifacts\manual>` (any folder under `artifacts\`), with
+`Doba.Mcp.exe` published next to `Doba.exe`. How each client is connected: README › Claude (MCP).
+
+41. Settings › Data. Expected: Claude access off; "Claude can" and "Connect Claude" dimmed and inactive (the segment
+    group's track too). Turn Claude access on: both become active; "Claude can" shows Read.
+42. Claude Desktop (the Microsoft Store / MSIX build): Copy for Claude Desktop, Settings › Developer › Edit Config, merge,
+    quit from the tray, start again. Expected: + › Connectors lists `doba` with 11 tools; "what is on today?" calls
+    `get_today` (Claude asks first) and answers with the copy's tasks. Record which config file Edit Config opened and
+    where the `mcp*.log` files are, so README can name them.
+43. Claude Code: Copy for Claude Code, run the command in PowerShell. Expected: `claude mcp list` shows `doba` connected;
+    in a session `/mcp` lists its tools; asking for today's tasks works.
+44. Level: with Read, ask Claude to create a task. Expected: refused with the "Read & edit" hint, nothing changes in
+    Doba. Switch to Read & edit and ask again: the task appears in Doba at once (no restart, no refresh). Open that task
+    in Doba's edit dialog and ask Claude to rename it: refused ("open in Doba's editor"); close the dialog and it works.
+45. Turn Claude access off, ask again. Expected: "Claude access is off" with the Settings path. Quit Doba from the tray,
+    ask again: "Doba is not running (data folder: …)". Doba is never started by Claude.
+**Schedule: drag, resize, keyboard, "+N"** (Today and Day; headless tests cannot judge how a drag feels)
+
+Start with `--demo` (its 15 and 16 November have overlapping tasks) unless the step says otherwise. Steps 46–61 are
+the same on Today and in the Day view; try each on both at least once.
+
+46. Hover a schedule block. Expected: a faint lighter layer and a short bar at the bottom edge fade in (about 0.2 s);
+    the cursor is a hand; over the bar it is a vertical resize arrow.
+47. Click a block without moving the mouse. Expected: its task opens in the dialog; nothing is marked done. Click the
+    small checkbox in a block. Expected: the task is marked done (or not done) and no dialog opens.
+48. Press on "Write the weekly update", let the mouse tremble a little (under 4 px) and release. Expected: the dialog
+    opens; the time is unchanged.
+49. Drag that block down. Expected: after about 4 px the copy lifts (a touch larger, with a shadow); the old place
+    shows a dashed outline; a time label in the hour column shows the slot; the copy steps in 15-minute slots;
+    blocks under the copy fade to about half. Release: the block lands in about 0.2 s, the list on the left shows the
+    new time, and the neighbours slide to their new columns. No dialog opens.
+50. Drag again holding Alt; also press and release Alt without moving. Expected: 5-minute slots, re-snapped at once
+    on the Alt press or release; no window menu opens and no access-key underlines appear.
+51. Drag far up and far down. Expected: the block stops at 07:00, and with its end at 23:00, without a bounce. Then
+    make the window 1100×700 and drag towards the top and the bottom of the schedule. Expected: it scrolls by itself,
+    faster closer to the edge, and stops at the ends.
+52. Press Esc during a drag, and during a resize. Expected: the copy flies back (about 0.2 s), the release does not
+    open the dialog, nothing is saved.
+53. Alt+Tab to another app during a drag (button still down), then come back. Expected: the drag was cancelled as by
+    Esc: nothing moved and the cursor is normal.
+54. Drag a block's bottom bar. Expected: the block grows or shrinks in place in 15-minute steps (5 with Alt), shows
+    the range and length ("09:30 – 11:15 · 1h 45m"); at least 15 minutes; its end at most 23:00; release saves.
+55. Keyboard: Tab to a block (an outline appears around it). Up / Down move it by 15 minutes (Alt: 5); Shift+Up /
+    Down change its length; the time label stays about 1 s after the last step; holding a key repeats; at 07:00 /
+    23:00 nothing happens and the column does not scroll. Enter opens the task; Space ticks it. In the Day view
+    Left / Right still change the day.
+56. Narrator (Win+Ctrl+Enter). Expected after a drop: "Moved <title>, 11:15 to 12:15"; after a resize: "Resized …";
+    after Esc: "Move cancelled"; after a key step: the new time. Repeat the same step twice: read both times.
+57. Day view, 16 November: two blocks and "+2" beside them. Click "+2". Expected: a list of two tasks opens under it
+    (about 0.2 s; near the bottom of the day it opens above). A second click, Esc, a click elsewhere in the schedule
+    or another day closes it. A row's title opens the task (the list closes); its checkbox ticks it (the list stays).
+    Tasks in the list cannot be dragged. Keyboard: Tab to "+2", Enter: focus on the first row; Esc: focus back on
+    "+2". Moving a block with the keyboard under a "+N" moves the focus to that "+N".
+58. Windows Settings › Accessibility › Visual effects › Animation effects off, while Doba runs. Drag a block.
+    Expected: the copy follows the pointer without the lift and the shadow; the drop and Esc are instant; neighbours
+    jump. The time label after a key step still stays about 1 s. Turn the setting back on.
+59. At 125 % and 150 % display scaling: a slight tremble on click still opens rather than drags; the copy, the dashed
+    outline and the bar are crisp; the bottom bar is easy to grab (it reaches 3 px below the block).
+60. If a pen is available: the pen drags like the mouse. On a touch screen: a tap opens or ticks; touch does not drag
+    (by decision).
+61. With `--data D:\dev\Doba\artifacts\manual` (or a scratch folder): move a block, close Doba (Quit from the tray),
+    start again. Expected: the new time is kept. A task with no length set (drawn as 30 minutes) still has no length
+    after a move; a resize sets one.
+
+**Memory in the tray**
+
+62. Start with `--data <folder under artifacts\>`. Visit every screen, open and close New task, scroll the Inbox
+    down. In Task Manager › Details note "Memory (active private working set)" and "Commit size" of `Doba.exe`. Close
+    the window with × and wait a minute. Expected: about 30 s after the hide both numbers drop (§4 has the measured
+    sizes). Left-click the tray icon. Expected: the window is there at once, on the same screen, the Inbox still
+    scrolled where it was, text and icons sharp from the first frame. Hide it again, wait a minute, press Ctrl+Alt+N.
+    Expected: the New task dialog opens over the blurred page as before, with no visible stutter. Hiding and showing
+    again within 30 s changes neither number.
+
 ## 4. Performance
 
 Final run of `scripts\perf.ps1` on `dev` at `938bdb9` (2026-11-19, quiet machine, nothing else building).
@@ -277,6 +354,74 @@ render frame is about 28 ms. `DOTNET_GCgen0size` overrides it at run time. The S
 24 MB (Avalonia's default is about 28 MB); it saves about 3 MB idle and was the largest cap that left frame times
 unchanged here — on a much larger or high-DPI window it is worth re-checking with `scripts\perf.ps1`. The candidate
 tables are in `DECISIONS.md`.
+
+### Memory by state, and what the tray gives back
+
+**Where the memory goes.** Measured from outside the process on `dev` at `41b4a30` (before the release below existed),
+348 tasks, median of 5 runs (3 for the hidden start), MB. Counters: `GetProcessMemoryInfo`; the rows under them: the
+resident pages of each kind of region (`VirtualQueryEx` + `QueryWorkingSetEx`), which add up to 1–6 MB more than the
+working-set counter. "Every screen" here is Inbox, Year, Month, Week, Day and back to Today.
+
+| | Started hidden (`--minimized`) | 15 s after the start | Every screen visited | Hidden in the tray 60 s |
+|---|---|---|---|---|
+| **Working set** | 60.3 | 109.4 | 178.2 | 178.2 |
+| **Private bytes** | 43.2 | 126.3 | 195.4 | 186.7 |
+| Managed heap | 3.0 | 14.0 | 61.2 | 61.2 |
+| Native heaps | 5.1 | 20.2 | 39.4 | 39.4 |
+| Other private blocks | 13.5 | 26.0 | 28.1 | 28.1 |
+| Code of `Doba.exe` | 9.9 | 12.4 | 13.1 | 13.1 |
+| Skia, HarfBuzz, ANGLE, SQLite, GPU driver, D3D / DComp / DWrite | 15.2 | 23.6 | 23.8 | 23.8 |
+| Other Windows DLLs, mapped files, thread stacks | 15.0 | 17.4 | 17.4 | 17.4 |
+| GPU dedicated memory (not part of the sums) | 15.4 | 73.6 | 76.6 | 68.1 |
+
+With 10,000 tasks: 121.5 / 142.5 MB (working set / private bytes) after the start, 200.9 / 221.7 after every screen,
+200.9 / 212.9 in the tray. Demo: 105.4 / 124.0 and 175.5 / 194.8. What it shows:
+
+- Hiding to the tray released nothing: the working set stayed within 0.05 MB in all 10 runs. (The 8.5 MB drop of
+  private bytes is one GPU buffer the driver lets go when idle; it also happens with the window visible.)
+- The growth from the start to "every screen" (+69 MB; +79 MB at 10,000 tasks) is the built screens: managed heap +47,
+  native heaps +19. They are kept by decision (`DECISIONS.md`, "Views stay cached in the tray").
+- Private bytes are well above the working set because the graphics stack commits memory it does not touch: about
+  55 MB after the start, moving with the GPU memory. The first New task dialog adds 63–73 MB of it (the blur's
+  surfaces) and 9–10 MB of working set. A larger window costs about 17 bytes of commit per pixel and almost no
+  working set.
+- Fonts: the 7 Geist faces are 0.89 MB, all in use, and no system font file is mapped. The controls gallery is not in
+  `Doba.exe` (NativeAOT trims it).
+- Not measured: which component owns the native heaps (needs an elevated ETW heap trace), the minimised (not tray)
+  window, another DPI or GPU.
+
+**What the release in the tray changes** (`HiddenMemoryRelease`: 30 s after the hide, see ARCHITECTURE §5.8).
+`--perf-scenario tray` on `dev` at `60f6ded` plus this change, 348 tasks, hidden 45 s, one run of each build back to
+back on 2026-11-19 while the PC was in use. "Every screen" here also has Settings and the New task dialog, each
+visited twice. Working set / private bytes, MB:
+
+| State | Before | After |
+|---|---|---|
+| 5 s after the start | 125.2 / 153.3 | 114.1 / 130.1 |
+| Every screen visited | 206.5 / 228.7 | 203.7 / 219.0 |
+| Hidden in the tray | 206.5 / 228.5 | **176.0 / 180.4** |
+| Shown again and every screen walked once more | 208.7 / 231.1 | 192.3 / 215.4 |
+
+The first two rows are the same state in both builds; their difference is the spread between two single runs. Within
+the "after" run the release took the working set from 203.7 to 176.0 MB (−28) and private bytes from 219.0 to 180.4
+(−39). It emptied Skia's GPU cache from 17.9 to 6.2 MB (the rest is in use by the window's own surfaces), trimmed the
+driver, and paused the hidden app for 62 ms for the collection (70 ms for the whole release).
+
+What it costs, same two runs: the first frame after the tray click is rendered 16.2 ms after the show call instead of
+13.1 ms. The frames of one walk over all screens and the dialog right after the show: render thread p95 11.2 ms and
+max 16.4 ms in both builds, no frame over 33 ms; UI thread max 34.2 ms (35.0 before). Warm start, `--demo`, 8 launches
+of each build alternating: 227 ms (216–241) after, 225 ms (219–240) before.
+
+A hidden start (`--minimized`, never shown), sampled from outside 15 s after the release, two runs each: 348 tasks
+61.1 and 65.5 MB without the release, 60.3 and 60.3 MB with it; 10,000 tasks 69.3 and 65.3 against 63.8 and 63.8.
+
+Not measured, and how to finish it: the numbers above are single runs on a PC that was being used, so the render p95
+of 11 ms is that evening's machine (the build without the change shows the same), not the 5.6 ms of the quiet run in
+the table at the top. Still open: medians over several runs, demo and 10,000 tasks after the change, the Week
+scenario on the new build, and the memory after a long time in the tray (the minute tick keeps allocating a little,
+so the managed heap can grow back by up to its 8 MB gen0 budget). `scripts\perf.ps1` on a quiet PC prints all of it
+("Memory states" and "Back from the tray"); run it on the commit before this change and on the one with it, one
+after the other, and compare (frame times are only comparable within one session).
 ## 5. Known gaps and accepted deviations
 
 Accepted deviations (each has a line in `DECISIONS.md`):
@@ -317,6 +462,11 @@ Known gaps left by the final review (not fixed, with the reason):
   its native icon only once it is in the application's `TrayIcon.Icons` collection and Doba created it standalone;
   closing then hid the window with nothing to bring it back. The icon is now attached there, `IsSupported` turns false
   when no native icon could be created (closing then quits), and `--selfcheck` fails without the native icon.
+- **Reused task id after a delete** (old `TaskStore` behaviour, see `DECISIONS.md` "Ids"): a new task gets the
+  largest id + 1, so deleting the newest task and creating another hands out the same id again. Harmless inside Doba;
+  with Claude (MCP) a stale id that Claude remembers from before the delete could now hit the new task (Claude reads
+  ids from lists and may act on an old one later). Proposed follow-up: never reuse an id (keep a high-water mark in the
+  database).
 - **Daily backup failures** go to the debugger trace only (not to `doba.log`, no notice).
 - **Database rows are not validated on load**; the store normalises every task it loads instead (bad values are
   corrected in memory and on the next write of that task).
@@ -326,6 +476,16 @@ Known gaps left by the final review (not fixed, with the reason):
   on sit up to 1 px low.
 - **CI** runs once, on the pull request. Its `--perf` and `--selfcheck` steps are informational on a hosted runner
   (no GPU, no Mica, possibly no notification area): they print their output but cannot fail the job.
+
+Schedule drag (2026-11-19), known and left as they are:
+
+- **"+N" open state** is not exposed to screen readers as expanded / collapsed (no `aria-expanded` equivalent on an
+  Avalonia Button); its name says how many tasks and which times it holds.
+- **While a block lands** (0.2 s) the whole blocks layer is drawn over the now-line, not only the landing block as in
+  the prototype: another block crossing the line hides it for that moment.
+- **Shadows and dashes**: the lifted copy's and the "+N" list's box shadows spread 1–2 colour levels differently from
+  Chromium, and the dash pattern on vertical edges starts at another phase.
+- **Touch**: no long-press drag (the prototype has none either).
 
 Repository housekeeping for the owner:
 

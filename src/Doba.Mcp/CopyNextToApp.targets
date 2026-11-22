@@ -1,0 +1,22 @@
+<Project>
+  <!-- Imported by Doba.App and Doba.App.Tests. Dev builds only (no RuntimeIdentifier): copies the framework-dependent
+       Doba.Mcp (exe, dll, deps, runtimeconfig and its package dlls) into the importing project's output, so Data ›
+       Connect Claude finds Doba.Mcp.exe next to Doba.exe in a plain `dotnet build` / `dotnet run` too. The importing
+       project references Doba.Mcp with ReferenceOutputAssembly="false", so it is built first. A publish (with a
+       RuntimeIdentifier) skips this: the NativeAOT Doba.Mcp.exe is published into the same folder by its own
+       `dotnet publish src/Doba.Mcp` (README, ci.yml). -->
+  <Target Name="CopyDobaMcpToOutput" AfterTargets="CopyFilesToOutputDirectory" Condition="'$(RuntimeIdentifier)' == ''">
+    <PropertyGroup>
+      <_DobaMcpOutDir>$(MSBuildThisFileDirectory)bin\$(Configuration)\$(TargetFramework)\</_DobaMcpOutDir>
+    </PropertyGroup>
+    <ItemGroup>
+      <!-- Doba.Core and Doba.Bridge are the importing project's own references (same build). -->
+      <_DobaMcpFile Include="$(_DobaMcpOutDir)*" Exclude="$(_DobaMcpOutDir)Doba.Core.*;$(_DobaMcpOutDir)Doba.Bridge.*" />
+    </ItemGroup>
+    <Error Condition="!Exists('$(_DobaMcpOutDir)Doba.Mcp.exe')" Text="Doba.Mcp was not built into $(_DobaMcpOutDir)." />
+    <Copy SourceFiles="@(_DobaMcpFile)" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
+    <ItemGroup>
+      <FileWrites Include="@(_DobaMcpFile->'$(OutDir)%(Filename)%(Extension)')" />
+    </ItemGroup>
+  </Target>
+</Project>

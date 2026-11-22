@@ -47,6 +47,13 @@ public static class MotionTimes
     public static TimeSpan Zoom => Motion.Ms(Motion.Zoom);
     public static TimeSpan Progress => Motion.Ms(Motion.Progress);
     public static TimeSpan Launch => Motion.Ms(Motion.Launch);
+    public static TimeSpan Snap => Motion.Ms(Motion.Snap);
+    public static TimeSpan Lift => Motion.Ms(Motion.Lift);
+    public static TimeSpan Land => Motion.Ms(Motion.Land);
+    public static TimeSpan Fade => Motion.Ms(Motion.Fade);
+
+    /// <summary>The time chip's hold after an arrow-key step: not an animation, so never zeroed (see <see cref="Motion.ChipHold"/>).</summary>
+    public static TimeSpan ChipHold => TimeSpan.FromMilliseconds(Motion.ChipHold);
 
     /// <summary>The "hover/press" family of the prototype: 200 ms `ease` on nav colours, crumbs, header opacity.</summary>
     public static TimeSpan Color => Motion.Ms(Motion.ColorChange);

@@ -371,7 +371,7 @@ public class MicroTests
     }
 
     [AvaloniaFact]
-    public void Bar_and_schedule_block_hover_brightens_over_200ms()
+    public void Bar_hover_brightens_over_200ms()
     {
         using var stage = new Stage(() => new Button { Theme = Transit.Theme("Button.Bar"), Width = 160, Height = 28, Content = "Trip" });
         var bar = (Button)stage.Content;
@@ -387,11 +387,36 @@ public class MicroTests
         Assert.True(Transit.Until(() => brighten.Opacity == 1));
         Assert.Equal(bounds, bar.Bounds);
 
-        // Week bars, Day spans, Year items and schedule blocks all use Button.Bar.
+        // Week bars, Day spans and Year items use Button.Bar (schedule blocks have their own hover layer, below).
         using var shell = new AnimatedShell(AppView.Week);
         Assert.Contains(shell.OnScreen<Button>(), b => b.Classes.Contains("bar") && b.Theme == Transit.Theme("Button.Bar"));
-        shell.Show(AppView.Day, DemoData.Today);
-        Assert.Contains(shell.OnScreen<Button>(), b => b.Classes.Contains("block") && b.Theme == Transit.Theme("Button.Bar"));
+    }
+
+    [AvaloniaFact]
+    public void Schedule_block_hover_fades_its_white_layer_and_grip_in_over_180ms()
+    {
+        using var shell = new AnimatedShell(AppView.Day, DemoData.Today);
+        var block = shell.OnScreen<Panel>().First(p => p.Name == "PART_Block" && p.Classes.Contains("block") && !p.Classes.Contains("done"));
+        var hover = Transit.Part<Border>(block, "PART_Hover");
+        var grip = Transit.Part<Border>(block, "PART_Grip");
+        // .sbo / .sbg: opacity 0 → 1, transition 0.18s ease.
+        Transit.Is(hover, Visual.OpacityProperty, AppMotion.Hover, AppMotion.EaseStd);
+        Transit.Is(grip, Visual.OpacityProperty, AppMotion.Hover, AppMotion.EaseStd);
+        Assert.Equal(0, hover.Opacity);
+        Assert.Equal(0, grip.Opacity);
+        Assert.False(hover.IsHitTestVisible);
+        Assert.Equal(Transit.Resource("Color.Schedule.Hover"), Transit.ColorOf(hover.Background));
+        Assert.Equal(Transit.Resource("Brush.Accent70"), Transit.ColorOf(Transit.Part<Border>(block, "PART_GripBar").Background));
+        var bounds = block.Bounds;
+
+        shell.Hover(Transit.Part<Button>(block, "PART_Open"));
+        Assert.True(hover.Opacity < 1);
+        Assert.True(Transit.Until(() => hover.Opacity == 1 && grip.Opacity == 1));
+        Assert.Equal(bounds, block.Bounds); // only opacity changes
+
+        // Leaving fades them out again.
+        Avalonia.Headless.HeadlessWindowExtensions.MouseMove(shell.Window, new Point(1, 1));
+        Assert.True(Transit.Until(() => hover.Opacity == 0 && grip.Opacity == 0));
     }
 
     [AvaloniaFact]

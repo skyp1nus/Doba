@@ -7,6 +7,7 @@ namespace Doba.App.Services;
 /// immutable records, by key. Existing items are updated in place (so their visuals stay alive and animate),
 /// missing ones are inserted at the right index, stale ones removed, moved ones moved. The collection is never cleared.
 /// This is what keeps "complete a task" a local change instead of a screen rebuild (ARCHITECTURE §2).
+/// <see cref="ApplyStable"/> is the variant for absolutely positioned items whose order does not matter on screen.
 /// </summary>
 public static class KeyedSync
 {
@@ -76,6 +77,64 @@ public static class KeyedSync
             else
             {
                 target.Insert(i, create(record));
+                created++;
+            }
+        }
+
+        return created;
+    }
+
+    /// <summary>
+    /// Like <see cref="Apply"/>, but never reorders: stale items are removed, existing ones updated in place and new ones
+    /// appended in source order. For items positioned by their own geometry (the schedule's blocks), where a
+    /// <see cref="ObservableCollection{T}.Move"/> would make the items control recreate the moved item's container
+    /// (losing its focus, composition visual and running animations).
+    /// </summary>
+    /// <returns>The number of items created.</returns>
+    public static int ApplyStable<TRecord, TViewModel, TKey>(
+        ObservableCollection<TViewModel> target,
+        IReadOnlyList<TRecord> source,
+        Func<TRecord, TKey> keyOfSource,
+        Func<TViewModel, TKey> keyOfTarget,
+        Func<TRecord, TViewModel> create,
+        Action<TViewModel, TRecord> update)
+        where TKey : notnull
+        where TViewModel : class
+    {
+        ArgumentNullException.ThrowIfNull(target);
+        ArgumentNullException.ThrowIfNull(source);
+
+        var records = new Dictionary<TKey, TRecord>(source.Count);
+        foreach (var r in source)
+        {
+            records.Add(keyOfSource(r), r);
+        }
+
+        var kept = new HashSet<TKey>(target.Count);
+        for (var i = target.Count - 1; i >= 0; i--)
+        {
+            var key = keyOfTarget(target[i]);
+            if (!records.ContainsKey(key))
+            {
+                target.RemoveAt(i);
+            }
+            else
+            {
+                kept.Add(key);
+            }
+        }
+
+        foreach (var vm in target)
+        {
+            update(vm, records[keyOfTarget(vm)]);
+        }
+
+        var created = 0;
+        foreach (var record in source)
+        {
+            if (!kept.Contains(keyOfSource(record)))
+            {
+                target.Add(create(record));
                 created++;
             }
         }

@@ -10,7 +10,7 @@ namespace Doba.App.Theme;
 
 /// <summary>
 /// Applies the live appearance settings to the application resources: accent (Brush.Accent / Accent10 / Accent15 /
-/// Accent25 and Color.Accent), density (Density.* keys) and the chrome tint (Brush.Chrome = rgba(22,22,24, op)).
+/// Accent16 / Accent25 / Accent35 / Accent45 / Accent70 and Color.Accent), density (Density.* keys) and the chrome tint (Brush.Chrome = rgba(22,22,24, op)).
 /// </summary>
 /// <remarks>
 /// Accent and chrome brushes are mutated in place, so both <c>StaticResource</c> and <c>DynamicResource</c> users update;
@@ -26,6 +26,10 @@ public sealed class ThemeService
     public const string Accent10BrushKey = "Brush.Accent10";
     public const string Accent15BrushKey = "Brush.Accent15";
     public const string Accent25BrushKey = "Brush.Accent25";
+    public const string Accent16BrushKey = "Brush.Accent16";
+    public const string Accent35BrushKey = "Brush.Accent35";
+    public const string Accent45BrushKey = "Brush.Accent45";
+    public const string Accent70BrushKey = "Brush.Accent70";
     public const string ChromeBrushKey = "Brush.Chrome";
     public const string ChromeBaseColorKey = "Color.Chrome.Base";
 
@@ -96,6 +100,10 @@ public sealed class ThemeService
         SetBrushColor(Accent10BrushKey, AccentPalette.WithAlpha(color, AccentPalette.Alpha10), animate);
         SetBrushColor(Accent15BrushKey, AccentPalette.WithAlpha(color, AccentPalette.Alpha15), animate);
         SetBrushColor(Accent25BrushKey, AccentPalette.WithAlpha(color, AccentPalette.Alpha25), animate);
+        SetBrushColor(Accent16BrushKey, AccentPalette.WithAlpha(color, AccentPalette.Alpha16), animate);
+        SetBrushColor(Accent35BrushKey, AccentPalette.WithAlpha(color, AccentPalette.Alpha35), animate);
+        SetBrushColor(Accent45BrushKey, AccentPalette.WithAlpha(color, AccentPalette.Alpha45), animate);
+        SetBrushColor(Accent70BrushKey, AccentPalette.WithAlpha(color, AccentPalette.Alpha70), animate);
     }
 
     public void ApplyDensity(Density density)

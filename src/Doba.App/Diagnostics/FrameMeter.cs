@@ -24,20 +24,28 @@ namespace Doba.App.Diagnostics;
 /// </summary>
 internal sealed class FrameMeter
 {
-    private const int Capacity = 1 << 16;
+    /// <summary>Render frames a meter holds unless told otherwise (about six minutes at 180 Hz).</summary>
+    public const int DefaultCapacity = 1 << 16;
 
     private readonly TopLevel _top;
-    private readonly List<double> _ui = new(4096);
-    private readonly List<int> _uiGc = new(4096);
-    private readonly RenderProbe _probe = new(Capacity);
+    private readonly List<double> _ui;
+    private readonly List<int> _uiGc;
+    private readonly RenderProbe _probe;
     private CompositionCustomVisual? _visual;
     private CompositionVisual? _previousChild;
     private bool _running;
 
-    public FrameMeter(TopLevel top)
+    /// <param name="top">The window whose frames are recorded.</param>
+    /// <param name="capacity">Render frames recorded at most (later ones are dropped). The buffers are allocated up
+    /// front, so a scenario that samples memory gives the few thousand frames it needs instead of the default.</param>
+    public FrameMeter(TopLevel top, int capacity = DefaultCapacity)
     {
         ArgumentNullException.ThrowIfNull(top);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(capacity);
         _top = top;
+        _ui = new List<double>(Math.Min(capacity, 4096));
+        _uiGc = new List<int>(Math.Min(capacity, 4096));
+        _probe = new RenderProbe(capacity);
     }
 
     /// <summary>The meter's clock: monotonic milliseconds (same base on every thread).</summary>

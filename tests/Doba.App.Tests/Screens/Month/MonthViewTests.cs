@@ -161,7 +161,7 @@ public class MonthViewTests
         }
 
         // The design's "+N more" counts for W46 (two lanes leave room for one slot: the "+N more" line itself).
-        Assert.Equal(["+4 more", "+3 more", "+3 more", "+3 more", "+3 more", "+2 more", "+6 more"],
+        Assert.Equal(["+4 more", "+3 more", "+3 more", "+3 more", "+3 more", "+2 more", "+10 more"],
             Scene.Cells(weeks[2]).Select(c => Scene.More(c)!.Text));
         Assert.Equal(["API migration to the new gateway", "Portfolio site redesign"], Scene.Bars(weeks[2]).Select(Title));
     }

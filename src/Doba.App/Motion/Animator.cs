@@ -46,6 +46,7 @@ public sealed class MotionHandle
     private readonly TaskCompletionSource<bool> _finished = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private Action<MotionHandle>? _onFinished;
     private IDisposable? _timer;
+    private bool _superseded;
 
     internal MotionHandle(Visual target, CompositionVisual? visual, MotionState from, MotionState to, TimeSpan duration,
         Easing easing, RelativePoint origin, Action<MotionHandle>? onFinished)
@@ -139,7 +140,11 @@ public sealed class MotionHandle
     }
 
     /// <summary>Finishes because a newer animation took over the same element (its keyframes replace ours).</summary>
-    internal void Supersede() => Finish(snapTo: null, cancelled: true);
+    internal void Supersede()
+    {
+        _superseded = true;
+        Finish(snapTo: null, cancelled: true);
+    }
 
     private void Finish(MotionState? snapTo, bool cancelled)
     {
@@ -156,6 +161,13 @@ public sealed class MotionHandle
         if (snapTo is { } state && _visual is { IsDisposed: false })
         {
             Animator.Snap(_visual, state, _restOpacity);
+        }
+
+        // What the render thread keeps showing once this handle is done (Retarget starts from it). A superseded handle
+        // records nothing: the newer animation on the element owns its state.
+        if (_visual is not null && !_superseded)
+        {
+            Animator.Settle(Target, _visual, cancelled ? MotionState.Rest : To);
         }
 
         Animator.Unregister(this);
@@ -196,6 +208,10 @@ public sealed class MotionHandle
 public static class Animator
 {
     private static readonly ConditionalWeakTable<Visual, MotionHandle> s_running = new();
+
+    /// <summary>The state each element was left in by its last finished animation, with the composition visual it was
+    /// shown on (a recreated visual shows the element at rest again).</summary>
+    private static readonly ConditionalWeakTable<Visual, Settled> s_settled = new();
     private static readonly LinearEasing s_linear = new();
 
     /// <summary>The 1 ms "snap" used to set a composition property immediately while overriding any running keyframes.</summary>
@@ -217,6 +233,43 @@ public static class Animator
     /// <summary>True while an Animator animation runs on <paramref name="target"/>.</summary>
     public static bool IsAnimating(Visual target) => Running(target) is not null;
 
+    /// <summary>
+    /// The state <paramref name="target"/> is drawn in now, relative to its resting state: the running animation's
+    /// <see cref="MotionHandle.Current"/>, else the end state the last animation left on its composition visual (a
+    /// finished fade-out stays hidden; a cancelled animation, <see cref="Reset"/> or a recreated visual is at rest).
+    /// </summary>
+    public static MotionState Shown(Visual target)
+    {
+        ArgumentNullException.ThrowIfNull(target);
+        return Running(target)?.Current ?? Left(target);
+    }
+
+    /// <summary>Where <paramref name="target"/> is heading: the running animation's <see cref="MotionHandle.To"/>, else
+    /// the state it was left in (see <see cref="Shown"/>).</summary>
+    public static MotionState Destination(Visual target)
+    {
+        ArgumentNullException.ThrowIfNull(target);
+        return Running(target)?.To ?? Left(target);
+    }
+
+    /// <summary>
+    /// Animates <paramref name="target"/> to <paramref name="to"/>, continuing from where it is drawn now (<see cref="Shown"/>:
+    /// mid-way through a running animation, or the end state of the last one) — so a state that flips back and forth
+    /// (a block dimming under the dragged copy and back) never jumps. When it is already at or heading to
+    /// <paramref name="to"/>, nothing new starts: the running handle is returned, or a finished one.
+    /// </summary>
+    public static MotionHandle Retarget(Visual target, MotionState to, int durationMs, Easing easing,
+        RelativePoint? origin = null, Action<MotionHandle>? onFinished = null)
+    {
+        ArgumentNullException.ThrowIfNull(target);
+        if (Running(target) is { } running && running.To == to)
+        {
+            return running;
+        }
+
+        var from = Shown(target);
+        return Animate(target, from, to, from == to ? 0 : durationMs, easing, origin, onFinished);
+    }
     /// <summary>
     /// Animates <paramref name="target"/> from <paramref name="from"/> to <paramref name="to"/> (both relative to its
     /// resting state) over <paramref name="durationMs"/> (a <see cref="Motion"/> token).
@@ -301,7 +354,29 @@ public static class Animator
         {
             Snap(visual, MotionState.Rest, (float)target.Opacity);
         }
+
+        s_settled.Remove(target);
     }
+
+    internal static void Settle(Visual target, CompositionVisual visual, MotionState state)
+    {
+        if (state == MotionState.Rest)
+        {
+            s_settled.Remove(target);
+        }
+        else
+        {
+            s_settled.AddOrUpdate(target, new Settled(visual, state));
+        }
+    }
+
+    /// <summary>The state the last finished animation left on <paramref name="target"/>'s current composition visual.</summary>
+    private static MotionState Left(Visual target) =>
+        s_settled.TryGetValue(target, out var settled)
+        && !settled.Visual.IsDisposed
+        && ReferenceEquals(settled.Visual, ElementComposition.GetElementVisual(target))
+            ? settled.State
+            : MotionState.Rest;
 
     internal static void Unregister(MotionHandle handle)
     {
@@ -339,3 +414,6 @@ public static class Animator
         visual.StartAnimation("Scale", scale);
     }
 }
+
+/// <summary>The end state an animation left on a composition visual.</summary>
+internal sealed record Settled(CompositionVisual Visual, MotionState State);

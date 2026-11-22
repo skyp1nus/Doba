@@ -39,6 +39,11 @@ public class ThemeServiceTests
             Assert.Equal(Color.FromArgb(0x1A, 0xA3, 0xB8, 0xA0), Pixels.Resource("Brush.Accent10"));
             Assert.Equal(Color.FromArgb(0x26, 0xA3, 0xB8, 0xA0), Pixels.Resource("Brush.Accent15"));
             Assert.Equal(Color.FromArgb(0x40, 0xA3, 0xB8, 0xA0), Pixels.Resource("Brush.Accent25"));
+            // The schedule's alphas (copy / resize 16 % and 45 %, dashed origin 35 %, grip 70 %).
+            Assert.Equal(Color.FromArgb(0x29, 0xA3, 0xB8, 0xA0), Pixels.Resource("Brush.Accent16"));
+            Assert.Equal(Color.FromArgb(0x59, 0xA3, 0xB8, 0xA0), Pixels.Resource("Brush.Accent35"));
+            Assert.Equal(Color.FromArgb(0x73, 0xA3, 0xB8, 0xA0), Pixels.Resource("Brush.Accent45"));
+            Assert.Equal(Color.FromArgb(0xB3, 0xA3, 0xB8, 0xA0), Pixels.Resource("Brush.Accent70"));
         }
         finally
         {

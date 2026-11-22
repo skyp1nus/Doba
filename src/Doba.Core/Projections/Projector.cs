@@ -773,10 +773,15 @@ public static class Projector
         return lane;
     }
 
-    /// <summary>Timeline blocks of one day's single-day tasks (already sorted by time); before 07:00 is omitted.</summary>
+    /// <summary>
+    /// Timeline of one day's single-day tasks (already sorted by time; before 07:00 is omitted): blocks placed in overlap
+    /// columns (<see cref="ScheduleColumns"/>) and a "+N" per cluster wider than three columns, its rows sorted like the
+    /// prototype's byTime (ties keep the layout order).
+    /// </summary>
     private static ScheduleModel Schedule(List<TaskItem> sorted, ProjectionContext ctx, DateOnly date)
     {
-        var blocks = new List<ScheduleBlock>();
+        var timed = new List<TaskItem>();
+        var spans = new List<ScheduleSpan>();
         foreach (var t in sorted)
         {
             if (t.Time is not { } time)
@@ -790,11 +795,47 @@ public static class Projector
                 continue;
             }
 
-            var dur = EffectiveDuration(t);
-            blocks.Add(new ScheduleBlock(Row(t, ctx), start, dur, TimeRange(time, dur)));
+            timed.Add(t);
+            spans.Add(new ScheduleSpan(t.Id, start, EffectiveDuration(t)));
+        }
+
+        var layout = ScheduleColumns.Layout(spans);
+        var blocks = new List<ScheduleBlock>(timed.Count);
+        var byId = new Dictionary<long, (TaskItem Task, ScheduleSpan Span)>(timed.Count);
+        for (var i = 0; i < timed.Count; i++)
+        {
+            var t = timed[i];
+            var s = spans[i];
+            byId[t.Id] = (t, s);
+            blocks.Add(ScheduleLayout.Block(Row(t, ctx), s.Start, s.DurationMinutes, layout.Placements[t.Id]));
+        }
+
+        var overflows = new List<ScheduleOverflow>(layout.Overflows.Count);
+        foreach (var o in layout.Overflows)
+        {
+            var hidden = new List<(TaskItem Task, ScheduleSpan Span, int Order)>(o.Ids.Count);
+            for (var i = 0; i < o.Ids.Count; i++)
+            {
+                var (task, span) = byId[o.Ids[i]];
+                hidden.Add((task, span, i));
+            }
+
+            hidden.Sort((x, y) =>
+            {
+                var c = x.Span.Start.CompareTo(y.Span.Start);
+                if (c == 0)
+                {
+                    c = ((int)y.Task.Priority).CompareTo((int)x.Task.Priority);
+                }
+
+                return c != 0 ? c : x.Order.CompareTo(y.Order);
+            });
+            var rows = hidden.ConvertAll(h => new ScheduleOverflowRow(Row(h.Task, ctx), h.Span.Start, h.Span.DurationMinutes,
+                ScheduleLayout.TightRange(h.Span.Start, h.Span.DurationMinutes)));
+            overflows.Add(ScheduleLayout.Overflow(o, rows));
         }
 
         var isToday = date == ctx.Today;
-        return new ScheduleModel(blocks, isToday ? DateMath.Minutes(ctx.Now) : null, isToday ? DateMath.Hhmm(ctx.Now) : null);
+        return new ScheduleModel(blocks, isToday ? DateMath.Minutes(ctx.Now) : null, isToday ? DateMath.Hhmm(ctx.Now) : null, overflows);
     }
 }

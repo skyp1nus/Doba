@@ -15,10 +15,16 @@ src/Doba.Core/        Pure domain: model, date math, in-memory store, carry-over
                       dialog rules, DemoData. No package references.
 src/Doba.Storage/     SQLite (hand-written SQL, WAL), write-behind writer, settings persistence, daily backup,
                       JSON export / import (source-generated).
+src/Doba.Bridge/      The Claude bridge (library): BridgeNames (instance key, mutex and pipe names), ToolCatalog (the
+                      11 MCP tools), ToolExecutor (tool call → Doba.Core), BridgeHost / BridgeClient (named pipe),
+                      Wire/ (pipe messages, source-generated JSON).
+src/Doba.Mcp/         Doba.Mcp.exe (console, NativeAOT, no Avalonia): the MCP stdio server Claude starts; passes
+                      every tool call to the running Doba through BridgeClient.
 src/Doba.App/         Avalonia app (assembly "Doba", WinExe): startup, composition, shell, screens, dialogs, controls,
-                      theme, motion, platform services, lifecycle services, diagnostics.
+                      theme, motion, platform services (Claude bridge included), lifecycle services, diagnostics.
 tests/Doba.Core.Tests/     Unit tests, golden tests against the prototype's script, projection timing.
 tests/Doba.Storage.Tests/  Database / writer / backup / JSON tests on temp folders.
+tests/Doba.Bridge.Tests/   ToolExecutor, pipe host / client, ACL, Doba.Mcp.exe end to end over stdio.
 tests/Doba.App.Tests/      Headless UI tests (Avalonia.Headless.XUnit + real Skia), screenshots, perf data.
 scripts/perf.ps1      Performance measurement of the NativeAOT build.
 tools/design-render/  Renders the prototype to docs/design/screens (Node + Playwright; not part of the build).
@@ -26,7 +32,9 @@ docs/                 ARCHITECTURE, DECISIONS, PROGRESS, HANDOFF, MOTION-REVIEW,
                       design/, screenshots/.
 ```
 
-Dependency direction: `App → Storage → Core`, `App → Core`. Shared build settings are in `Directory.Build.props`
+Dependency direction: `App → Storage → Core`, `App → Core`, `App → Bridge → Core`, `Mcp → Bridge → Core`. `Doba.Mcp`
+and `Doba.Bridge` never reference `Doba.App` or `Doba.Storage` and never start a process (an architecture test checks
+both). Shared build settings are in `Directory.Build.props`
 (net11.0, C# 15, nullable, warnings as errors, `latest-recommended` analyzers, invariant globalization; trim, AOT and
 single-file analyzers on for every non-test project) and versions in `Directory.Packages.props`.
 
@@ -57,6 +65,9 @@ single-file analyzers on for every non-test project) and versions in `Directory.
 * **Local updates**: a screen view-model re-projects after a store change and calls `KeyedSync.Apply(existing, records,
   key, create, update)`, which updates rows in place by key, inserts / removes / moves the differences and never
   clears the collection. Completing a task changes one row's properties and the counters, not the visual tree.
+  The schedule uses `KeyedSync.ApplyStable` instead: it removes stale items, updates in place and appends new ones but
+  never moves an item, because an `ItemsControl` recreates the container of a moved item (focus, composition visual and
+  running animations would be lost); Tab order comes from each block's `TabOrder` (start, longer first, id).
 * **Time** is injected: `TimeProvider` everywhere (`clock.Today()`, `clock.TimeOfDay()` from
   `Doba.Core.Time.TimeProviderExtensions`). `DayClock` (App) ticks once a minute and raises `DayChanged` when the local
   date changes; `Check()` also runs on window activation and on `WM_TIMECHANGE`. On a day change: re-projection,
@@ -71,9 +82,9 @@ single-file analyzers on for every non-test project) and versions in `Directory.
 | `Model` | `TaskItem` (immutable record), `Priority` (+ `Next()`, `DisplayName()`), `AppSettings` (+ `Accent`, `ThemeMode`, `Density`, `LaunchView`), `Tags.Normalize` |
 | `Time` | `DateMath` (week start for any first day, ISO week, labels; month names as read-only lists + `MonthName(m)` / `MonthAbbrev(m)`), `TimeProviderExtensions`, `FixedTimeProvider` |
 | `Store` | `ITaskReader`, `ITaskStore` (`Add`, `Update`, `Delete`, `ToggleDone`, `CyclePriority`, `MoveToDate`, `UpdateMany`, `AddTag`, `ReplaceAll`), `TaskStore`, `TaskChangeKind` (`Added`, `Updated`, `Removed`, `Reset`, `TagsChanged`, `Batch`), `ITaskPersistence`, `NullTaskPersistence`, `ISettingsPersistence`, `CarryOver` |
-| `Projections` | `ProjectionContext(Today, Now, WeekStart, FilterTag)`, `TaskRow`, `TaskGroup`, `SpanBar`, `NavTarget`, the Inbox / Today / Day / Week / Month / Year / Sidebar models, `SearchHit`, `ScheduleModel` + `ScheduleLayout`, `Projector` |
+| `Projections` | `ProjectionContext(Today, Now, WeekStart, FilterTag)`, `TaskRow`, `TaskGroup`, `SpanBar`, `NavTarget`, the Inbox / Today / Day / Week / Month / Year / Sidebar models, `SearchHit`, `ScheduleModel` (blocks with placements, `Overflows`) + `ScheduleLayout` (geometry, content tiers, labels), `ScheduleColumns` (overlap layout), `Projector` |
 | `Navigation` | `AppView`, `SettingsTab`, `TransitionKind`, `NavState`, `NavResult`, `Navigator`, `HeaderModel`, `Crumb`, `HeaderProjection` |
-| `Editing` | `TaskDraft`, `DraftPopover`, `MiniCalendarDay`, `DateQuickOption`, `TaskDialog` (dialog rules, pill labels, quick options, days stepper, wheel commit) |
+| `Editing` | `TaskDraft`, `DraftPopover`, `MiniCalendarDay`, `DateQuickOption`, `TaskDialog` (dialog rules, pill labels, quick options, days stepper, wheel commit), `ScheduleEdit` + `ScheduleDragMode` / `ScheduleSlot` (schedule drag, resize and key-step math, texts, write-back) |
 | `Demo` | `DemoData`: the prototype's seed (incl. the mulberry32 fill, seed 46) and the fixed clock 2026-11-15 22:26 |
 
 `Projector` entry points (all pure, all under 5 ms at 10,000 tasks):
@@ -108,6 +119,14 @@ Rules ported from the prototype (`design-reference.dc.html` script lines 929–1
 * Search: substring of the title, open before done, then by date (undated last), then Id; the best `limit` hits are
   kept while scanning (no full sort).
 * `CarryOver.Run(store, today)`: open single-day tasks dated before today move to today in one `UpdateMany`.
+* Schedule overlaps (`ScheduleColumns.Layout`, the prototype's `layoutDay`): items sorted by start, then longer first,
+  then id; clusters of blocks whose visual spans (start + max(dur, 30)) overlap; each block takes the first free column
+  and widens over free columns to its right; up to 3 columns, the rest of a cluster folds into one "+N"
+  (`ScheduleOverflow`, its list sorted by start, priority, layout order). Done tasks are laid out like open ones.
+* Schedule edits (`ScheduleEdit`, the prototype's `sbCompute` / `sbKey` / `sbAuto`): thresholds 4 / 2 DIP, an absolute
+  15-minute grid (5 with Alt), 07:00–23:00, a 15-minute minimum, JS rounding (`Floor(x + 0.5)`) and nested min / max
+  (never `Math.Clamp`, which throws when a 16 h task makes min > max). `Apply` turns a slot into the task to store: a
+  move keeps `DurationMinutes`, a resize writes the length, the same slot returns null.
 
 ## 4. Doba.Storage
 
@@ -176,7 +195,8 @@ Dialogs/                TaskDialogView(+ViewModel), TaskDialogItems; Popovers/ (
                         WeekColumns); Search/ (SearchPaletteView, SearchPaletteViewModel, SearchHitViewModel).
 Controls/               TaskCheckBox, PriorityIcon, Icon, Kbd, Pill, Card, ProgressLine, SegmentedSwitch, ToggleSwitch,
                         FocusRing, StrikeText, TaskCard, TaskListRow, TaskGroupList, AddTaskButton, SpanBarButton,
-                        ScheduleTimeline, ScheduleScroll, TimeWheel, PixelCentring, SnapScope.
+                        ScheduleTimeline (+ .ViewModel, .BlockContent, .Keys, .Drag, .Motion), ScheduleScroll, TimeWheel,
+                        PixelCentring, SnapScope.
 ViewModels/             TaskRowViewModel, TaskGroupViewModel, EntranceExpiry (shared row / group view-models).
 Theme/                  Tokens.axaml, Theme.axaml (merges the rest), Styles.axaml, Icons.axaml, Controls/*.axaml,
                         ThemeService, AccentPalette, ThemeConverters, Gallery/ControlsGallery (test rendering).
@@ -184,10 +204,11 @@ Motion/                 Motion (tokens), MotionTimes, Animator (+ MotionHandle, 
                         SidebarCollapse, MotionSync.
 Platform/               Interfaces + PlatformServices / PlatformPlan, AvaloniaTrayIcon, AutostartCommand, CompletionSound,
                         SelfCheck, StartupError; Windows/ (NativeMethods, PlatformWindow, WindowsAutostart,
-                        WindowsHotkey, WindowsPreferences, WindowsShell).
-Services/               AppLifecycle, DataMaintenance, DayClock, KeyedSync, TaskActions, SettingsService
-                        (ISettingsService), SingleInstance, DataLog.
-Diagnostics/            PerfProbe, PerfSession, FrameMeter, FrameStats, LongFrames, WeekScenario, OverlayScenario.
+                        WindowsHotkey, WindowsPreferences, WindowsShell, WindowsProcessMemory).
+Services/               AppLifecycle, HiddenMemoryRelease, DataMaintenance, DayClock, KeyedSync, TaskActions,
+                        SettingsService (ISettingsService), SingleInstance, DataLog.
+Diagnostics/            PerfProbe, PerfSession, FrameMeter, FrameStats, LongFrames, WeekScenario, OverlayScenario,
+                        TrayScenario, MemorySample.
 ```
 
 ### 5.3 Shell
@@ -265,6 +286,19 @@ public interface IOverlayView { void FocusInitial(); }
 * Week fits cards from measured row heights (`WeekCardMeasurer` shapes titles with the real font) and shows only the
   lanes that fit (`WeekRowViewModel.VisibleLanes`); Month passes `MonthLayout.Metrics`; Year trims key items to the
   measured cell (`YearRoom`); Today and Day schedules scroll on their own (`ScheduleScroll`).
+* The schedule (`Controls/ScheduleTimeline`, shared by Today and Day) binds a `ScheduleViewModel`: blocks, "+N"s and
+  their list, the dragged copy, the time chip and a polite live region. Click on a block opens the task, its checkbox
+  part toggles it. Pointer input goes to `ScheduleDrag` (`ScheduleTimeline.Drag.cs`), a controller on the grid with the
+  states Idle → Pending → Moving / Resizing: it listens to pressed / moved / released with `handledEventsToo` and never
+  marks them handled; past the threshold it sets the cursor and captures the pointer on the grid (the block's button
+  loses its press, so no click follows), adds a TopLevel tunnel key handler for Esc and Alt, and drives autoscroll
+  through an injectable frame source (`Tick()` in tests). A lost capture, another day, leaving the screen or a store
+  change of the dragged task cancel. Arrow keys on a focused block go through `ScheduleTimeline.Keys.cs` to
+  `ScheduleViewModel.Step`. The view-model holds the drag preview (`BeginDrag` / `PreviewDrag` / `EndDrag`, which
+  survive `Update`), and every drop or key step is one `TaskActions.Reschedule` = one `ITaskStore.Update`; the
+  re-projection is synchronous and updates the blocks in place. `ScheduleTimeline.Motion.cs` animates the lift, glide,
+  landing, Esc flight, neighbour FLIP, dim and chip on separate composition layers (DECISIONS "Schedule motion
+  layers").
 * Inbox and Today lists are virtualised (per-group `VirtualizingStackPanel` inside one page `ScrollViewer`).
   Recycled rows show their new task's state at once (`SnapScope`).
 * `TaskDialogViewModel` wraps Core's `TaskDialog` rules; popovers are built on first open and live in the tree only
@@ -295,7 +329,8 @@ public interface IOverlayView { void FocusInitial(); }
 * `Animator`: composition (render-thread) animations of opacity, translation and scale with `MotionHandle`
   (`IsAnimating`, `WasCancelled`, `Finished`, `Complete()`, `Cancel()`); a new animation supersedes the old; cancel and
   `Reset` restore opacity 1 and identity. Only opacity and render transforms are ever animated; progress lines animate
-  `ScaleX` from the left edge.
+  `ScaleX` from the left edge. `Animator.Retarget` continues from where a visual is drawn now (the running handle's
+  value or the last finished state) instead of from rest; `Shown(v)` and `Destination(v)` report that state.
 * `ContentTransitions` (default `ShellComposition.Transitions`): zoom in / out from the click point or 50 % 40 %,
   period slides, section exit + enter, Settings in / out with the sidebar slide, title fade, launch entrance. No zoom
   blur.
@@ -308,15 +343,17 @@ public interface IOverlayView { void FocusInitial(); }
 
 ```csharp
 public sealed partial record PlatformServices(IAutostart Autostart, IGlobalHotkey Hotkey,
-    ISystemPreferences Preferences, IShellIntegration Shell, ITrayIcon Tray)
+    ISystemPreferences Preferences, IShellIntegration Shell, ITrayIcon Tray, IClaudeBridge Bridge)
 {
     public static PlatformServices Create(PlatformPlan plan);      // Windows parts the plan allows, no-ops otherwise
     public static PlatformServices ForLaunch(bool demo, bool customDataFolder);
     public static PlatformServices NoOp();                          // tests, headless, non-Windows
+    public IProcessMemory Memory { get; init; }                     // real on Windows whatever the plan; no-op elsewhere
 }
-public sealed record PlatformPlan(bool Autostart, bool Hotkey, bool Tray)
+public sealed record PlatformPlan(bool Autostart, bool Hotkey, bool Tray, bool Bridge)
 {
-    // --demo / --selfcheck: none; --data: hotkey + tray, never the Run key; default location: all three.
+    // --demo / --selfcheck: none; --data: hotkey + tray + bridge, never the Run key; default location: all four.
+    // All off (tests): new PlatformPlan(false, false, false, false).
     public static PlatformPlan For(bool demo, bool customDataFolder);
 }
 ```
@@ -324,18 +361,70 @@ public sealed record PlatformPlan(bool Autostart, bool Hotkey, bool Tray)
 * `IAutostart` (HKCU `...\CurrentVersion\Run`, value `Doba` = `"<exe>" --minimized`), `IGlobalHotkey` (Ctrl+Alt+N,
   `RegisterHotKey`), `ISystemPreferences` (OS animation setting, backdrop support, Mica preference, `AnimationsChanged`,
   `ClockChanged` from `WM_TIMECHANGE`), `IShellIntegration` (Explorer for Open folder, `PlaySound` of the synthesized
-  click), `ITrayIcon` (Avalonia `TrayIcon`, menu Open Doba / New task / Quit). Preferences and Shell are always the
-  platform's own (read-only or click-driven).
+  click), `ITrayIcon` (Avalonia `TrayIcon`, menu Open Doba / New task / Quit), `IProcessMemory` (hands unused memory
+  back to the OS: `IDXGIDevice3::Trim` on ANGLE's Direct3D 11 device, `HeapOptimizeResources`; used only by
+  `HiddenMemoryRelease`, §5.8). Preferences, Shell and Memory are always the platform's own (read-only, click-driven
+  or limited to this process).
 * Windows code is in `Platform/Windows/*`, uses `DllImport` with blittable signatures only, and receives `WM_HOTKEY`,
   `WM_SETTINGCHANGE` and `WM_TIMECHANGE` on Doba's own hidden `PlatformWindow`.
 * `SelfCheck` (`--selfcheck`): nine checks on a demo window (HANDOFF §2). `StartupError`: stderr + native message box.
+* `IClaudeBridge` (`Platform/ClaudeBridge.cs`, a `BridgeHost` on the data folder's pipe; no-op in `NoOp()` and in
+  demo): see §5.10.
+
+### 5.10 Claude bridge (MCP)
+
+```
+Claude Desktop / Claude Code
+   │ stdio, JSON-RPC (MCP)                       the client starts the process
+Doba.Mcp.exe  (ModelContextProtocol.Core handlers → BridgeClient)
+   │ named pipe \\.\pipe\Doba-<key>-mcp           one connection per call
+Doba.exe: BridgeHost (pool threads) → Dispatcher.UIThread → ToolExecutor → ITaskStore → write-behind writer → doba.db
+```
+
+* **Processes.** Claude starts `Doba.Mcp.exe [--data <folder>]` (§6). It never opens the database and never starts
+  Doba: every `tools/call` becomes one `BridgeClient.CallAsync` to the Doba that holds the folder's single-instance
+  mutex. `tools/list` is static (`ToolCatalog.All`); the access level is checked by Doba per call.
+* **Pipe.** Name `Doba-<key>-mcp`, where `<key>` is `BridgeNames.InstanceKey(folder)` (the same key as the mutex
+  `Local\Doba-<key>`). ACL: the current user (ReadWrite, CreateNewInstance, Synchronize) and Deny NETWORK; owner: the
+  token's default owner (`WindowsIdentity.Owner`: the user, or BUILTIN\Administrators when elevated), which is what
+  the client's `PipeOptions.CurrentUserOnly` compares, so an elevated pair connects and a mixed pair gets
+  `unauthorized`. A session's first instance, and one made while it has none open, uses `FirstPipeInstance`; any other
+  instance is checked for our owner after creation, and a foreign owner (the name was taken in a gap) stops the
+  session instead of serving on that pipe. After reading a request the host impersonates the client
+  (`RunAsClient`) and closes, unanswered, a connection whose user is not its own. The host keeps one free listening
+  instance, at most 8 connections and 1 MB per message (an oversize answer becomes a neutral `internal` error; change
+  results cut notes to 200 characters so an applied change is always answered as a success). It exists only while
+  Settings › Data › Claude access is on (`ClaudeAccessService`), never in demo.
+  Without a pipe the client tells "access off" (the mutex exists; retried for 1 s while Doba starts) from "not running".
+* **Wire format.** UTF-8 JSON, one line each way per connection (`Wire/BridgeMessages.cs`, snake_case, source-generated):
+  `{"protocol":1,"client":"Doba.Mcp 0.1.0","tool":"create_task","args":{…}}` →
+  `{"ok":true,"result":{"today":"…",…}}` or `{"ok":false,"error":{"code":"read_only","message":"…"}}`. Codes from Doba:
+  `read_only`, `invalid_args`, `not_found`, `conflict`, `closing`, `protocol_mismatch`, `internal`; from the client:
+  `not_running`, `access_off`, `unauthorized`, `timeout` (10 s). `Doba.Mcp` turns every failure into a tool result
+  with `isError: true` and the message as text; a success is the JSON as text plus `structuredContent`.
+* **Threading.** `BridgeHost` accepts and reads on pool threads and hands each request to `ClaudeBridge`, which queues
+  it with `Dispatcher.UIThread.InvokeAsync` (cancelled with the connection). On the UI thread a closing gate is checked
+  first, then `ClaudeAccessService.Execute` runs `ToolExecutor.Execute(request, new ToolContext(store, settings now,
+  clock, id of the task open in the editor))`. `ToolExecutor` is pure Core calls: argument checks (`TaskEdits`), the
+  level, `conflict` with the open editor, then exactly one store mutation (one `Changed` event, one write).
+* **Lifecycle.** `AppLifecycle` starts `ClaudeAccessService` after the first frame, after carry-over; it follows
+  `Settings.Changed`. `Stop()` runs first in `DisposeAsync` (Exit) and in `OnShutdownRequested` (session end): the gate
+  closes, so requests still queued answer `closing`; nothing waits for them.
 
 ### 5.8 Services
 
 * `AppLifecycle`: tray and close-to-tray, `--minimized` start, hotkey registration after `Opened`, after the first
-  frame: `DataMaintenance.Start`, autostart reconcile (default location only), tray icon; flush on hide-to-tray, Quit,
+  frame: `DataMaintenance.Start`, `ClaudeAccessService.Start` (§5.10), autostart reconcile (default location only), tray icon; flush on hide-to-tray, Quit,
   Exit and session end (3 s bound); `ShowWindow`, `QuickAdd`; `ClockChanged` → `TimeZoneInfo.ClearCachedData()` +
-  `DayClock.Check()`.
+  `DayClock.Check()`; schedules `HiddenMemoryRelease` on hide-to-tray and on a hidden start, cancels it on show and Quit.
+* `HiddenMemoryRelease`: once the window has stayed hidden in the tray for 30 s (`DelayMs`), gives back what a hidden
+  window does not need, once per hide: Skia's GPU resource cache and the graphics driver's buffers, the garbage and the
+  free regions of the managed heap (one aggressive compacting collection, then finalizers), the free blocks of the
+  native heaps. Views, scroll positions and view-models are kept, so the window comes back as it was; the working set
+  is never trimmed by a system call. The GPU cache is reachable only on the render thread while something is drawn and
+  a hidden window draws nothing, so a 1×1 composition visual that draws nothing is attached to the window at `Opened`
+  and the release renders that visual off screen (`Compositor.CreateCompositionVisualSnapshot`); its handler leases
+  Skia's `GRContext` there. Numbers: HANDOFF §4.
 * `DataMaintenance`: carry-over (UI thread, one `Batch`) and daily backup (background, serialised, failures to Trace)
   after the first frame and on every `DayChanged`; never in demo.
 * `DayClock`, `KeyedSync`, `TaskActions`, `SettingsService`, `SingleInstance` (per-session named mutex
@@ -345,8 +434,10 @@ public sealed record PlatformPlan(bool Autostart, bool Hotkey, bool Tray)
 
 `PerfProbe` (startup marks, one branch when off), `PerfSession` (prints the `doba-perf …` lines and ends the app for
 the perf flags), `WeekScenario` and `OverlayScenario` (driven navigations / dialog cycles with `FrameMeter` statistics
-from render-thread and UI-thread frame callbacks, GC attribution in `LongFrames`). Frame times are proxies, not GPU
-present times.
+from render-thread and UI-thread frame callbacks, GC attribution in `LongFrames`), `TrayScenario` (memory samples,
+`MemorySample`, after the start, after every screen, hidden in the tray and shown again; the time from the show call to
+the first rendered frame; the frames of one walk over the screens before hiding and after the show). Frame times are
+proxies, not GPU present times.
 
 ## 6. Command line
 
@@ -363,10 +454,18 @@ value that is itself a flag, an empty `--data` or an out-of-range number is an e
 | `--exit-after-first-frame` | Quit once the first frame with data is rendered. |
 | `--perf-idle-seconds N` | 1–600, implies `--perf`: idle sample after N s, then quit. |
 | `--perf-scenario week` | Implies `--perf`: Week navigation scenario, then the overlay scenario; quit. |
-| `--perf-rounds N` | 1–100: rounds of the scenario. |
+| `--perf-scenario tray` | Implies `--perf`: memory after the start, after every screen, hidden in the tray, shown again; quit. |
+| `--perf-rounds N` | 1–100: rounds of the week scenario. |
+| `--perf-hidden-seconds N` | 1–600: how long the tray scenario stays hidden (default 60). |
 
 Exit codes: 0 normal or handed over to the running instance, 1 self-check failure, 2 bad command line, 3 the data
 folder could not be opened (`StartupFailedException`; nothing in the folder is changed).
+
+`Doba.Mcp.exe` takes no arguments (the default folder, `%LOCALAPPDATA%\Doba`) or exactly `--data <folder>` (the folder
+of the Doba to talk to, made a full path). Anything else: usage to stderr, exit 2, nothing on stdout. Otherwise it
+serves MCP on stdin/stdout until stdin ends (exit 0). stdout carries only JSON-RPC (`Console.Out` is redirected to
+stderr, which MCP clients log). Tests and local runs pass `--data <folder under artifacts\ or %TEMP%>`, never no
+arguments.
 
 ## 7. Testing and verification
 
@@ -379,10 +478,19 @@ folder could not be opened (`StartupFailedException`; nothing in the folder is c
   tasks, average under 20 ms (5 ms × 4 margin), one-character Search median under 5 ms and under 32 KB per call.
 * **Doba.Storage.Tests**: database round trips, migrations, writer bursts and failures (a parked writer forces one
   burst), backup rotation, JSON import / export validation, load / persist timing.
+* **Doba.Bridge.Tests**: `ToolExecutor` per tool and rule, the tool catalog, the wire format, the pipe host and client
+  (ACL read back from the pipe, busy / stopped host, timeouts), architecture rules, and `Doba.Mcp.exe` end to end: the
+  test runs the exe as a child process with `--data <temp folder>` against a real `BridgeHost` + `TaskStore` (both
+  protocol eras, all 11 tools, parallel sessions, stdin EOF, stdout hygiene). The exe is the build output (a
+  `ReferenceOutputAssembly="false"` project reference plus an `AssemblyMetadata` path), or `DOBA_MCP_EXE` (e.g. the
+  published NativeAOT exe).
 * **Doba.App.Tests**: headless UI with real Skia rendering. `Support/ShellFixture` opens the real `MainWindow` on
   `AppServices.CreateDemo(settings, PlatformServices.NoOp())` (never a plan that allows autostart, hotkey or tray) and
   drives keys, clicks and render ticks. Folders: Controls, DesignSystem, Dialogs, Keyboard, Lifecycle (on fake platform
-  services), Motion, Performance, Platform, Screens, Services, Shell.
+  services), Motion, Performance, Platform, Screens, Services, Shell. `Platform/ClaudePipeTests` and
+  `ClaudeMcpEndToEndTests` run a real `ClaudeBridge` (on `PlatformServices.NoOp()` otherwise) on a `%TEMP%` folder,
+  pumping the UI thread while `BridgeClient` or `Doba.Mcp.exe` (same `DOBA_MCP_EXE` rule; `McpProcess.cs` and
+  `TestPaths.cs` are linked from Doba.Bridge.Tests) waits.
 * **Screenshots**: tests render 1600×1000 with DemoData (plus a few 1100×700 and content-only renders) into the
   git-ignored `artifacts/screenshots/`; `DOBA_SCREENSHOTS=1` writes the tracked `docs/screenshots/` instead. Reference
   renders of the prototype are in `docs/design/screens/` (made with `tools/design-render`).

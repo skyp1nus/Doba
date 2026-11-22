@@ -18,8 +18,10 @@ public sealed record LifecycleOptions(bool StartMinimized = false, bool ManageAu
 /// <summary>
 /// Makes Doba a resident Windows app around the main window: tray icon and close-to-tray, the global quick-add hotkey,
 /// launch-at-startup reconcile, OS animations and backdrop, carry-over and daily backup after the first frame and at
-/// midnight (<see cref="DataMaintenance"/>), <see cref="DayClock.Check"/> on activation (sleep through midnight), and
-/// flushing pending writes on hide-to-tray, Quit, Exit and Windows session end. Everything goes through
+/// midnight (<see cref="DataMaintenance"/>), the Claude bridge while Claude access is on
+/// (<see cref="ClaudeAccessService"/>), <see cref="DayClock.Check"/> on activation (sleep through midnight),
+/// flushing pending writes on hide-to-tray, Quit, Exit and Windows session end, and giving unused memory back while
+/// the window stays hidden in the tray (<see cref="HiddenMemoryRelease"/>). Everything goes through
 /// <see cref="AppServices.Platform"/>, so tests and <c>--demo</c> run it on no-op or fake platform services.
 /// </summary>
 /// <remarks>
@@ -58,10 +60,19 @@ public sealed class AppLifecycle : IAsyncDisposable
         _shutdown = shutdown;
         _settings = app.Settings.Current;
         Maintenance = new DataMaintenance(app);
+        ClaudeAccess = new ClaudeAccessService(app, OpenEditId);
+        HiddenMemory = new HiddenMemoryRelease(window, app.Platform.Memory, app.LogProblem);
     }
 
     /// <summary>Carry-over and daily backup.</summary>
     public DataMaintenance Maintenance { get; }
+
+    /// <summary>The Claude bridge pipe, open while Settings → Data → Claude access is on.</summary>
+    public ClaudeAccessService ClaudeAccess { get; }
+
+    /// <summary>Gives unused memory back once the window has stayed hidden in the tray for a while; cancelled by
+    /// showing it.</summary>
+    public HiddenMemoryRelease HiddenMemory { get; }
 
     /// <summary>False when <c>--minimized</c> starts the app hidden in the tray (the window is not shown at all).</summary>
     public bool ShowsWindowAtStart { get; private set; } = true;
@@ -122,6 +133,12 @@ public sealed class AppLifecycle : IAsyncDisposable
                 {
                     RegisterHotkey();
                     AfterFirstFrame();
+                    // Hidden from the start: what loading the data left behind goes back too. Not when a show request
+                    // (a second launch) was handled before this job: the window is open then.
+                    if (IsHiddenInTray)
+                    {
+                        HiddenMemory.Schedule();
+                    }
                 }, DispatcherPriority.Background);
             }
             else
@@ -140,6 +157,7 @@ public sealed class AppLifecycle : IAsyncDisposable
         }
 
         IsHiddenInTray = false;
+        HiddenMemory.Cancel();
         if (!_window.IsVisible)
         {
             _window.Show();
@@ -165,7 +183,8 @@ public sealed class AppLifecycle : IAsyncDisposable
         }
     }
 
-    /// <summary>Hides the window to the tray and flushes pending writes in the background.</summary>
+    /// <summary>Hides the window to the tray, flushes pending writes in the background and schedules the memory
+    /// release for when it has stayed hidden (<see cref="HiddenMemoryRelease.DelayMs"/>).</summary>
     public void HideToTray()
     {
         if (_disposed || _quitting)
@@ -176,6 +195,7 @@ public sealed class AppLifecycle : IAsyncDisposable
         IsHiddenInTray = true;
         _window.Hide();
         LastFlush = _app.FlushAsync();
+        HiddenMemory.Schedule();
     }
 
     /// <summary>Tray "Quit" (and closing with the tray off): ends the app; Exit then flushes and closes the database.</summary>
@@ -187,6 +207,7 @@ public sealed class AppLifecycle : IAsyncDisposable
         }
 
         _quitting = true;
+        HiddenMemory.Cancel();
         Platform.Tray.IsVisible = false;
         _shutdown();
     }
@@ -197,6 +218,8 @@ public sealed class AppLifecycle : IAsyncDisposable
     /// </summary>
     public void OnShutdownRequested(object? sender, ShutdownRequestedEventArgs e)
     {
+        // No Claude request may start once Windows is ending the session (queued ones answer "closing").
+        ClaudeAccess.Stop();
         // A save still inside the dialog's exit animation must reach the store before the flush.
         _window.ViewModel?.CompletePendingOverlayClose();
         _ = _app.FlushAsync().Wait(SessionEndFlushTimeoutMs);
@@ -205,6 +228,8 @@ public sealed class AppLifecycle : IAsyncDisposable
     /// <summary>Desktop Exit: stops everything, waits for a running backup, flushes and closes the database (once).</summary>
     public async ValueTask DisposeAsync()
     {
+        // First: requests still queued for the UI thread answer "closing" instead of writing to a store being closed.
+        ClaudeAccess.Stop();
         if (_disposed)
         {
             return;
@@ -212,6 +237,7 @@ public sealed class AppLifecycle : IAsyncDisposable
 
         _disposed = true;
         _quitting = true;
+        HiddenMemory.Dispose();
         Unsubscribe();
         // The day clock, hotkey and tray icon belong to the UI thread; the awaits below may resume on a pool thread
         // (a backup still running when the app quits), so they are released here first.
@@ -249,6 +275,9 @@ public sealed class AppLifecycle : IAsyncDisposable
         }
 
         _opened = true;
+        // While the window renders: the visual the hidden-time memory release draws through must be in place before
+        // the first hide.
+        HiddenMemory.Attach();
         Platform.Preferences.Watch(_window);
         RegisterHotkey();
         if (_window.WindowState == WindowState.Minimized)
@@ -262,7 +291,8 @@ public sealed class AppLifecycle : IAsyncDisposable
         }
     }
 
-    /// <summary>Everything that must not delay the first frame: carry-over, backup, autostart, tray icon.</summary>
+    /// <summary>Everything that must not delay the first frame: carry-over, backup, the Claude bridge, autostart, tray
+    /// icon. The bridge opens after carry-over, so Claude never sees yesterday's overdue tasks still in place.</summary>
     private void AfterFirstFrame()
     {
         if (_afterFirstFrame || _disposed || _quitting)
@@ -272,9 +302,14 @@ public sealed class AppLifecycle : IAsyncDisposable
 
         _afterFirstFrame = true;
         Maintenance.Start();
+        ClaudeAccess.Start();
         ReconcileAutostart();
         Platform.Tray.IsVisible = _settings.KeepInTray;
     }
+
+    /// <summary>The task open in the edit dialog (its exit animation included: the dialog writes when it closes); null
+    /// with no dialog or a New task one. Claude's changes to that task answer "conflict".</summary>
+    internal long? OpenEditId() => (_window.ViewModel?.Overlay as TaskDialogViewModel)?.Draft.EditId;
 
     private void RegisterHotkey()
     {

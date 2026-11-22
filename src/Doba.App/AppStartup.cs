@@ -14,31 +14,39 @@ namespace Doba.App;
 /// <param name="ExitAfterFirstFrame"><c>--exit-after-first-frame</c>: quit once the first frame is on screen.</param>
 /// <param name="Demo"><c>--demo</c>: DemoData and the fixed demo clock; nothing read from or written to disk, no
 /// autostart, no global hotkey.</param>
-/// <param name="DataFolder"><c>--data &lt;folder&gt;</c>: this data folder instead of %LOCALAPPDATA%\Doba (the
-/// registry is never touched).</param>
+/// <param name="DataFolder"><c>--data &lt;folder&gt;</c>: this data folder, as a full path, instead of
+/// %LOCALAPPDATA%\Doba (the registry is never touched).</param>
 /// <param name="Minimized"><c>--minimized</c> (what "Launch at startup" passes): start hidden in the tray, or minimised
 /// when the tray is off.</param>
 /// <param name="SelfCheck"><c>--selfcheck</c>: run the Windows platform diagnostics on a demo window and exit.</param>
 /// <param name="PerfIdleSeconds"><c>--perf-idle-seconds N</c> (1–600; implies <c>--perf</c>): after the first frame, stay
 /// idle N seconds, log the working set and private bytes again, then exit.</param>
-/// <param name="PerfScenario"><c>--perf-scenario week</c> (implies <c>--perf</c>): after the first frame (and the idle
-/// sample), drive the Week view and log frame statistics, then exit.</param>
-/// <param name="PerfRounds"><c>--perf-rounds N</c> (1–100): rounds of the scenario (0 = its default).</param>
+/// <param name="PerfScenario"><c>--perf-scenario week|tray</c> (implies <c>--perf</c>): after the first frame (and the
+/// idle sample), run that scenario and log its line, then exit. <c>week</c> drives the Week view and logs frame
+/// statistics; <c>tray</c> samples the memory after the start, after every screen was visited and while hidden in the
+/// tray, then shows the window again.</param>
+/// <param name="PerfRounds"><c>--perf-rounds N</c> (1–100): rounds of the week scenario (0 = its default).</param>
+/// <param name="PerfHiddenSeconds"><c>--perf-hidden-seconds N</c> (1–600): how long the tray scenario stays hidden
+/// (0 = its default).</param>
 internal sealed record StartupFlags(bool Perf, bool ExitAfterFirstFrame, bool Demo, string? DataFolder, bool Minimized, bool SelfCheck,
-    int PerfIdleSeconds = 0, string? PerfScenario = null, int PerfRounds = 0)
+    int PerfIdleSeconds = 0, string? PerfScenario = null, int PerfRounds = 0, int PerfHiddenSeconds = 0)
 {
-    /// <summary>The one scenario <c>--perf-scenario</c> knows.</summary>
+    /// <summary><c>--perf-scenario week</c>: frames of the Week view and of the task dialog.</summary>
     public const string WeekScenario = "week";
+
+    /// <summary><c>--perf-scenario tray</c>: memory after the start, after every screen, hidden in the tray, shown again.</summary>
+    public const string TrayScenario = "tray";
 
     private const int MaxIdleSeconds = 600;
     private const int MaxRounds = 100;
+    private const int MaxHiddenSeconds = 600;
 
     public static StartupFlags None { get; } = new(false, false, false, null, false, false);
 
     /// <summary>One line naming every flag (printed with a parse error).</summary>
     public const string Usage =
         "usage: Doba [--minimized] [--demo | --data <folder> | --selfcheck] [--perf] [--exit-after-first-frame] " +
-        "[--perf-idle-seconds 1-600] [--perf-scenario week] [--perf-rounds 1-100]";
+        "[--perf-idle-seconds 1-600] [--perf-scenario week|tray] [--perf-rounds 1-100] [--perf-hidden-seconds 1-600]";
 
     /// <summary>
     /// Like <see cref="TryParse"/>, but throws <see cref="ArgumentException"/> with the error text for a command line
@@ -52,7 +60,8 @@ internal sealed record StartupFlags(bool Perf, bool ExitAfterFirstFrame, bool De
     /// the real data folder and the real Run key (real launches pass nothing, or <c>--minimized</c> from the Run key):
     /// any unknown argument (<c>--dmeo</c>, <c>/demo</c>, <c>--data=x</c>, a stray word), a value flag with no value,
     /// an empty <c>--data</c> folder, a value that is itself a flag, and an out-of-range number are errors.
-    /// <c>--data</c>, <c>--perf-idle-seconds</c>, <c>--perf-scenario</c> and <c>--perf-rounds</c> take the next argument.
+    /// <c>--data</c>, <c>--perf-idle-seconds</c>, <c>--perf-scenario</c>, <c>--perf-rounds</c> and
+    /// <c>--perf-hidden-seconds</c> take the next argument.
     /// </summary>
     /// <returns>False with <paramref name="error"/> set (and <paramref name="flags"/> = <see cref="None"/>) when the
     /// command line is not valid.</returns>
@@ -84,7 +93,13 @@ internal sealed record StartupFlags(bool Perf, bool ExitAfterFirstFrame, bool De
                         return false;
                     }
 
-                    parsed = parsed with { DataFolder = folder };
+                    if (FullFolder(folder) is not { } full)
+                    {
+                        error = $"--data needs a valid folder path (got '{folder}')";
+                        return false;
+                    }
+
+                    parsed = parsed with { DataFolder = full };
                     break;
                 case "--perf-idle-seconds":
                     if (!TryValue(args, ref i, out var idle, out error))
@@ -106,13 +121,16 @@ internal sealed record StartupFlags(bool Perf, bool ExitAfterFirstFrame, bool De
                         return false;
                     }
 
-                    if (!string.Equals(scenario, WeekScenario, StringComparison.OrdinalIgnoreCase))
+                    var known = string.Equals(scenario, WeekScenario, StringComparison.OrdinalIgnoreCase) ? WeekScenario
+                        : string.Equals(scenario, TrayScenario, StringComparison.OrdinalIgnoreCase) ? TrayScenario
+                        : null;
+                    if (known is null)
                     {
-                        error = $"--perf-scenario knows only '{WeekScenario}' (got '{scenario}')";
+                        error = $"--perf-scenario knows only '{WeekScenario}' and '{TrayScenario}' (got '{scenario}')";
                         return false;
                     }
 
-                    parsed = parsed with { Perf = true, PerfScenario = WeekScenario };
+                    parsed = parsed with { Perf = true, PerfScenario = known };
                     break;
                 case "--perf-rounds":
                     if (!TryValue(args, ref i, out var count, out error))
@@ -127,6 +145,20 @@ internal sealed record StartupFlags(bool Perf, bool ExitAfterFirstFrame, bool De
                     }
 
                     parsed = parsed with { PerfRounds = rounds };
+                    break;
+                case "--perf-hidden-seconds":
+                    if (!TryValue(args, ref i, out var hiddenFor, out error))
+                    {
+                        return false;
+                    }
+
+                    if (!TryCount(hiddenFor, MaxHiddenSeconds, out var hiddenSeconds))
+                    {
+                        error = $"--perf-hidden-seconds needs a whole number from 1 to {MaxHiddenSeconds} (got '{hiddenFor}')";
+                        return false;
+                    }
+
+                    parsed = parsed with { PerfHiddenSeconds = hiddenSeconds };
                     break;
                 default:
                     error = $"unknown argument '{arg}'";
@@ -147,6 +179,21 @@ internal sealed record StartupFlags(bool Perf, bool ExitAfterFirstFrame, bool De
     /// <summary>The data folder this launch opens (the default %LOCALAPPDATA%\Doba unless <c>--data</c>); null for
     /// <c>--demo</c> and <c>--selfcheck</c>, which read nothing from disk.</summary>
     public string? DataFolderInUse => Demo || SelfCheck ? null : DataFolder ?? DataLocation.Default().Folder;
+
+    /// <summary>The <c>--data</c> folder as a full path without a trailing separator, resolved once against the
+    /// current directory at launch (a file dialog can change that directory later); null when it is not a valid path.
+    /// The single-instance mutex, the database, the Claude pipe name and Settings all use this one value.</summary>
+    private static string? FullFolder(string folder)
+    {
+        try
+        {
+            return Path.TrimEndingDirectorySeparator(Path.GetFullPath(folder));
+        }
+        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            return null;
+        }
+    }
 
     private static bool TryCount(string text, int max, out int value) =>
         int.TryParse(text, NumberStyles.None, CultureInfo.InvariantCulture, out value) && value >= 1 && value <= max;
@@ -292,6 +339,6 @@ internal static class AppStartup
     }
 
     /// <summary>Hooks the main window's first rendered frame for the perf flags (see <see cref="PerfSession"/>).</summary>
-    public static void WatchFirstFrame(MainWindow window, IClassicDesktopStyleApplicationLifetime lifetime) =>
-        PerfSession.Attach(window, lifetime, Flags);
+    public static void WatchFirstFrame(MainWindow window, IClassicDesktopStyleApplicationLifetime lifetime, AppLifecycle lifecycle) =>
+        PerfSession.Attach(window, lifetime, Flags, lifecycle);
 }

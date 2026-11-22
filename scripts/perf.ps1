@@ -16,7 +16,12 @@
      launch after install, while Windows' own DLLs stay warm: a partly cold start, the closest that can be produced
      on demand. A true cold start needs a reboot: see -PrepareCold / -Cold below.
   4. Idle memory: --perf-idle-seconds for --demo, db-348 and db-10k.
-  5. Frames: --perf-scenario week (Week view: next/previous, Inbox and back, Month and back; then the New task dialog
+  5. Memory states: --perf-scenario tray for --demo, db-348 and db-10k. One process per run: memory 5 s after the
+     start, after every screen was visited (twice), after -HiddenSeconds hidden in the tray (the window is hidden the
+     way closing it to the tray does) and after it is shown again; plus what the hidden time costs: the memory
+     release that runs 30 s after the hide (its GC pause, the GPU cache it emptied), the time from the show call to
+     the first rendered frame, and the frames of one walk over all screens before hiding and right after the show.
+  6. Frames: --perf-scenario week (Week view: next/previous, Inbox and back, Month and back; then the New task dialog
      opened and closed with the backdrop blur and without it) for --demo, db-10k and db-dense-compact.
   Prints one summary table (median and worst) and saves it under artifacts\perf\.
 
@@ -35,6 +40,7 @@
 .EXAMPLE
   powershell -ExecutionPolicy Bypass -File scripts\perf.ps1
   powershell -ExecutionPolicy Bypass -File scripts\perf.ps1 -SkipPublish -Runs 5 -SkipScenario
+  powershell -ExecutionPolicy Bypass -File scripts\perf.ps1 -SkipPublish -Runs 1 -ColdExeRuns 0 -SkipIdle -SkipScenario   (memory states only)
   powershell -ExecutionPolicy Bypass -File scripts\perf.ps1 -PrepareCold     (then reboot, then: -Cold)
 #>
 [CmdletBinding()]
@@ -43,11 +49,14 @@ param(
     [ValidateRange(0, 20)][int]$ColdExeRuns = 3,
     [ValidateRange(1, 20)][int]$IdleRuns = 3,
     [ValidateRange(1, 600)][int]$IdleSeconds = 5,
+    [ValidateRange(1, 20)][int]$StateRuns = 3,
+    [ValidateRange(1, 600)][int]$HiddenSeconds = 60,
     [ValidateRange(1, 20)][int]$ScenarioRuns = 2,
     [ValidateRange(1, 100)][int]$ScenarioRounds = 5,
     [ValidateRange(10, 3600)][int]$TimeoutSeconds = 180,
     [switch]$SkipPublish,
     [switch]$SkipIdle,
+    [switch]$SkipStates,
     [switch]$SkipScenario,
     [switch]$PrepareCold,
     [switch]$Cold
@@ -94,15 +103,16 @@ function Assert-SafeArguments([string[]]$arguments) {
     for ($i = 0; $i -lt $arguments.Count; $i++) {
         $a = $arguments[$i]
         if ($dataOk -and $i -eq $data + 1) { continue }
-        if ($a -notmatch '^(--[a-z-]+|\d+|week)$' -or $a -in @('--minimized', '--selfcheck')) {
+        if ($a -notmatch '^(--[a-z-]+|\d+|week|tray)$' -or $a -in @('--minimized', '--selfcheck')) {
             throw "Refusing to start Doba with argument '$a' ($($arguments -join ' | '))"
         }
     }
     if (-not (Test-UnderArtifacts $script:launchExe)) { throw "Refusing to start a Doba.exe outside $artifacts`: $script:launchExe" }
 }
 
-# Runs Doba.exe with $arguments, returns its stdout lines. Stops (only) this process if it outlives the timeout.
-function Invoke-Doba([string[]]$arguments) {
+# Runs Doba.exe with $arguments, returns its stdout lines. Stops (only) this process if it outlives the timeout
+# ($timeout seconds; the script's -TimeoutSeconds unless a longer one is given).
+function Invoke-Doba([string[]]$arguments, [int]$timeout = $TimeoutSeconds) {
     Assert-SafeArguments $arguments
     $psi = New-Object System.Diagnostics.ProcessStartInfo
     $psi.FileName = $script:launchExe
@@ -115,10 +125,10 @@ function Invoke-Doba([string[]]$arguments) {
     try {
         $stdout = $process.StandardOutput.ReadToEndAsync()
         $stderr = $process.StandardError.ReadToEndAsync()
-        if (-not $process.WaitForExit($TimeoutSeconds * 1000)) {
+        if (-not $process.WaitForExit($timeout * 1000)) {
             $process.Kill()
             $process.WaitForExit()
-            throw "Doba $($psi.Arguments) did not exit within $TimeoutSeconds s (stopped)."
+            throw "Doba $($psi.Arguments) did not exit within $timeout s (stopped)."
         }
         $process.WaitForExit()
         if ($process.ExitCode -ne 0) {
@@ -369,6 +379,54 @@ try {
                 ((F (Get-Median $pb) 'F1') + ' / ' + (F (Get-Worst $pb) 'F1')),
                 (F (Get-Median $mh) 'F1'), (F (Get-Median $gcc) 'F1')))
         }
+        $report.Add('')
+    }
+
+    # ---- Memory states (tray scenario) -----------------------------------------------------------------------
+    if (-not $SkipStates) {
+        $stateSets = @('demo', 'db-348', 'db-10k')
+        Write-Step "Memory states: $StateRuns runs for $($stateSets -join ', '), $HiddenSeconds s hidden in the tray each"
+        $states = @(
+            @('start', 'after the start'),
+            @('screens', 'every screen visited'),
+            @('tray', "hidden in the tray $HiddenSeconds s"),
+            @('shown', 'shown again, screens walked'))
+        $stateRows = New-Object System.Collections.Generic.List[string]
+        $showRows = New-Object System.Collections.Generic.List[string]
+        $stateTimeout = [math]::Max($TimeoutSeconds, $HiddenSeconds + 120)
+        foreach ($set in $stateSets) {
+            $rows = @(for ($i = 0; $i -lt $StateRuns; $i++) {
+                    Get-Fields (Invoke-Doba (@(Get-LaunchArgs $set (300 + $i)) + @('--perf-scenario', 'tray', '--perf-hidden-seconds', "$HiddenSeconds")) $stateTimeout) 'doba-perf scenario=tray'
+                })
+            $col = { param($name) [double[]]@($rows | ForEach-Object { Get-Number $_ $name }) }
+            $pair = { param($name, $format) (F (Get-Median (& $col $name)) $format) + ' / ' + (F (Get-Worst (& $col $name)) $format) }
+            foreach ($state in $states) {
+                $key = $state[0]
+                $stateRows.Add(('{0,-8} {1,4}  {2,-28} {3,-15} {4,-15} {5,-12} {6,-12}' -f $set, $rows.Count, $state[1],
+                    (& $pair "$key-working-set-mb" 'F1'), (& $pair "$key-private-mb" 'F1'),
+                    (F (Get-Median (& $col "$key-managed-heap-mb")) 'F1'), (F (Get-Median (& $col "$key-gc-committed-mb")) 'F1')))
+            }
+            $released = @($rows | Where-Object { (V $_ 'release') -eq '1' }).Count
+            $cache = if ($released -eq 0) { '-' } else { (F (Get-Median (& $col 'release-gpu-cache-before-mb')) 'F1') + ' -> ' + (F (Get-Median (& $col 'release-gpu-cache-after-mb')) 'F1') }
+            $showRows.Add(('{0,-8} {1,4}  {2,-15} {3,-15} {4,-9} {5,-14} {6,-14} {7,-19} {8,-19} {9,-13} {10,-13} {11,-11}' -f $set, $rows.Count,
+                (& $pair 'show-to-rendered-ms' 'F0'), (& $pair 'show-call-ms' 'F0'), "$released / $($rows.Count)",
+                ((F (Get-Median (& $col 'hidden-gc-count'))) + ' / ' + (F (Get-Median (& $col 'hidden-gc-pause-ms')) 'F1')), $cache,
+                ((F (Get-Median (& $col 'before-render-p95-ms')) 'F1') + ' / ' + (F (Get-Worst (& $col 'before-render-max-ms')) 'F1')),
+                ((F (Get-Median (& $col 'after-render-p95-ms')) 'F1') + ' / ' + (F (Get-Worst (& $col 'after-render-max-ms')) 'F1')),
+                ((F (Get-Worst (& $col 'before-render-over-33.3ms'))) + ' / ' + (F (Get-Worst (& $col 'after-render-over-33.3ms')))),
+                ((F (Get-Worst (& $col 'before-ui-max-ms')) 'F1') + ' / ' + (F (Get-Worst (& $col 'after-ui-max-ms')) 'F1')),
+                ((F (Get-Worst (& $col 'before-ui-over-50ms'))) + ' / ' + (F (Get-Worst (& $col 'after-ui-over-50ms'))))))
+        }
+        $report.Add("Memory states (one process per run: 5 s after the start; every screen visited twice; hidden in the tray $HiddenSeconds s; shown again and every screen walked; MB)")
+        $report.Add('  working set and private bytes = median / worst; managed heap = objects incl. garbage; GC committed = as of the last GC')
+        $report.Add(('{0,-8} {1,4}  {2,-28} {3,-15} {4,-15} {5,-12} {6,-12}' -f 'set', 'runs', 'state', 'working set', 'private bytes', 'managed heap', 'GC committed'))
+        $stateRows | ForEach-Object { $report.Add($_) }
+        $report.Add('')
+        $report.Add('Back from the tray (ms; show->rendered and show call = median / worst; frames of one walk over all screens: before hiding / right after the show)')
+        $report.Add('  released = runs in which the hidden-time memory release ran; GC hidden = collections while hidden / their total pause;')
+        $report.Add('  GPU cache = Skia GPU cache MB before -> after the release; render = p95 (median of runs) / max (worst run); n/a = the window was covered')
+        $report.Add(('{0,-8} {1,4}  {2,-15} {3,-15} {4,-9} {5,-14} {6,-14} {7,-19} {8,-19} {9,-13} {10,-13} {11,-11}' -f 'set', 'runs', 'show->rendered', 'show call', 'released', 'GC hidden', 'GPU cache', 'render before', 'render after', '>33 ms b / a', 'ui max b / a', '>50 ms b / a'))
+        $showRows | ForEach-Object { $report.Add($_) }
         $report.Add('')
     }
 

@@ -1,5 +1,4 @@
-using System.Security.Cryptography;
-using System.Text;
+using Doba.Bridge;
 
 namespace Doba.App.Services;
 
@@ -37,12 +36,8 @@ public sealed class SingleInstance : IDisposable
 
     /// <summary>The name part shared by the mutex and the event of <paramref name="dataFolder"/>: a hash of the full,
     /// upper-cased path without a trailing separator (Windows paths are case-insensitive).</summary>
-    public static string KeyFor(string dataFolder)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(dataFolder);
-        var full = Path.TrimEndingDirectorySeparator(Path.GetFullPath(dataFolder)).ToUpperInvariant();
-        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(full)), 0, 16);
-    }
+    /// <remarks>Shared with Doba.Mcp, which finds the running Doba by it (<see cref="BridgeNames.InstanceKey"/>).</remarks>
+    public static string KeyFor(string dataFolder) => BridgeNames.InstanceKey(dataFolder);
 
     /// <summary>Claims <paramref name="dataFolder"/> for this process (see <see cref="IsPrimary"/>). Never blocks.</summary>
     public static SingleInstance Claim(string dataFolder)
@@ -53,7 +48,7 @@ public sealed class SingleInstance : IDisposable
         EventWaitHandle? showRequest = OperatingSystem.IsWindows()
             ? new EventWaitHandle(false, EventResetMode.AutoReset, Prefix + key + "-show")
             : null;
-        var mutex = new Mutex(false, Prefix + key);
+        var mutex = new Mutex(false, BridgeNames.MutexName(dataFolder));
         bool owned;
         try
         {

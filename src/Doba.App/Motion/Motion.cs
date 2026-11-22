@@ -52,11 +52,31 @@ public static class Motion
     public const int Progress = 500;
     public const int Launch = 520;
 
+    /// <summary>Schedule: a block / the time chip stepping between slots (mouse and arrow keys), ease-out.</summary>
+    public const int Snap = 90;
+
+    /// <summary>Schedule: the dragged copy lifting (scale 1 → 1.02, shadow in) at the start of a drag (= <see cref="Pop"/>).</summary>
+    public const int Lift = 180;
+
+    /// <summary>Schedule: landing, the Esc flight back and the neighbours' re-layout (= the dialog shade's 220 ms).</summary>
+    public const int Land = 220;
+
+    /// <summary>Schedule, ease-out: the origin's content fading out, the blocks under the dragged copy dimming to 0.55 and
+    /// back, and the time chip fading in (motion spec «Рух»: 130 ms, E).</summary>
+    public const int Fade = 130;
+
+    /// <summary>
+    /// Schedule: how long the time chip stays after an arrow-key step. Information, not animation: it is not passed
+    /// through <see cref="Ms"/> and stays when the OS asks for no animations (see <see cref="MotionTimes.ChipHold"/>).
+    /// </summary>
+    public const int ChipHold = 900;
+
     /// <summary>Distances (px) and scales used by the transitions.</summary>
     public const double ZoomInFrom = 0.86, ZoomOutFrom = 1.10, ZoomBlur = 6,
         SlideX = 32, SectionEnterY = 18, SectionExitY = 10, TitleY = 6, LaunchY = 12, NewRowY = -8,
         SettingsSidebarX = 16, DialogY = 10, DialogScale = 0.97, DialogExitY = 6, DialogExitScale = 0.98,
-        PopY = -4, PopScale = 0.98, NavStep = 33, SegStep = 64, ToggleTravel = 16;
+        PopY = -4, PopScale = 0.98, NavStep = 33, SegStep = 64, ToggleTravel = 16,
+        LiftScale = 1.02;
 
     /// <summary>
     /// Zoom origins as fractions of the content area (motion spec "Точка зуму"): 50 % 40 % when a zoom has no click

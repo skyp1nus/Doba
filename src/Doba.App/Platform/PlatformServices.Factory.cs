@@ -1,11 +1,17 @@
 using System.Runtime.Versioning;
 using Avalonia.Controls;
+using Avalonia.Platform;
+using Doba.Bridge.Wire;
 using Doba.App.Platform.Windows;
 
 namespace Doba.App.Platform;
 
 public sealed partial record PlatformServices
 {
+    /// <summary>Returning unused memory to the OS. It touches only this process, so every Windows set has the real
+    /// one whatever the <see cref="PlatformPlan"/> (like the preferences and the shell); no-op elsewhere.</summary>
+    public IProcessMemory Memory { get; init; } = new NoOpMemory();
+
     /// <summary>Windows implementations on Windows, no-op fallbacks elsewhere (headless tests, Linux).</summary>
     public static PlatformServices Create() => Create(PlatformPlan.Full);
 
@@ -25,7 +31,7 @@ public sealed partial record PlatformServices
         Create(PlatformPlan.For(demo, customDataFolder));
 
     public static PlatformServices NoOp() =>
-        new(new NoOpAutostart(), new NoOpHotkey(), new DefaultPreferences(), new NoOpShell(), new NoOpTray());
+        new(new NoOpAutostart(), new NoOpHotkey(), new DefaultPreferences(), new NoOpShell(), new NoOpTray(), new NoOpBridge());
 
     [SupportedOSPlatform("windows")]
     private static PlatformServices CreateWindows(PlatformPlan plan) =>
@@ -33,7 +39,11 @@ public sealed partial record PlatformServices
             plan.Hotkey ? new WindowsHotkey() : new NoOpHotkey(),
             new WindowsPreferences(),
             new WindowsShell(),
-            plan.Tray ? new AvaloniaTrayIcon() : new NoOpTray());
+            plan.Tray ? new AvaloniaTrayIcon() : new NoOpTray(),
+            plan.Bridge ? new ClaudeBridge() : new NoOpBridge())
+        {
+            Memory = new WindowsProcessMemory(),
+        };
 
     private sealed class NoOpAutostart : IAutostart
     {
@@ -74,6 +84,21 @@ public sealed partial record PlatformServices
         public event EventHandler? QuitRequested { add { } remove { } }
         public void Dispose() { }
     }
+
+    private sealed class NoOpMemory : IProcessMemory
+    {
+        public bool TrimGraphicsDevice(IPlatformGraphicsContext context) => false;
+        public void TrimNativeHeaps() { }
+    }
+
+    private sealed class NoOpBridge : IClaudeBridge
+    {
+        public bool IsSupported => false;
+        public bool IsRunning => false;
+        public void Start(string dataFolder, Func<BridgeRequest, BridgeResponse> execute) { }
+        public void Stop() { }
+        public void Dispose() { }
+    }
 }
 
 /// <summary>
@@ -84,13 +109,15 @@ public sealed partial record PlatformServices
 /// <param name="Hotkey">The global Ctrl+Alt+N (not in demo).</param>
 /// <param name="Tray">The notification-area icon and close-to-tray (not in demo: closing a demo window quits, so a demo
 /// never lingers as a hidden process).</param>
-public sealed record PlatformPlan(bool Autostart, bool Hotkey, bool Tray)
+/// <param name="Bridge">The Claude bridge pipe, opened only while Claude access is on (not in demo: a demo has no data
+/// folder of its own, so Doba.Mcp treats it as "not running").</param>
+public sealed record PlatformPlan(bool Autostart, bool Hotkey, bool Tray, bool Bridge)
 {
     /// <summary>Everything: the default data location.</summary>
-    public static PlatformPlan Full { get; } = new(true, true, true);
+    public static PlatformPlan Full { get; } = new(true, true, true, true);
 
     /// <summary><c>--demo</c> / <c>--selfcheck</c> use none; <c>--data</c> never touches the Run key but keeps the
-    /// hotkey and the tray; the default location uses all three.</summary>
+    /// hotkey, the tray and the bridge; the default location uses all four.</summary>
     public static PlatformPlan For(bool demo, bool customDataFolder) =>
-        new(Autostart: !demo && !customDataFolder, Hotkey: !demo, Tray: !demo);
+        new(Autostart: !demo && !customDataFolder, Hotkey: !demo, Tray: !demo, Bridge: !demo);
 }

@@ -149,9 +149,9 @@ public sealed class AppServices : IAsyncDisposable
     }
 
     /// <summary>
-    /// Stops the day clock and releases the global hotkey and the tray icon (once). These are UI-thread objects, so a
-    /// caller that awaits something before <see cref="DisposeAsync"/> (and may resume on a pool thread) calls this
-    /// first, on the UI thread.
+    /// Stops the day clock and releases the global hotkey, the tray icon and the Claude bridge (once). These are UI-thread
+    /// objects, so a caller that awaits something before <see cref="DisposeAsync"/> (and may resume on a pool thread)
+    /// calls this first, on the UI thread.
     /// </summary>
     internal void ReleasePlatform()
     {
@@ -164,6 +164,7 @@ public sealed class AppServices : IAsyncDisposable
         DayClock.Dispose();
         Platform.Hotkey.Dispose();
         Platform.Tray.Dispose();
+        Platform.Bridge.Dispose();
     }
 
     /// <summary>Flushes pending writes and closes the database (once; later calls do nothing).</summary>

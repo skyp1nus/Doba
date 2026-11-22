@@ -21,8 +21,14 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\Doba.Core\Doba.Core.csproj" />
+    <ProjectReference Include="..\Doba.Bridge\Doba.Bridge.csproj" />
     <ProjectReference Include="..\Doba.Storage\Doba.Storage.csproj" />
+    <!-- Not an assembly reference: built first so CopyNextToApp.targets can put Doba.Mcp.exe next to Doba.exe.
+         Private="false": none of its files flow into this output or the publish (NativeAOT Doba.Mcp.exe is published
+         separately into the same folder). -->
+    <ProjectReference Include="..\Doba.Mcp\Doba.Mcp.csproj" ReferenceOutputAssembly="false" Private="false" />
   </ItemGroup>
+  <Import Project="..\Doba.Mcp\CopyNextToApp.targets" />
   <ItemGroup>
     <PackageReference Include="Avalonia" />
     <PackageReference Include="Avalonia.Desktop" />

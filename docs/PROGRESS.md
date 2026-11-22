@@ -63,6 +63,32 @@ fresh reviewer agent, with no literal colours/durations outside tokens and `Moti
 - [x] **P5.4 Independent review** _(done 2026-11-19: eight fresh reviewers — Core, Storage, shell/services/platform, screens/controls, dialogs/overlays, motion, KICKOFF conformance, visual incl. 1100×700 — 72 findings (3 blockers, all the missing single-instance guard); fixed by five fixers and a last integration pass: single instance, strict flags, startup and save errors shown, window fitted to the screen, small-window fits, focus after save, projection rules back in Core, transient write retry)_ — fresh reviewer agents: code review of the whole solution and a final visual review of all screenshots; findings fixed.
 - [x] **P5.5 Docs** _(done 2026-11-19: README, `docs/HANDOFF.md` with the manual Windows checklist and the final performance table, ARCHITECTURE as built, DECISIONS, design-system, MOTION-REVIEW)_ — README (what, build, run, publish, shortcuts, data location), HANDOFF (verified how, Needs Windows verification with steps, perf numbers, gaps), pull request / branch summary.
 
+## Feature — Claude (MCP)
+
+Plan agreed with the owner on 2026-11-19 (`feature/mcp`). Doba stays local; Claude reaches it only while the owner
+allows it. Design and reasons: `docs/DECISIONS.md` (from "MCP SDK" to "Bridge lifecycle"), `docs/ARCHITECTURE.md` §5.10.
+
+- [x] **M1 SDK spike and API** _(done 2026-11-19: `ModelContextProtocol.Core` 2.4.0 through handlers, no host / DI; NativeAOT publish of `Doba.Mcp` 0 warnings)_ — `Doba.Mcp` on the SDK, `Doba.Bridge` public API.
+- [x] **M2 Core rules** _(done 2026-11-19: `TaskEdits` / `TaskPatch` check only the given fields and return an error instead of correcting; `TaskQueries.InRange`; `AppSettings.ClaudeAccess` / `ClaudeAccessLevel`, stored but never exported or imported)_ — task rules for Claude's edits in Core, settings in Storage.
+- [x] **M3 Bridge and server** _(done 2026-11-19: 11 tools in `ToolCatalog`, `ToolExecutor`, pipe host / client with the current-user ACL + Deny NETWORK, `Doba.Mcp.exe` over stdio in both protocol eras; `tests/Doba.Bridge.Tests` 160 green, also against the published NativeAOT exe via `DOBA_MCP_EXE`)_ — `Doba.Bridge`, `Doba.Mcp`.
+- [x] **M4 App** _(done 2026-11-19: `ClaudeBridge` runs requests on the UI thread behind a closing gate; `ClaudeAccessService` follows the setting, opens the pipe after the first frame and carry-over, stops it first on Exit / session end; Settings › Data rows Claude access / Claude can / Connect Claude with copy to the clipboard; real-pipe tests `ClaudePipeTests` and the end-to-end `ClaudeMcpEndToEndTests` (Doba.Mcp.exe → pipe → store → Today screen) green)_ — the bridge in the app and the Settings rows.
+- [x] **M5 Integration** _(done 2026-11-19: `dotnet build -warnaserror` 0 warnings; `dotnet test` 1377 green after the review fixes (Core 287, Storage 129, Bridge 173, App 788); both NativeAOT publishes into `artifacts\doba-win-x64` 0 warnings; CI publishes `Doba.Mcp` next to `Doba.exe`; README, ARCHITECTURE, DECISIONS, HANDOFF updated)_ — one branch, docs, CI.
+
+Open (the owner's check on the real PC; written without a checkbox so the Stop hook stays quiet): connect Claude
+Desktop (MSIX) and Claude Code to a `--data` copy and try the tools — `docs/HANDOFF.md` §3, steps 41–45.
+
+## Phase 6 — Schedule drag and overlaps (new design, 2026-11-19)
+
+- [x] **P6.1 Schedule timeline: drag, resize, overlaps, keyboard** _(built 2026-11-19 on `feature/timeline-drag`; build with warnings as errors clean; independent review by four reviewers (7 findings, all fixed); merged with `dev` (Claude MCP): 1651 tests green, NativeAOT publish 0 warnings; the owner's check on a real window (HANDOFF §3, 46–61) is still to come)_ — the new design's Schedule section on Today and Day (one shared `Controls/ScheduleTimeline`): click opens, the checkbox marks done, move and bottom-edge resize with the pointer (thresholds 4 / 2 DIP, absolute 15-minute grid, 5 with Alt, 07:00–23:00, Esc, autoscroll), arrow-key steps, overlap columns (up to 3) with a "+N" list, lift / glide / landing / FLIP motion, one store write per drop or key step.
+  - Core: `Projections/ScheduleColumns` (the prototype's `layoutDay`), `Editing/ScheduleEdit` (`sbCompute`, `sbKey`, `sbAuto`, durations, texts, write-back), `ScheduleModel` with placements and `Overflows`, `DemoData` +7 timed tasks (355). Golden `fixtures/schedule.json`: 37 layout / `schedData` cases plus the `sbCompute` (392), `sbKey` (360), `sbAuto` (32), `durLabel` and tier tables, all matching the prototype.
+  - App: the timeline owns its scroller; stable-order `KeyedSync.ApplyStable`; `ScheduleTimeline.Keys.cs`, `.Drag.cs` (`ScheduleDrag` controller: capture, cursors, Alt, Esc, autoscroll frames), `.Motion.cs` (composition layers, `Animator.Retarget`); `TaskActions.Reschedule` = one `ITaskStore.Update`; tokens `Snap 90`, `Lift 180`, `Land 220`, `Fade 130`, `ChipHold 900`, `LiftScale 1.02`, `Opacity.Schedule.Under 0.55`.
+  - Tests: real headless mouse and key events (threshold, snapping, Alt, edges, Esc, capture loss, one write, cursors, autoscroll, keyboard, "+N" list, Tab order), motion timings and the animations-off path, and the 2 / 3 / N layouts against the golden numbers.
+  - Screenshots: all of `docs/screenshots/` refreshed (the demo data changed) plus `schedule-normal|hover|drag|resize|two|three|overflow|focus.png`, 420 px crops compared with the new reference renders `docs/design/screens/schedule-*.png` (block edges, rings, text colours and the chip on the same pixels; text antialiasing and the shadow blur differ slightly, as elsewhere). All reference renders were redone with `tools/design-render` (new seed).
+
+## Phase 7 — Memory (2026-11-19)
+
+- [x] **P7.1 Memory in the tray** _(built 2026-11-19 on `perf/memory`; build with warnings as errors clean, 1668 tests green, NativeAOT publish 0 warnings; independent review (9 findings, all fixed); measured once on the real window, the quiet-machine run of `scripts\perf.ps1` is still to come)_ — where the memory goes in each state (HANDOFF §4), and `HiddenMemoryRelease`: 30 s after the window is hidden in the tray Doba empties Skia's GPU cache, trims the graphics driver's buffers, collects the managed heap with decommit and returns the native heaps' free blocks. 348 tasks, every screen visited: working set 204 → 176 MB, private bytes 219 → 180 MB; the first frame after the tray click 13 → 16 ms; warm start unchanged. Views, scroll positions and view-models are kept (owner's choice: nothing the user could notice). `--perf-scenario tray` and the "Memory states" / "Back from the tray" tables of `scripts\perf.ps1` measure it.
+
 ## Blocked
 
 (none)
@@ -86,3 +112,7 @@ Still needs a person. Exact steps and expected results: `docs/HANDOFF.md` sectio
 - Display scaling 125–150 % and a 1366×768 screen: opening size and centring, crisp text and hairlines, every screen usable at 1100×700 (35–38).
 - Cold start after reboot: `scripts\perf.ps1 -PrepareCold`, reboot, `scripts\perf.ps1 -Cold`, budget 400 ms (39).
 - A mid-range PC or integrated GPU: `scripts\perf.ps1` for the Week frame budget and the blurred dialog fades (40).
+- Claude (MCP) on a `--data` copy: the Settings rows, Claude Desktop (MSIX) and Claude Code connected, Read versus
+  Read & edit, the editor conflict, access off and Doba not running (41–45).
+- Schedule drag on a real window: hover, click vs drag, move, Alt, edges and autoscroll, Esc, Alt+Tab, resize, keyboard steps, Narrator, "+N" list, animations off, 125 / 150 % scaling, pen / touch, persistence (46–61).
+- Memory in the tray: both Task Manager numbers drop about 30 s after the hide; the window comes back at once, as it was (62).

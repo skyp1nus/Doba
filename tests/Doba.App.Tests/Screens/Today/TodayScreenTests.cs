@@ -38,13 +38,16 @@ public class TodayScreenTests
         Assert.Equal(model.Groups.Select(g => g.Items.Count), vm.Groups.Select(g => g.Items.Count));
         Assert.Equal(model.Summary, vm.Summary);
         Assert.Equal(model.Progress, vm.Progress); // the projection's whole percent, copied
-        Assert.Equal(0.67, vm.Progress);
+        Assert.Equal(0.5, vm.Progress); // 5 of 10 done
+        Assert.DoesNotContain(model.Schedule.Blocks, b => b.IsHidden); // 15 November: at most three at once
         Assert.Equal(model.Schedule.Blocks.Select(b => b.Row.Id), vm.Schedule.Blocks.Select(b => b.Id));
 
-        // The whole list fits: one row control per row, one section per group, one button per block.
+        // The whole list fits: one row control per row, one section per group, one drawn block per block view-model,
+        // each with one open button.
         Assert.Equal(vm.Groups.Sum(g => g.Items.Count), Rows(view).Count);
         Assert.Equal(vm.Groups.Count, view.GetVisualDescendants().OfType<TaskGroupList>().Count());
-        Assert.Equal(vm.Schedule.Blocks.Count, view.Schedule.BlockList.GetVisualDescendants().OfType<Avalonia.Controls.Button>().Count());
+        Assert.Equal(vm.Schedule.Blocks.Count, view.Schedule.Blocks().Count());
+        Assert.Equal(vm.Schedule.Blocks.Count, view.Schedule.BlockList.GetVisualDescendants().OfType<Avalonia.Controls.Button>().Count(b => b.Name == "PART_Open"));
 
         // Geometry at 48 px/hour: 22:00 → top 721; 45 min → 33 px (compact); now 22:26 → 741.
         var plan = vm.Schedule.Blocks.Single(b => b.Range == "22:00 – 22:45");
@@ -68,6 +71,7 @@ public class TodayScreenTests
         var (vm, view) = Open(harness);
         var window = Host(view);
         var row = vm.Groups.Single(g => g.Key == "sched").Items[0];
+        var scheduled = vm.Groups.Single(g => g.Key == "sched").Items.Count;
         var block = vm.Schedule.Blocks.Single(b => b.Id == row.Id);
         var progress = vm.Progress;
 
@@ -75,7 +79,8 @@ public class TodayScreenTests
         Settle(window);
 
         Assert.True(row.Done);
-        Assert.DoesNotContain(vm.Groups, g => g.Key == "sched");
+        Assert.DoesNotContain(row, vm.Groups.Single(g => g.Key == "sched").Items);
+        Assert.Equal(scheduled - 1, vm.Groups.Single(g => g.Key == "sched").Items.Count);
         Assert.Contains(row, vm.Groups.Single(g => g.Key == "done").Items);
         Assert.Same(block, vm.Schedule.Blocks.Single(b => b.Id == row.Id)); // block updated in place
         Assert.True(block.Row.Done);
@@ -84,6 +89,15 @@ public class TodayScreenTests
         Assert.Equal(Project(harness).Groups.Single(g => g.Key == "done").Items.Select(r => r.Id),
             vm.Groups.Single(g => g.Key == "done").Items.Select(r => r.Id));
         Assert.Contains(Rows(view), r => ReferenceEquals(r.DataContext, row) && r.Classes.Contains("done"));
+
+        // Completing the remaining scheduled rows removes the group.
+        foreach (var other in vm.Groups.Single(g => g.Key == "sched").Items.ToList())
+        {
+            other.ToggleCommand.Execute(null);
+            Settle(window);
+        }
+
+        Assert.DoesNotContain(vm.Groups, g => g.Key == "sched");
         window.Close();
     }
 
@@ -245,9 +259,16 @@ public class TodayScreenTests
             Assert.Equal(task.TagLabel != "#work", r.Classes.Contains("dimmed"));
         }
 
-        var blockButtons = view.Schedule.BlockList.GetVisualDescendants().OfType<Avalonia.Controls.Button>().ToList();
-        Assert.Contains(blockButtons, b => b.Classes.Contains("dimmed"));
-        Assert.Contains(blockButtons, b => !b.Classes.Contains("dimmed"));
+        var blocks = view.Schedule.Blocks().ToList();
+        Assert.NotEmpty(blocks);
+        foreach (var b in blocks)
+        {
+            var block = (ScheduleBlockViewModel)b.DataContext!;
+            Assert.Equal(block.Row.TagLabel != "#work", b.Classes.Contains("dimmed"));
+        }
+
+        Assert.Contains(blocks, b => b.Classes.Contains("dimmed"));
+        Assert.Contains(blocks, b => !b.Classes.Contains("dimmed"));
         window.Close();
     }
 
@@ -306,7 +327,9 @@ public class TodayScreenTests
         var model = Project(harness);
         Assert.Equal(Shape(model.Groups), Shape(vm.Groups));
         Assert.Equal(model.Summary, vm.Summary);
-        Assert.Equal(model.Schedule.Blocks.Select(b => b.Row.Id), vm.Schedule.Blocks.Select(b => b.Id));
+        // 16 November: four at 10:00–10:20 → two blocks fold into "+2" and are not drawn.
+        Assert.Equal(model.Schedule.Blocks.Where(b => !b.IsHidden).Select(b => b.Row.Id), vm.Schedule.Blocks.Select(b => b.Id));
+        Assert.Equal(2, model.Schedule.Blocks.Count(b => b.IsHidden));
         Assert.All(openAnytime, r => Assert.Contains(r, vm.Groups.Single(g => g.Key == "over").Items)); // yesterday's open task is overdue
         Assert.False(vm.Schedule.HasNow); // 00:26 is off the 07–23 grid
         Assert.False(view.Schedule.NowLine.IsVisible);
@@ -383,15 +406,20 @@ public class TodayScreenTests
         // Every block can be reached: scroll to the top, then bring the 22:00 block back.
         scroller.Offset = default;
         Settle(window);
-        var plan = view.Schedule.BlockList.GetVisualDescendants().OfType<Avalonia.Controls.Button>()
-            .Single(b => b.DataContext is ScheduleBlockViewModel { Range: "22:00 – 22:45" });
+        var plan = view.Schedule.Blocks().Single(b => b.DataContext is ScheduleBlockViewModel { Range: "22:00 – 22:45" });
+        var planId = ((ScheduleBlockViewModel)plan.DataContext!).Id;
         Assert.False(InView(scroller, plan));
         plan.BringIntoView();
         Settle(window);
         Assert.True(InView(scroller, plan));
-        Click(window, plan);
-        Assert.True(harness.App.Store.Get(((ScheduleBlockViewModel)plan.DataContext!).Id)!.Done);
-        Assert.Equal(vm.Schedule.Blocks.Count, view.Schedule.BlockList.GetVisualDescendants().OfType<Avalonia.Controls.Button>().Count());
+        Click(window, Part<Avalonia.Controls.Button>(plan, "PART_Open")); // a click on a block opens its task
+        Assert.Equal([planId], harness.Commands.Edits);
+        Assert.False(harness.App.Store.Get(planId)!.Done);
+        Assert.Equal(vm.Schedule.Blocks.Count, view.Schedule.Blocks().Count());
+
+        // The header stays put above the scrolled grid.
+        var header = view.Schedule.GetVisualDescendants().OfType<Avalonia.Controls.Grid>().Single(g => g.Name == "PART_Header");
+        Assert.Equal(4, header.TranslatePoint(default, view.Schedule)!.Value.Y);
         window.Close();
 
         static bool InView(Avalonia.Controls.ScrollViewer scroller, Avalonia.Controls.Control element)
