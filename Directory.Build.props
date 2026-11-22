@@ -15,7 +15,7 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
     <Company>Doba</Company>
     <Product>Doba</Product>
-    <Version>0.1.0</Version>
+    <Version>0.2.0</Version>
   </PropertyGroup>
 
   <!-- Shipping code: trimming + NativeAOT analyzers from the first commit. -->
